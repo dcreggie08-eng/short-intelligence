@@ -109,6 +109,14 @@
   .history-grade { font-family: var(--mono); font-size: 10px; color: var(--text-dim); letter-spacing: 1px; flex: 1; }
   .history-time { font-family: var(--mono); font-size: 10px; color: var(--text-dim); letter-spacing: 1px; }
   .history-empty { font-family: var(--mono); font-size: 11px; color: var(--text-dim); letter-spacing: 1px; padding: 20px 0; text-align: center; }
+  .stock-info-bar { display: none; background: var(--surface); border: 1px solid var(--border); border-bottom: none; padding: 10px 16px; font-family: var(--mono); font-size: 11px; color: var(--text-dim); letter-spacing: 1px; flex-wrap: wrap; gap: 6px 20px; }
+  .stock-info-bar.visible { display: flex; }
+  .stock-info-bar span { color: var(--text); }
+  .stock-info-bar strong { color: var(--accent); }
+  .grok-panel { border: 1px solid var(--border); background: var(--surface); padding: 16px 20px; display: none; margin-top: 0; border-top: 1px solid var(--border-bright); }
+  .grok-panel.visible { display: block; }
+  .grok-header { font-family: var(--mono); font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: var(--accent); margin-bottom: 12px; }
+  .grok-text { font-family: var(--body); font-size: 13px; font-weight: 300; line-height: 1.8; color: var(--text); white-space: pre-line; }
   .dilution-panel { border: 1px solid var(--border); background: var(--surface); padding: 16px 20px; display: none; }
   .dilution-panel.visible { display: block; }
   .dilution-header { font-family: var(--mono); font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: var(--accent); margin-bottom: 12px; }
@@ -159,8 +167,13 @@
         <label>Dilution Profile</label>
         <span class="news-source" id="dilutionSource"></span>
       </div>
+      <div class="stock-info-bar" id="stockInfoBar"></div>
       <div class="dilution-panel" id="dilutionPanel">
         <div class="dilution-badges" id="dilutionBadges"></div>
+      </div>
+      <div class="grok-panel" id="grokPanel">
+        <div class="grok-header">Ask Edgar — TLDR</div>
+        <div class="grok-text" id="grokText"></div>
       </div>
     </div>
 
@@ -390,17 +403,23 @@ async function fetchNews() {
   currentDilution = null;
 
   try {
-    // Fetch news AND dilution in parallel
-    var newsUrl = PROXY + '/askedgar/v1/news?ticker=' + ticker + '&include_body=true&limit=1&hide_filings=false';
+    // Fetch news, dilution, float AND tldr in parallel
+    var newsUrl     = PROXY + '/askedgar/v1/news?ticker=' + ticker + '&include_body=true&limit=1&hide_filings=false';
     var dilutionUrl = PROXY + '/askedgar/v1/dilution-rating?ticker=' + ticker;
+    var floatUrl    = PROXY + '/askedgar/v1/float-outstanding?ticker=' + ticker;
+    var tldrUrl     = PROXY + '/askedgar/v1/research-reports-tldr?ticker=' + ticker + '&limit=1';
 
-    var [newsRes, dilutionRes] = await Promise.all([
+    var [newsRes, dilutionRes, floatRes, tldrRes] = await Promise.all([
       fetch(newsUrl),
-      fetch(dilutionUrl)
+      fetch(dilutionUrl),
+      fetch(floatUrl),
+      fetch(tldrUrl)
     ]);
 
-    var newsData = await newsRes.json();
+    var newsData     = await newsRes.json();
     var dilutionData = await dilutionRes.json();
+    var floatData    = await floatRes.json();
+    var tldrData     = await tldrRes.json();
 
     // Handle news
     if (newsData.status === 'success' && newsData.results && newsData.results.length > 0) {
@@ -420,6 +439,33 @@ async function fetchNews() {
       renderDilutionBadges(dilutionData);
     } else {
       document.getElementById('dilutionSource').textContent = 'Dilution data unavailable';
+    }
+
+    // Handle float/stock info bar
+    var infoBar = document.getElementById('stockInfoBar');
+    if (floatData && floatData.results && floatData.results.length > 0) {
+      var f = floatData.results[0];
+      function fmt(n) { return n ? (n >= 1000000 ? (n/1000000).toFixed(2) + 'M' : (n/1000).toFixed(0) + 'K') : 'N/A'; }
+      infoBar.innerHTML =
+        '<span><strong>Float:</strong> ' + fmt(f.float) + '</span>' +
+        '<span><strong>OS:</strong> ' + fmt(f.outstanding) + '</span>' +
+        '<span><strong>MC:</strong> $' + fmt(f.market_cap_final) + '</span>' +
+        '<span><strong>Sector:</strong> ' + (f.sector || 'N/A') + '</span>' +
+        '<span><strong>Industry:</strong> ' + (f.industry || 'N/A') + '</span>' +
+        '<span><strong>Country:</strong> ' + (f.country || 'N/A') + '</span>' +
+        (f.institutions_percent ? '<span><strong>Inst%:</strong> ' + (f.institutions_percent * 100).toFixed(1) + '%</span>' : '');
+      infoBar.classList.add('visible');
+    }
+
+    // Handle GROK/TLDR
+    var grokPanel = document.getElementById('grokPanel');
+    var grokText  = document.getElementById('grokText');
+    if (tldrData && tldrData.results && tldrData.results.length > 0) {
+      var t = tldrData.results[0];
+      if (t.tldr_text) {
+        grokText.textContent = t.tldr_text.replace(/\\n/g, '\n');
+        grokPanel.classList.add('visible');
+      }
     }
 
   } catch(e) {
@@ -576,6 +622,10 @@ function clearAll() {
   document.getElementById('dilutionSource').textContent = '';
   document.getElementById('dilutionPanel').classList.remove('visible');
   document.getElementById('dilutionBadges').innerHTML = '';
+  document.getElementById('stockInfoBar').classList.remove('visible');
+  document.getElementById('stockInfoBar').innerHTML = '';
+  document.getElementById('grokPanel').classList.remove('visible');
+  document.getElementById('grokText').textContent = '';
   currentDilution = null;
   document.getElementById('errorMsg').classList.remove('visible');
   document.getElementById('saveIndicator').className = 'save-indicator';
