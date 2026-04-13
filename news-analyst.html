@@ -344,6 +344,7 @@ function renderHistory(items) {
 }
 
 var currentDilution = null;
+var fetchCache = {};
 
 function badgeClass(val) {
   if (!val) return 'unknown';
@@ -402,6 +403,16 @@ async function fetchNews() {
   document.getElementById('errorMsg').classList.remove('visible');
   currentDilution = null;
 
+  // Check cache first
+  if (fetchCache[ticker]) {
+    var cached = fetchCache[ticker];
+    btn.disabled = false;
+    btn.textContent = 'Fetch News';
+    applyFetchedData(cached, ticker);
+    document.getElementById('dilutionSource').textContent = 'via Ask Edgar (cached)';
+    return;
+  }
+
   try {
     // Fetch news, dilution, float AND tldr in parallel
     var newsUrl     = PROXY + '/askedgar/v1/news?ticker=' + ticker + '&include_body=true&limit=1&hide_filings=false';
@@ -421,58 +432,70 @@ async function fetchNews() {
     var floatData    = await floatRes.json();
     var tldrData     = await tldrRes.json();
 
-    // Handle news
-    if (newsData.status === 'success' && newsData.results && newsData.results.length > 0) {
-      var item = newsData.results[0];
-      var text = item.summary || item.body || '';
-      var title = item.title || '';
-      var combined = title ? title + '\n\n' + text : text;
-      document.getElementById('newsInput').value = combined;
-      var d = new Date(item.filed_at);
-      newsSource.textContent = 'via Ask Edgar · ' + d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
-    } else {
-      showError('No news found for ' + ticker);
-    }
-
-    // Handle dilution badges
-    if (dilutionData && dilutionData.results && dilutionData.results.length > 0) {
-      renderDilutionBadges(dilutionData);
-    } else {
-      document.getElementById('dilutionSource').textContent = 'Dilution data unavailable';
-    }
-
-    // Handle float/stock info bar
-    var infoBar = document.getElementById('stockInfoBar');
-    if (floatData && floatData.results && floatData.results.length > 0) {
-      var f = floatData.results[0];
-      function fmt(n) { return n ? (n >= 1000000 ? (n/1000000).toFixed(2) + 'M' : (n/1000).toFixed(0) + 'K') : 'N/A'; }
-      infoBar.innerHTML =
-        '<span><strong>Float:</strong> ' + fmt(f.float) + '</span>' +
-        '<span><strong>OS:</strong> ' + fmt(f.outstanding) + '</span>' +
-        '<span><strong>MC:</strong> $' + fmt(f.market_cap_final) + '</span>' +
-        '<span><strong>Sector:</strong> ' + (f.sector || 'N/A') + '</span>' +
-        '<span><strong>Industry:</strong> ' + (f.industry || 'N/A') + '</span>' +
-        '<span><strong>Country:</strong> ' + (f.country || 'N/A') + '</span>' +
-        (f.institutions_percent ? '<span><strong>Inst%:</strong> ' + (f.institutions_percent * 100).toFixed(1) + '%</span>' : '');
-      infoBar.classList.add('visible');
-    }
-
-    // Handle GROK/TLDR
-    var grokPanel = document.getElementById('grokPanel');
-    var grokText  = document.getElementById('grokText');
-    if (tldrData && tldrData.results && tldrData.results.length > 0) {
-      var t = tldrData.results[0];
-      if (t.tldr_text) {
-        grokText.textContent = t.tldr_text.replace(/\\n/g, '\n');
-        grokPanel.classList.add('visible');
-      }
-    }
+    // Store in cache
+    fetchCache[ticker] = { newsData, dilutionData, floatData, tldrData };
+    applyFetchedData(fetchCache[ticker], ticker);
 
   } catch(e) {
     showError('Could not fetch data: ' + e.message);
   } finally {
     btn.disabled = false;
     btn.textContent = 'Fetch News';
+  }
+}
+
+function applyFetchedData(cached, ticker) {
+  var newsData     = cached.newsData;
+  var dilutionData = cached.dilutionData;
+  var floatData    = cached.floatData;
+  var tldrData     = cached.tldrData;
+  var newsSource   = document.getElementById('newsSource');
+
+  // Handle news
+  if (newsData.status === 'success' && newsData.results && newsData.results.length > 0) {
+    var item = newsData.results[0];
+    var text = item.summary || item.body || '';
+    var title = item.title || '';
+    var combined = title ? title + '\n\n' + text : text;
+    document.getElementById('newsInput').value = combined;
+    var d = new Date(item.filed_at);
+    newsSource.textContent = 'via Ask Edgar · ' + d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+  } else {
+    showError('No news found for ' + ticker);
+  }
+
+  // Handle dilution badges
+  if (dilutionData && dilutionData.results && dilutionData.results.length > 0) {
+    renderDilutionBadges(dilutionData);
+  } else {
+    document.getElementById('dilutionSource').textContent = 'Dilution data unavailable';
+  }
+
+  // Handle float/stock info bar
+  var infoBar = document.getElementById('stockInfoBar');
+  if (floatData && floatData.results && floatData.results.length > 0) {
+    var f = floatData.results[0];
+    function fmt(n) { return n ? (n >= 1000000 ? (n/1000000).toFixed(2) + 'M' : (n/1000).toFixed(0) + 'K') : 'N/A'; }
+    infoBar.innerHTML =
+      '<span><strong>Float:</strong> ' + fmt(f.float) + '</span>' +
+      '<span><strong>OS:</strong> ' + fmt(f.outstanding) + '</span>' +
+      '<span><strong>MC:</strong> $' + fmt(f.market_cap_final) + '</span>' +
+      '<span><strong>Sector:</strong> ' + (f.sector || 'N/A') + '</span>' +
+      '<span><strong>Industry:</strong> ' + (f.industry || 'N/A') + '</span>' +
+      '<span><strong>Country:</strong> ' + (f.country || 'N/A') + '</span>' +
+      (f.institutions_percent ? '<span><strong>Inst%:</strong> ' + (f.institutions_percent * 100).toFixed(1) + '%</span>' : '');
+    infoBar.classList.add('visible');
+  }
+
+  // Handle GROK/TLDR
+  var grokPanel = document.getElementById('grokPanel');
+  var grokText  = document.getElementById('grokText');
+  if (tldrData && tldrData.results && tldrData.results.length > 0) {
+    var t = tldrData.results[0];
+    if (t.tldr_text) {
+      grokText.textContent = t.tldr_text.replace(/\\n/g, '\n');
+      grokPanel.classList.add('visible');
+    }
   }
 }
 
