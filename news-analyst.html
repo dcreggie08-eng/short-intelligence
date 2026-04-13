@@ -106,6 +106,9 @@
   .clear-btn { background: transparent; border: 1px solid var(--border-bright); color: var(--text-dim); font-family: var(--display); font-weight: 700; font-size: 16px; letter-spacing: 2px; text-transform: uppercase; padding: 16px; cursor: pointer; transition: all 0.2s; white-space: nowrap; }
   .clear-btn:hover { border-color: var(--accent); color: var(--accent); }
   .history-item { cursor: pointer; }
+  .fetch-btn { background: transparent; border: 1px solid var(--accent); color: var(--accent); font-family: var(--display); font-weight: 700; font-size: 14px; letter-spacing: 2px; text-transform: uppercase; padding: 12px 16px; cursor: pointer; transition: all 0.2s; white-space: nowrap; height: 46px; }
+  .fetch-btn:hover { background: var(--accent-dim); }
+  .fetch-btn:disabled { border-color: var(--border-bright); color: var(--text-dim); cursor: not-allowed; }
   @media (max-width: 600px) { .row-2 { grid-template-columns: 1fr; } .logo-area h1 { font-size: 30px; } .verdict-label { font-size: 28px; } .verdict-meta { align-items: flex-start; } }
 </style>
 </head>
@@ -122,19 +125,20 @@
   </header>
 
   <div class="input-section">
-    <div class="row-2">
+    <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:16px;align-items:end;">
       <div class="field-group">
         <label>Ticker Symbol</label>
-        <input type="text" id="ticker" placeholder="e.g. ARTL" maxlength="10" />
+        <input type="text" id="ticker" placeholder="e.g. ARTL" maxlength="10" onkeydown="if(event.key==='Enter') fetchNews()" />
       </div>
       <div class="field-group">
         <label>Price Context (optional)</label>
         <input type="text" id="priceContext" placeholder="e.g. +45% premarket, VWAP +38%" />
       </div>
+      <button class="fetch-btn" id="fetchBtn" onclick="fetchNews()">Fetch News</button>
     </div>
     <div class="field-group">
-      <label>Paste News / PR / Filing</label>
-      <textarea id="newsInput" placeholder="Paste the full news release, headline, PR, or filing text here..."></textarea>
+      <label>News / PR / Filing <span id="newsSource" style="color:var(--accent);margin-left:8px;"></span></label>
+      <textarea id="newsInput" placeholder="Paste news here — or type a ticker above and click Fetch News..."></textarea>
     </div>
     <div style="display:grid;grid-template-columns:1fr 100px;gap:12px;">
       <button class="analyse-btn" id="analyseBtn" onclick="analyse()">
@@ -401,6 +405,47 @@ function showError(msg) {
   const el = document.getElementById('errorMsg');
   el.textContent = msg;
   el.classList.add('visible');
+}
+
+const ASKEDGAR_KEY = 'ask-live-6180b863718c502ce883e4eb4c53f8dbdb0b04dad52637772b93613cde6371b1';
+
+async function fetchNews() {
+  const ticker = document.getElementById('ticker').value.trim().toUpperCase();
+  const btn = document.getElementById('fetchBtn');
+  const newsSource = document.getElementById('newsSource');
+  
+  if (!ticker) { showError('Enter a ticker first.'); return; }
+  
+  btn.disabled = true;
+  btn.textContent = 'Fetching...';
+  newsSource.textContent = '';
+  document.getElementById('errorMsg').classList.remove('visible');
+
+  try {
+    const url = `https://eapi.askedgar.io/v1/news?ticker=${ticker}&include_body=true&limit=1&hide_filings=false`;
+    const res = await fetch(url, {
+      headers: { 'API-KEY': ASKEDGAR_KEY, 'accept': 'application/json' }
+    });
+    const data = await res.json();
+    
+    if (data.status === 'success' && data.results && data.results.length > 0) {
+      const item = data.results[0];
+      const text = item.body || item.summary || '';
+      const title = item.title || '';
+      const combined = title ? title + '
+
+' + text : text;
+      document.getElementById('newsInput').value = combined;
+      newsSource.textContent = '← via Ask Edgar · ' + new Date(item.filed_at).toLocaleDateString('en-GB', {day:'numeric', month:'short', hour:'2-digit', minute:'2-digit'});
+    } else {
+      showError('No news found for ' + ticker);
+    }
+  } catch(e) {
+    showError('Could not fetch news: ' + e.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Fetch News';
+  }
 }
 
 function clearAll() {
