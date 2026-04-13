@@ -109,7 +109,24 @@
   .history-grade { font-family: var(--mono); font-size: 10px; color: var(--text-dim); letter-spacing: 1px; flex: 1; }
   .history-time { font-family: var(--mono); font-size: 10px; color: var(--text-dim); letter-spacing: 1px; }
   .history-empty { font-family: var(--mono); font-size: 11px; color: var(--text-dim); letter-spacing: 1px; padding: 20px 0; text-align: center; }
-  @media (max-width: 600px) { .ticker-row { grid-template-columns: 1fr; } .logo-area h1 { font-size: 30px; } .verdict-label { font-size: 28px; } .verdict-meta { align-items: flex-start; } }
+  .dilution-panel { border: 1px solid var(--border); background: var(--surface); padding: 16px 20px; display: none; }
+  .dilution-panel.visible { display: block; }
+  .dilution-header { font-family: var(--mono); font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: var(--accent); margin-bottom: 12px; }
+  .dilution-badges { display: flex; flex-wrap: wrap; gap: 8px; }
+  .badge { display: flex; flex-direction: column; gap: 4px; padding: 8px 12px; border: 1px solid var(--border-bright); min-width: 120px; flex: 1; }
+  .badge-label { font-family: var(--mono); font-size: 9px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--text-dim); }
+  .badge-value { font-family: var(--display); font-weight: 700; font-size: 15px; letter-spacing: 2px; text-transform: uppercase; }
+  .badge-desc { font-family: var(--body); font-size: 10px; font-weight: 300; color: var(--text-dim); line-height: 1.4; margin-top: 2px; }
+  .badge.high { border-color: rgba(255,61,90,0.4); background: rgba(255,61,90,0.06); }
+  .badge.high .badge-value { color: var(--nogo); }
+  .badge.medium { border-color: rgba(255,179,0,0.4); background: rgba(255,179,0,0.06); }
+  .badge.medium .badge-value { color: var(--caution); }
+  .badge.low { border-color: rgba(0,230,118,0.3); background: rgba(0,230,118,0.04); }
+  .badge.low .badge-value { color: var(--go); }
+  .badge.unknown { border-color: var(--border-bright); }
+  .badge.unknown .badge-value { color: var(--text-dim); }
+  .dilution-loading { font-family: var(--mono); font-size: 11px; color: var(--text-dim); letter-spacing: 1px; padding: 8px 0; }
+  @media (max-width: 600px) { .ticker-row { grid-template-columns: 1fr; } .logo-area h1 { font-size: 30px; } .verdict-label { font-size: 28px; } .verdict-meta { align-items: flex-start; } .badge { min-width: 100px; } }
 </style>
 </head>
 <body>
@@ -135,6 +152,16 @@
         <input type="text" id="priceContext" placeholder="e.g. +45% premarket, VWAP +38%" />
       </div>
       <button class="fetch-btn" id="fetchBtn" onclick="fetchNews()">Fetch News</button>
+    </div>
+
+    <div class="field-group">
+      <div class="news-label">
+        <label>Dilution Profile</label>
+        <span class="news-source" id="dilutionSource"></span>
+      </div>
+      <div class="dilution-panel" id="dilutionPanel">
+        <div class="dilution-badges" id="dilutionBadges"></div>
+      </div>
     </div>
 
     <div class="field-group">
@@ -216,6 +243,14 @@ UNIVERSE & TIMING
 - Preferred market cap: up to $20m
 - Relative volume: 5x or greater required
 
+DILUTION PROFILE (when provided)
+- You may receive a dilution profile from Ask Edgar with 6 badges: Overall Risk, Dilution Risk, Offering Frequency, Cash Need, Warrant Exercise, Nasdaq Compliance
+- Each is rated Low, Medium, or High
+- HIGH Cash Need + HIGH Dilution Risk = strong permission-to-trade signal for shorting
+- If dilution profile is HIGH on Cash Need AND Dilution Risk, this should push verdict toward GO
+- If dilution profile is LOW across the board, this should push verdict toward CAUTION or NO GO regardless of news
+- Medium scores are tradeable but require confirmation from price action
+
 CATALYST GRADING
 - STRONG NEWS: FDA approval, major partnership, genuine revenue contract, company-changing event. STAY AWAY.
 - MID NEWS: Small contract, vague partnership, licensing deal, minor milestone. Caution or pass.
@@ -289,6 +324,52 @@ function renderHistory(items) {
   }).join('');
 }
 
+var currentDilution = null;
+
+function badgeClass(val) {
+  if (!val) return 'unknown';
+  var v = val.toString().toLowerCase();
+  if (v === 'high') return 'high';
+  if (v === 'medium' || v === 'moderate') return 'medium';
+  if (v === 'low') return 'low';
+  return 'unknown';
+}
+
+function renderDilutionBadges(data) {
+  var panel = document.getElementById('dilutionPanel');
+  var badgesEl = document.getElementById('dilutionBadges');
+  var source = document.getElementById('dilutionSource');
+
+  var fields = [
+    { key: 'overall_offering_risk', label: 'Overall Risk',       descKey: null },
+    { key: 'dilution',              label: 'Dilution Risk',      descKey: 'dilution_desc' },
+    { key: 'offering_frequency',    label: 'Offering Freq',      descKey: 'offering_frequency_desc' },
+    { key: 'cash_need',             label: 'Cash Need',          descKey: 'cash_need_desc' },
+    { key: 'warrant_exercise',      label: 'Warrant Exercise',   descKey: 'warrant_exercise_desc' },
+    { key: 'nasdaq_compliance',     label: 'Nasdaq Compliance',  descKey: 'nasdaq_compliance_desc' }
+  ];
+
+  // Data is in results[0]
+  var r = (data.results && data.results.length > 0) ? data.results[0] : (data.result || data.data || data);
+
+  badgesEl.innerHTML = fields.map(function(f) {
+    var val = r[f.key] || 'N/A';
+    var desc = f.descKey ? (r[f.descKey] || '') : '';
+    var cls = badgeClass(val);
+    return '<div class="badge ' + cls + '">' +
+      '<span class="badge-label">' + f.label + '</span>' +
+      '<span class="badge-value">' + val.toString().toUpperCase() + '</span>' +
+      (desc ? '<span class="badge-desc">' + desc + '</span>' : '') +
+      '</div>';
+  }).join('');
+
+  // Store for use in AI prompt
+  currentDilution = r;
+
+  source.textContent = 'via Ask Edgar';
+  panel.classList.add('visible');
+}
+
 async function fetchNews() {
   var ticker = document.getElementById('ticker').value.trim().toUpperCase();
   var btn = document.getElementById('fetchBtn');
@@ -299,15 +380,27 @@ async function fetchNews() {
   btn.disabled = true;
   btn.textContent = 'Fetching...';
   newsSource.textContent = '';
+  document.getElementById('dilutionSource').textContent = '';
+  document.getElementById('dilutionPanel').classList.remove('visible');
   document.getElementById('errorMsg').classList.remove('visible');
+  currentDilution = null;
 
   try {
-    var url = PROXY + '/askedgar/v1/news?ticker=' + ticker + '&include_body=true&limit=1&hide_filings=false';
-    var res = await fetch(url);
-    var data = await res.json();
+    // Fetch news AND dilution in parallel
+    var newsUrl = PROXY + '/askedgar/v1/news?ticker=' + ticker + '&include_body=true&limit=1&hide_filings=false';
+    var dilutionUrl = PROXY + '/askedgar/v1/dilution-rating?ticker=' + ticker;
 
-    if (data.status === 'success' && data.results && data.results.length > 0) {
-      var item = data.results[0];
+    var [newsRes, dilutionRes] = await Promise.all([
+      fetch(newsUrl),
+      fetch(dilutionUrl)
+    ]);
+
+    var newsData = await newsRes.json();
+    var dilutionData = await dilutionRes.json();
+
+    // Handle news
+    if (newsData.status === 'success' && newsData.results && newsData.results.length > 0) {
+      var item = newsData.results[0];
       var text = item.summary || item.body || '';
       var title = item.title || '';
       var combined = title ? title + '\n\n' + text : text;
@@ -317,8 +410,16 @@ async function fetchNews() {
     } else {
       showError('No news found for ' + ticker);
     }
+
+    // Handle dilution badges
+    if (dilutionData && dilutionData.results && dilutionData.results.length > 0) {
+      renderDilutionBadges(dilutionData);
+    } else {
+      document.getElementById('dilutionSource').textContent = 'Dilution data unavailable';
+    }
+
   } catch(e) {
-    showError('Could not fetch news: ' + e.message);
+    showError('Could not fetch data: ' + e.message);
   } finally {
     btn.disabled = false;
     btn.textContent = 'Fetch News';
@@ -346,6 +447,21 @@ async function analyse() {
   var userMessage = 'Analyse this news for a potential short trade.\n\n';
   if (ticker) userMessage += 'TICKER: ' + ticker + '\n';
   if (priceContext) userMessage += 'PRICE CONTEXT: ' + priceContext + '\n';
+  if (currentDilution) {
+    userMessage += '\nDILUTION PROFILE (from Ask Edgar):\n';
+    var fields = [
+      ['Overall Risk',       'overall_offering_risk'],
+      ['Dilution Risk',      'dilution'],
+      ['Offering Frequency', 'offering_frequency'],
+      ['Cash Need',          'cash_need'],
+      ['Warrant Exercise',   'warrant_exercise'],
+      ['Nasdaq Compliance',  'nasdaq_compliance']
+    ];
+    fields.forEach(function(f) {
+      var val = currentDilution[f[1]] || 'N/A';
+      userMessage += '- ' + f[0] + ': ' + val + '\n';
+    });
+  }
   userMessage += '\nNEWS:\n' + newsText;
 
   try {
@@ -452,6 +568,10 @@ function clearAll() {
   document.getElementById('priceContext').value = '';
   document.getElementById('newsInput').value = '';
   document.getElementById('newsSource').textContent = '';
+  document.getElementById('dilutionSource').textContent = '';
+  document.getElementById('dilutionPanel').classList.remove('visible');
+  document.getElementById('dilutionBadges').innerHTML = '';
+  currentDilution = null;
   document.getElementById('errorMsg').classList.remove('visible');
   document.getElementById('saveIndicator').className = 'save-indicator';
   var panel = document.getElementById('resultPanel');
