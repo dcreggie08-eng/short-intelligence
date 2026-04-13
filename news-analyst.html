@@ -354,12 +354,10 @@ function renderDilutionBadges(data) {
 
   badgesEl.innerHTML = fields.map(function(f) {
     var val = r[f.key] || 'N/A';
-    var desc = f.descKey ? (r[f.descKey] || '') : '';
     var cls = badgeClass(val);
     return '<div class="badge ' + cls + '">' +
       '<span class="badge-label">' + f.label + '</span>' +
       '<span class="badge-value">' + val.toString().toUpperCase() + '</span>' +
-      (desc ? '<span class="badge-desc">' + desc + '</span>' : '') +
       '</div>';
   }).join('');
 
@@ -469,7 +467,7 @@ async function analyse() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
+        model: 'claude-sonnet-4-5',
         max_tokens: 1000,
         system: SYSTEM_PROMPT,
         messages: [{ role: 'user', content: userMessage }]
@@ -478,6 +476,7 @@ async function analyse() {
 
     var data = await response.json();
     if (!response.ok) throw new Error((data.error && data.error.message) || 'API error');
+    if (!data.content || !Array.isArray(data.content)) throw new Error('Unexpected response from API: ' + JSON.stringify(data).substring(0, 100));
 
     var rawText = data.content.map(function(b) { return b.text || ''; }).join('');
     var clean = rawText.replace(/```json|```/g, '').trim();
