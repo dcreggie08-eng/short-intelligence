@@ -422,9 +422,9 @@ async function fetchNews() {
   document.getElementById('errorMsg').classList.remove('visible');
 
   try {
-    const url = `https://eapi.askedgar.io/v1/news?ticker=${ticker}&include_body=true&limit=1&hide_filings=false`;
+    const url = `https://anthropic-proxy.dcreggie08.workers.dev/askedgar/v1/news?ticker=${ticker}&include_body=true&limit=1&hide_filings=false`;
     const res = await fetch(url, {
-      headers: { 'API-KEY': ASKEDGAR_KEY, 'accept': 'application/json' }
+      headers: { 'accept': 'application/json' }
     });
     const data = await res.json();
     
