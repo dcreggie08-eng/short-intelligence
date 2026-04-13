@@ -246,10 +246,16 @@ UNIVERSE & TIMING
 DILUTION PROFILE (when provided)
 - You may receive a dilution profile from Ask Edgar with 6 badges: Overall Risk, Dilution Risk, Offering Frequency, Cash Need, Warrant Exercise, Nasdaq Compliance
 - Each is rated Low, Medium, or High
-- HIGH Cash Need + HIGH Dilution Risk = strong permission-to-trade signal for shorting
-- If dilution profile is HIGH on Cash Need AND Dilution Risk, this should push verdict toward GO
-- If dilution profile is LOW across the board, this should push verdict toward CAUTION or NO GO regardless of news
-- Medium scores are tradeable but require confirmation from price action
+- Use this matrix to determine verdict:
+
+VERDICT MATRIX:
+- STRONG catalyst + any dilution = NO GO (strong news kills the short thesis regardless)
+- WEAK/FLUFF or MID catalyst + HIGH Cash Need + HIGH Dilution = GO
+- WEAK/FLUFF or MID catalyst + MEDIUM dilution scores = CAUTION (wait for price action confirmation)
+- WEAK/FLUFF or MID catalyst + LOW dilution scores = CAUTION (weak catalyst but no dilution pressure to support the short)
+- No dilution data provided = grade on catalyst alone
+
+IMPORTANT: NO GO should only come from a STRONG catalyst. Low dilution on weak news = CAUTION, not NO GO.
 
 CATALYST GRADING
 - STRONG NEWS: FDA approval, major partnership, genuine revenue contract, company-changing event. STAY AWAY.
