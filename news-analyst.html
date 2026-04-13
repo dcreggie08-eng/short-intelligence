@@ -308,7 +308,7 @@ async function fetchNews() {
 
     if (data.status === 'success' && data.results && data.results.length > 0) {
       var item = data.results[0];
-      var text = item.body || item.summary || '';
+      var text = item.summary || item.body || '';
       var title = item.title || '';
       var combined = title ? title + '\n\n' + text : text;
       document.getElementById('newsInput').value = combined;
