@@ -150,7 +150,7 @@
   .droppiness-badge.medium .droppiness-badge-value { color: var(--caution); }
   .droppiness-badge.low { border-color: rgba(255,61,90,0.4); background: rgba(255,61,90,0.06); }
   .droppiness-badge.low .droppiness-badge-value { color: var(--nogo); }
-  .droppiness-stats { display: flex; gap: 20px; flex-wrap: wrap; font-family: var(--mono); font-size: 10px; color: var(--text-dim); letter-spacing: 1px; }
+  .droppiness-stats { display: flex; gap: 20px; flex-wrap: wrap; font-family: var(--mono); font-size: 10px; color: var(--accent); letter-spacing: 1px; }
   .droppiness-stat strong { color: var(--text); }
   .droppiness-loading { font-family: var(--mono); font-size: 11px; color: var(--accent); letter-spacing: 1px; animation: pulse 1.5s infinite; }
   @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
@@ -531,11 +531,11 @@ async function fetchDroppiness(ticker) {
     scoreEl.textContent = data.score + ' / 100';
 
     statsEl.innerHTML =
-      '<span class="droppiness-stat"><strong>Rating:</strong> ' + data.rating + '</span>' +
-      '<span class="droppiness-stat"><strong>Events (12M):</strong> ' + data.total_events + '</span>' +
-      '<span class="droppiness-stat"><strong>Avg Giveback:</strong> ' + data.avg_giveback + '%</span>' +
-      '<span class="droppiness-stat"><strong>Last Event:</strong> ' + data.last_event + '</span>' +
-      '<span class="droppiness-stat"><strong>Trend:</strong> ' + data.trend + '</span>';
+      '<span class="droppiness-stat"><strong>Rating:</strong> <strong style="color:var(--text-bright)">' + data.rating + '</strong></span>' +
+      '<span class="droppiness-stat"><strong>Events (12M):</strong> <strong style="color:var(--text-bright)">' + data.total_events + '</strong></span>' +
+      '<span class="droppiness-stat"><strong>Avg Giveback:</strong> <strong style="color:var(--text-bright)">' + data.avg_giveback + '%</strong></span>' +
+      '<span class="droppiness-stat"><strong>Last Event:</strong> <strong style="color:var(--text-bright)">' + data.last_event + '</strong></span>' +
+      '<span class="droppiness-stat"><strong>Trend:</strong> <strong style="color:var(--text-bright)">' + data.trend + '</strong></span>';
 
   } catch(e) {
     scoreEl.textContent = 'Error';
