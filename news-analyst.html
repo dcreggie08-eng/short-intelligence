@@ -35,7 +35,7 @@
   /* ── TOP GAINERS SIDEBAR ── */
   .gainers-sidebar {
     position: fixed; top: 0; left: 0; width: 220px; height: 100vh;
-    background: #0b0e12; border-right: 1px solid var(--border);
+    background: #0b0e12; border-right: 1px solid var(--border-bright);
     display: flex; flex-direction: column; z-index: 100; overflow: hidden;
   }
   .gainers-header {
@@ -92,7 +92,7 @@
   .gainers-empty { font-family: var(--mono); font-size: 10px; color: var(--text-dim); padding: 20px 14px; text-align: center; letter-spacing: 1px; line-height: 1.7; }
   .gainers-footer { padding: 8px 14px; border-top: 1px solid var(--border); font-family: var(--mono); font-size: 9px; color: var(--text-dim); letter-spacing: 1px; flex-shrink: 0; }
   /* push main content right of sidebar */
-  .page-body { margin-left: 220px; flex: 1; min-width: 0; }
+  .page-body { margin-left: 225px; flex: 1; min-width: 0; }
   header { margin-bottom: 48px; border-bottom: 1px solid var(--border); padding-bottom: 24px; }
   .header-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
   .logo-area h1 { font-family: var(--display); font-weight: 900; font-size: 42px; letter-spacing: 2px; color: var(--text-bright); line-height: 1; text-transform: uppercase; }
@@ -949,8 +949,8 @@ async function loadGainers() {
   var footer = document.getElementById('gainersFooter');
 
   try {
-    // Polygon snapshot gainers endpoint — routed through our proxy to avoid CORS
-    var url = 'https://api.polygon.io/v2/snapshot/locale/us/markets/stocks/gainers?include_otc=false&apiKey=iz170hZwJjkiLavb9YM1f3zhDKTYkxHi';
+    // Routed through Cloudflare Worker — keeps API key off the browser
+    var url = PROXY + '/gainers';
     var res = await fetch(url);
     var data = await res.json();
 
