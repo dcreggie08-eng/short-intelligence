@@ -543,11 +543,11 @@ async function fetchDroppiness(ticker) {
   var scoreEl = document.getElementById('droppinessScore');
   var statsEl = document.getElementById('droppinessStats');
 
-  // Show loading state
-  panel.className = 'droppiness-panel loading';
+  // Show loading state immediately
+  panel.className = 'droppiness-panel visible';
   badge.className = 'droppiness-badge';
   scoreEl.innerHTML = '<span class="droppiness-loading">Calculating...</span>';
-  statsEl.innerHTML = '';
+  statsEl.innerHTML = '<span class="droppiness-stat" style="color:var(--accent)">Fetching 12 months of 4hr candles...</span>';
 
   try {
     var res = await fetch(PROXY + '/droppiness?ticker=' + ticker);
@@ -555,8 +555,7 @@ async function fetchDroppiness(ticker) {
 
     if (data.error && !data.score) {
       scoreEl.textContent = 'N/A';
-      statsEl.innerHTML = '<span class="droppiness-stat">No data available</span>';
-      panel.className = 'droppiness-panel visible';
+      statsEl.innerHTML = '<span class="droppiness-stat">No candle data available for ' + ticker + '</span>';
       return;
     }
 
@@ -574,11 +573,9 @@ async function fetchDroppiness(ticker) {
       '<span class="droppiness-stat"><strong>Last Event:</strong> ' + data.last_event + '</span>' +
       '<span class="droppiness-stat"><strong>Trend:</strong> ' + data.trend + '</span>';
 
-    panel.className = 'droppiness-panel visible';
-
   } catch(e) {
     scoreEl.textContent = 'Error';
-    panel.className = 'droppiness-panel visible';
+    statsEl.innerHTML = '<span class="droppiness-stat" style="color:var(--nogo)">' + e.message + '</span>';
   }
 }
 
