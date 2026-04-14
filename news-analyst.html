@@ -270,6 +270,11 @@ VERDICT MATRIX:
 
 IMPORTANT: NO GO should only come from a STRONG catalyst. Low dilution on weak news = CAUTION, not NO GO.
 
+INSTITUTIONAL OWNERSHIP RULE (when provided in price context or dilution data)
+- Below 20% institutional ownership = no restriction, proceed with normal verdict
+- 20% to 40% institutional ownership = downgrade any GO to CAUTION, note the institutional risk
+- Above 40% institutional ownership = NO TRADE regardless of catalyst or dilution — high inst% means squeeze risk and smart money involvement. Flag this clearly in reasoning.
+
 CATALYST GRADING
 - STRONG NEWS: FDA approval, major partnership, genuine revenue contract, company-changing event. STAY AWAY.
 - MID NEWS: Small contract, vague partnership, licensing deal, minor milestone. Caution or pass.
@@ -476,14 +481,18 @@ function applyFetchedData(cached, ticker) {
   if (floatData && floatData.results && floatData.results.length > 0) {
     var f = floatData.results[0];
     function fmt(n) { return n ? (n >= 1000000 ? (n/1000000).toFixed(2) + 'M' : (n/1000).toFixed(0) + 'K') : 'N/A'; }
+    var instPct = f.institutions_percent ? (f.institutions_percent * 100) : 0;
+    window.currentInstPct = instPct;
+    var instColor = instPct >= 40 ? 'var(--nogo)' : instPct >= 20 ? 'var(--caution)' : 'var(--go)';
+    var instWarning = instPct >= 40 ? ' ⚠ NO TRADE' : instPct >= 20 ? ' ⚠ CAUTION' : '';
     infoBar.innerHTML =
-      '<span><strong>Float:</strong> ' + fmt(f.float) + '</span>' +
+      '<span style="color:var(--text-bright);font-weight:700">Float: <span style="color:var(--accent)">' + fmt(f.float) + '</span></span>' +
       '<span><strong>OS:</strong> ' + fmt(f.outstanding) + '</span>' +
-      '<span><strong>MC:</strong> $' + fmt(f.market_cap_final) + '</span>' +
+      '<span style="color:var(--text-bright);font-weight:700">MC: <span style="color:var(--accent)">$' + fmt(f.market_cap_final) + '</span></span>' +
       '<span><strong>Sector:</strong> ' + (f.sector || 'N/A') + '</span>' +
       '<span><strong>Industry:</strong> ' + (f.industry || 'N/A') + '</span>' +
       '<span><strong>Country:</strong> ' + (f.country || 'N/A') + '</span>' +
-      (f.institutions_percent ? '<span><strong>Inst%:</strong> ' + (f.institutions_percent * 100).toFixed(1) + '%</span>' : '');
+      (f.institutions_percent ? '<span style="color:var(--text-bright);font-weight:700">Inst%: <span style="color:' + instColor + '">' + instPct.toFixed(1) + '%' + instWarning + '</span></span>' : '');
     infoBar.classList.add('visible');
   }
 
@@ -493,7 +502,15 @@ function applyFetchedData(cached, ticker) {
   if (tldrData && tldrData.results && tldrData.results.length > 0) {
     var t = tldrData.results[0];
     if (t.tldr_text) {
-      grokText.textContent = t.tldr_text.replace(/\\n/g, '\n');
+      var tldrFormatted = t.tldr_text
+        .replace(/\\n/g, '\n')
+        .replace(/:red_circle:/g, '🔴')
+        .replace(/:yellow_circle:/g, '🟡')
+        .replace(/:green_circle:/g, '🟢')
+        .replace(/:orange_circle:/g, '🟠')
+        .replace(/:white_circle:/g, '⚪')
+        .replace(/:black_circle:/g, '⚫');
+      grokText.textContent = tldrFormatted;
       grokPanel.classList.add('visible');
     }
   }
@@ -534,6 +551,10 @@ async function analyse() {
       var val = currentDilution[f[1]] || 'N/A';
       userMessage += '- ' + f[0] + ': ' + val + '\n';
     });
+  }
+  // Pass institutional ownership if available
+  if (window.currentInstPct !== undefined) {
+    userMessage += '- Institutional Ownership: ' + window.currentInstPct.toFixed(1) + '%\n';
   }
   userMessage += '\nNEWS:\n' + newsText;
 
@@ -650,6 +671,7 @@ function clearAll() {
   document.getElementById('grokPanel').classList.remove('visible');
   document.getElementById('grokText').textContent = '';
   currentDilution = null;
+  window.currentInstPct = undefined;
   document.getElementById('errorMsg').classList.remove('visible');
   document.getElementById('saveIndicator').className = 'save-indicator';
   var panel = document.getElementById('resultPanel');
