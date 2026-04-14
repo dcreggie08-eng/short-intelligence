@@ -72,15 +72,18 @@
   .verdict-banner.go { background: var(--go-dim); border-left: 4px solid var(--go); }
   .verdict-banner.nogo { background: var(--nogo-dim); border-left: 4px solid var(--nogo); }
   .verdict-banner.caution { background: var(--caution-dim); border-left: 4px solid var(--caution); }
+  .verdict-banner.notrade { background: var(--nogo-dim); border-left: 4px solid var(--nogo); }
   .verdict-label { font-family: var(--display); font-weight: 900; font-size: 36px; letter-spacing: 4px; text-transform: uppercase; line-height: 1; }
   .verdict-banner.go .verdict-label { color: var(--go); }
   .verdict-banner.nogo .verdict-label { color: var(--nogo); }
   .verdict-banner.caution .verdict-label { color: var(--caution); }
+  .verdict-banner.notrade .verdict-label { color: var(--nogo); }
   .verdict-meta { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
   .catalyst-grade { font-family: var(--mono); font-size: 11px; letter-spacing: 2px; text-transform: uppercase; padding: 4px 10px; border: 1px solid currentColor; }
   .verdict-banner.go .catalyst-grade { color: var(--go); }
   .verdict-banner.nogo .catalyst-grade { color: var(--nogo); }
   .verdict-banner.caution .catalyst-grade { color: var(--caution); }
+  .verdict-banner.notrade .catalyst-grade { color: var(--nogo); }
   .ticker-display { font-family: var(--mono); font-size: 13px; color: var(--text-dim); letter-spacing: 1px; }
   .result-body { padding: 24px; display: grid; gap: 24px; }
   .result-section { border-left: 2px solid var(--border-bright); padding-left: 16px; }
@@ -122,7 +125,7 @@
   .dilution-header { font-family: var(--mono); font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: var(--accent); margin-bottom: 12px; }
   .dilution-badges { display: flex; flex-wrap: wrap; gap: 8px; }
   .badge { display: flex; flex-direction: column; gap: 4px; padding: 8px 12px; border: 1px solid var(--border-bright); min-width: 120px; flex: 1; }
-  .badge-label { font-family: var(--mono); font-size: 9px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--text-dim); }
+  .badge-label { font-family: var(--mono); font-size: 9px; letter-spacing: 1.5px; text-transform: uppercase; color: rgba(200, 212, 224, 0.75); }
   .badge-value { font-family: var(--display); font-weight: 700; font-size: 15px; letter-spacing: 2px; text-transform: uppercase; }
   .badge-desc { font-family: var(--body); font-size: 10px; font-weight: 300; color: var(--text-dim); line-height: 1.4; margin-top: 2px; }
   .badge.high { border-color: rgba(255,61,90,0.4); background: rgba(255,61,90,0.06); }
@@ -616,7 +619,7 @@ async function analyse() {
 function renderResult(r, ticker, priceContext) {
   var panel = document.getElementById('resultPanel');
   var banner = document.getElementById('verdictBanner');
-  banner.className = 'verdict-banner ' + (r.verdict === 'NO GO' ? 'nogo' : r.verdict === 'CAUTION' ? 'caution' : 'go');
+  banner.className = 'verdict-banner ' + (r.verdict === 'NO GO' ? 'nogo' : r.verdict === 'NO TRADE' ? 'notrade' : r.verdict === 'CAUTION' ? 'caution' : 'go');
   document.getElementById('verdictLabel').textContent = r.verdict;
   document.getElementById('catalystGrade').textContent = r.catalystGrade;
   document.getElementById('tickerDisplay').textContent = ticker ? ticker + (priceContext ? ' · ' + priceContext : '') : (priceContext || '-');
@@ -697,6 +700,34 @@ async function loadFromHistory(id) {
         redFlags: JSON.parse(item.red_flags || '[]'),
         tradeKillers: JSON.parse(item.trade_killers || '[]')
       }, item.ticker, item.price_context);
+
+      // Also reload the dilution/float/TLDR if we have a ticker
+      if (item.ticker) {
+        var ticker = item.ticker.toUpperCase();
+        if (fetchCache[ticker]) {
+          applyFetchedData(fetchCache[ticker], ticker);
+          document.getElementById('dilutionSource').textContent = 'via Ask Edgar (cached)';
+        } else {
+          // Fetch fresh data in background
+          var dilutionUrl = PROXY + '/askedgar/v1/dilution-rating?ticker=' + ticker;
+          var floatUrl    = PROXY + '/askedgar/v1/float-outstanding?ticker=' + ticker;
+          var tldrUrl     = PROXY + '/askedgar/v1/research-reports-tldr?ticker=' + ticker + '&limit=1';
+          Promise.all([
+            fetch(dilutionUrl).then(r => r.json()),
+            fetch(floatUrl).then(r => r.json()),
+            fetch(tldrUrl).then(r => r.json())
+          ]).then(function(results) {
+            var fakeCache = {
+              newsData: { status: 'success', results: [{ summary: item.news_text, filed_at: item.created_at }] },
+              dilutionData: results[0],
+              floatData: results[1],
+              tldrData: results[2]
+            };
+            fetchCache[ticker] = fakeCache;
+            applyFetchedData(fakeCache, ticker);
+          }).catch(function(e) { console.error('Could not reload ticker data', e); });
+        }
+      }
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   } catch(e) { console.error('Could not load history item', e); }
