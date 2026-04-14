@@ -514,7 +514,12 @@ function applyFetchedData(cached, ticker) {
         .replace(/:green_circle:/g, '🟢')
         .replace(/:orange_circle:/g, '🟠')
         .replace(/:white_circle:/g, '⚪')
-        .replace(/:black_circle:/g, '⚫');
+        .replace(/:black_circle:/g, '⚫')
+        .replace(/<https?:\/\/[^>]+>/g, '')
+        .replace(/https?:\/\/\S+/g, '')
+        .replace(/\s+\./g, '.')
+        .replace(/\s{2,}/g, ' ')
+        .trim();
       grokText.textContent = tldrFormatted;
       grokPanel.classList.add('visible');
     }
