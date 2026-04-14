@@ -175,7 +175,7 @@
         <div class="dilution-badges" id="dilutionBadges"></div>
       </div>
       <div class="grok-panel" id="grokPanel">
-        <div class="grok-header">Ask Edgar — TLDR</div>
+        <div class="grok-header">Ask Edgar — TLDR <span style="font-size:9px;color:var(--text-dim);letter-spacing:1px;font-weight:300;margin-left:8px;">🔴 BEARISH FOR STOCK (GOOD FOR SHORT) · 🟡 NEUTRAL · 🟢 BULLISH FOR STOCK (CAUTION)</span></div>
         <div class="grok-text" id="grokText"></div>
       </div>
     </div>
@@ -485,6 +485,7 @@ function applyFetchedData(cached, ticker) {
     var f = floatData.results[0];
     function fmt(n) { return n ? (n >= 1000000 ? (n/1000000).toFixed(2) + 'M' : (n/1000).toFixed(0) + 'K') : 'N/A'; }
     var instPct = f.institutions_percent ? (f.institutions_percent * 100) : 0;
+    var insiderPct = f.insider_percent ? (f.insider_percent * 100) : 0;
     window.currentInstPct = instPct;
     var instColor = instPct >= 40 ? 'var(--nogo)' : instPct >= 20 ? 'var(--caution)' : 'var(--go)';
     var instWarning = instPct >= 40 ? ' <span style="color:var(--nogo)">⚠ NO TRADE</span>' : instPct >= 20 ? ' <span style="color:var(--caution)">⚠ CAUTION</span>' : '';
@@ -495,7 +496,8 @@ function applyFetchedData(cached, ticker) {
       '<span><strong>Sector:</strong> ' + (f.sector || 'N/A') + '</span>' +
       '<span><strong>Industry:</strong> ' + (f.industry || 'N/A') + '</span>' +
       '<span><strong>Country:</strong> ' + (f.country || 'N/A') + '</span>' +
-      (f.institutions_percent ? '<span style="color:var(--text-bright);font-weight:700">Inst%: <span style="color:' + instColor + '">' + instPct.toFixed(1) + '%' + instWarning + '</span></span>' : '');
+      (f.institutions_percent ? '<span style="color:var(--text-bright);font-weight:700">Inst%: <span style="color:' + instColor + '">' + instPct.toFixed(1) + '%' + instWarning + '</span></span>' : '') +
+      (f.insider_percent ? '<span style="color:var(--text-bright);font-weight:700">Insider%: <span style="color:var(--text)">' + insiderPct.toFixed(1) + '%</span></span>' : '');
     infoBar.classList.add('visible');
   }
 
