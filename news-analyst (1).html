@@ -463,15 +463,7 @@ async function fetchNews() {
     btn.textContent = 'Fetch News';
     applyFetchedData(cached, ticker);
     document.getElementById('dilutionSource').textContent = 'via Ask Edgar (cached)';
-    if (cached.droppinessData) {
-      renderDroppiness(cached.droppinessData);
-    } else {
-      document.getElementById('droppinessPanel').classList.add('visible');
-      fetch(PROXY + '/droppiness?ticker=' + ticker)
-        .then(function(r) { return r.json(); })
-        .then(function(d) { cached.droppinessData = d; renderDroppiness(d); })
-        .catch(function() { document.getElementById('droppinessLoading').textContent = 'Droppiness data unavailable'; });
-    }
+    fetchDroppiness(ticker);
     return;
   }
 
@@ -498,11 +490,8 @@ async function fetchNews() {
     fetchCache[ticker] = { newsData, dilutionData, floatData, tldrData };
     applyFetchedData(fetchCache[ticker], ticker);
 
-    // Fetch droppiness separately (slower — Polygon candle calculation)
-    fetch(PROXY + '/droppiness?ticker=' + ticker)
-      .then(function(r) { return r.json(); })
-      .then(function(d) { fetchCache[ticker].droppinessData = d; renderDroppiness(d); })
-      .catch(function() { document.getElementById('droppinessLoading').textContent = 'Droppiness data unavailable'; });
+    // Fetch droppiness separately — runs after main data, takes longer
+    fetchDroppiness(ticker);
 
   } catch(e) {
     showError('Could not fetch data: ' + e.message);
@@ -510,31 +499,6 @@ async function fetchNews() {
     btn.disabled = false;
     btn.textContent = 'Fetch News';
   }
-}
-
-function renderDroppiness(d) {
-  var loading = document.getElementById('droppinessLoading');
-  var badges  = document.getElementById('droppinessBadges');
-  loading.style.display = 'none';
-
-  if (!d || d.error || d.score === undefined) {
-    loading.textContent = 'Droppiness data unavailable';
-    loading.style.display = 'block';
-    return;
-  }
-
-  var cls = d.rating === 'High' ? 'high' : d.rating === 'Medium' ? 'medium' : 'low';
-
-  // Store for AI prompt
-  window.currentDroppiness = d;
-
-  badges.innerHTML =
-    '<div class="drop-badge ' + cls + '"><span class="drop-badge-label">Score</span><span class="drop-badge-value">' + d.score + '/100</span></div>' +
-    '<div class="drop-badge ' + cls + '"><span class="drop-badge-label">Rating</span><span class="drop-badge-value">' + d.rating.toUpperCase() + '</span></div>' +
-    '<div class="drop-badge unknown"><span class="drop-badge-label">Events (12M)</span><span class="drop-badge-value">' + d.total_events + '</span></div>' +
-    '<div class="drop-badge unknown"><span class="drop-badge-label">Avg Giveback</span><span class="drop-badge-value">' + d.avg_giveback + '%</span></div>' +
-    '<div class="drop-badge unknown"><span class="drop-badge-label">Last Event</span><span class="drop-badge-value" style="font-size:11px">' + d.last_event + '</span></div>' +
-    '<div class="drop-badge unknown"><span class="drop-badge-label">Trend</span><span class="drop-badge-value" style="font-size:11px">' + d.trend + '</span></div>';
 }
 
 async function fetchDroppiness(ticker) {
