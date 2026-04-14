@@ -1,0 +1,903 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>News Analyst — Short Intelligence</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow+Condensed:wght@300;400;600;700;900&family=Barlow:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0c0f;
+    --surface: #0f1318;
+    --border: #1e2530;
+    --border-bright: #2e3a4a;
+    --text: #c8d4e0;
+    --text-dim: #5a6a7a;
+    --text-bright: #e8f0f8;
+    --accent: #00d4ff;
+    --accent-dim: rgba(0, 212, 255, 0.12);
+    --accent-glow: rgba(0, 212, 255, 0.25);
+    --go: #00e676;
+    --go-dim: rgba(0, 230, 118, 0.1);
+    --nogo: #ff3d5a;
+    --nogo-dim: rgba(255, 61, 90, 0.1);
+    --caution: #ffb300;
+    --caution-dim: rgba(255, 179, 0, 0.1);
+    --mono: 'Share Tech Mono', monospace;
+    --display: 'Barlow Condensed', sans-serif;
+    --body: 'Barlow', sans-serif;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: var(--bg); color: var(--text); font-family: var(--body); min-height: 100vh; overflow-x: hidden; }
+  body::before { content: ''; position: fixed; inset: 0; background-image: linear-gradient(rgba(0,212,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(0,212,255,0.03) 1px, transparent 1px); background-size: 40px 40px; pointer-events: none; z-index: 0; }
+  .container { position: relative; z-index: 1; max-width: 900px; margin: 0 auto; padding: 40px 24px 80px; }
+  header { margin-bottom: 48px; border-bottom: 1px solid var(--border); padding-bottom: 24px; }
+  .header-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+  .logo-area h1 { font-family: var(--display); font-weight: 900; font-size: 42px; letter-spacing: 2px; color: var(--text-bright); line-height: 1; text-transform: uppercase; }
+  .logo-area h1 span { color: var(--accent); }
+  .logo-area p { font-family: var(--mono); font-size: 11px; color: var(--text-dim); letter-spacing: 2px; margin-top: 6px; text-transform: uppercase; }
+  .status-pill { font-family: var(--mono); font-size: 10px; letter-spacing: 1.5px; padding: 6px 12px; border: 1px solid var(--border-bright); color: var(--text-dim); text-transform: uppercase; align-self: flex-start; transition: color 0.3s, border-color 0.3s; }
+  .input-section { display: grid; gap: 16px; margin-bottom: 24px; }
+  .ticker-row { display: grid; grid-template-columns: 1fr 1fr auto; gap: 16px; align-items: end; }
+  .field-group { display: flex; flex-direction: column; gap: 8px; }
+  label { font-family: var(--mono); font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: var(--text-dim); }
+  input[type="text"] { background: var(--surface); border: 1px solid var(--border); color: var(--text-bright); font-family: var(--mono); font-size: 13px; padding: 12px 14px; outline: none; transition: border-color 0.2s; width: 100%; }
+  input[type="text"]:focus { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent-dim); }
+  input[type="text"]::placeholder { color: var(--text-dim); }
+  textarea { background: var(--surface); border: 1px solid var(--border); color: var(--text-bright); font-family: var(--body); font-size: 14px; font-weight: 300; line-height: 1.7; padding: 16px; outline: none; resize: vertical; min-height: 180px; width: 100%; transition: border-color 0.2s; }
+  textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent-dim); }
+  textarea::placeholder { color: var(--text-dim); }
+  .news-label { display: flex; align-items: center; gap: 10px; }
+  .news-source { font-family: var(--mono); font-size: 10px; color: var(--accent); letter-spacing: 1px; }
+  .btn-row { display: grid; grid-template-columns: 1fr 100px; gap: 12px; }
+  .analyse-btn { background: var(--accent); color: #000; border: none; font-family: var(--display); font-weight: 700; font-size: 18px; letter-spacing: 3px; text-transform: uppercase; padding: 16px 32px; cursor: pointer; width: 100%; transition: all 0.2s; position: relative; overflow: hidden; }
+  .analyse-btn:hover:not(:disabled) { background: #33ddff; box-shadow: 0 0 30px var(--accent-glow); }
+  .analyse-btn:disabled { background: var(--border-bright); color: var(--text-dim); cursor: not-allowed; }
+  .analyse-btn.loading { background: var(--border-bright); color: var(--accent); cursor: not-allowed; }
+  @keyframes scan { 0% { transform: translateX(-100%); } 100% { transform: translateX(400%); } }
+  .scan-line { position: absolute; top: 0; left: 0; width: 25%; height: 100%; background: linear-gradient(90deg, transparent, rgba(0,212,255,0.4), transparent); display: none; }
+  .analyse-btn.loading .scan-line { display: block; animation: scan 1.2s linear infinite; }
+  .clear-btn { background: transparent; border: 1px solid var(--border-bright); color: var(--text-dim); font-family: var(--display); font-weight: 700; font-size: 16px; letter-spacing: 2px; text-transform: uppercase; padding: 16px; cursor: pointer; transition: all 0.2s; }
+  .clear-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .fetch-btn { background: transparent; border: 1px solid var(--accent); color: var(--accent); font-family: var(--display); font-weight: 700; font-size: 14px; letter-spacing: 2px; text-transform: uppercase; padding: 12px 16px; cursor: pointer; transition: all 0.2s; white-space: nowrap; height: 46px; }
+  .fetch-btn:hover { background: var(--accent-dim); }
+  .fetch-btn:disabled { border-color: var(--border-bright); color: var(--text-dim); cursor: not-allowed; }
+  .save-indicator { font-family: var(--mono); font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase; padding: 8px 14px; margin-top: 8px; display: none; text-align: center; }
+  .save-indicator.saving { display: block; color: var(--accent); border: 1px solid var(--accent-dim); background: var(--accent-dim); }
+  .save-indicator.saved { display: block; color: var(--go); border: 1px solid rgba(0,230,118,0.2); background: var(--go-dim); }
+  .save-indicator.save-error { display: block; color: var(--caution); border: 1px solid rgba(255,179,0,0.2); background: var(--caution-dim); }
+  .result-panel { margin-top: 32px; border: 1px solid var(--border); background: var(--surface); opacity: 0; transform: translateY(12px); transition: opacity 0.4s, transform 0.4s; display: none; }
+  .result-panel.visible { opacity: 1; transform: translateY(0); display: block; }
+  .verdict-banner { padding: 20px 24px; display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; border-bottom: 1px solid var(--border); }
+  .verdict-banner.go { background: var(--go-dim); border-left: 4px solid var(--go); }
+  .verdict-banner.nogo { background: var(--nogo-dim); border-left: 4px solid var(--nogo); }
+  .verdict-banner.caution { background: var(--caution-dim); border-left: 4px solid var(--caution); }
+  .verdict-banner.notrade { background: var(--nogo-dim); border-left: 4px solid var(--nogo); }
+  .verdict-label { font-family: var(--display); font-weight: 900; font-size: 36px; letter-spacing: 4px; text-transform: uppercase; line-height: 1; }
+  .verdict-banner.go .verdict-label { color: var(--go); }
+  .verdict-banner.nogo .verdict-label { color: var(--nogo); }
+  .verdict-banner.caution .verdict-label { color: var(--caution); }
+  .verdict-banner.notrade .verdict-label { color: var(--nogo); }
+  .verdict-meta { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+  .catalyst-grade { font-family: var(--mono); font-size: 11px; letter-spacing: 2px; text-transform: uppercase; padding: 4px 10px; border: 1px solid currentColor; }
+  .verdict-banner.go .catalyst-grade { color: var(--go); }
+  .verdict-banner.nogo .catalyst-grade { color: var(--nogo); }
+  .verdict-banner.caution .catalyst-grade { color: var(--caution); }
+  .verdict-banner.notrade .catalyst-grade { color: var(--nogo); }
+  .ticker-display { font-family: var(--mono); font-size: 13px; color: var(--text-dim); letter-spacing: 1px; }
+  .result-body { padding: 24px; display: grid; gap: 24px; }
+  .result-section { border-left: 2px solid var(--border-bright); padding-left: 16px; }
+  .result-section-title { font-family: var(--mono); font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: var(--accent); margin-bottom: 10px; }
+  .result-section p { font-size: 14px; line-height: 1.75; font-weight: 300; color: var(--text); }
+  .result-section ul { list-style: none; display: flex; flex-direction: column; gap: 8px; }
+  .result-section ul li { font-size: 13px; line-height: 1.6; font-weight: 300; color: var(--text); padding-left: 16px; position: relative; }
+  .result-section ul li::before { content: '▸'; position: absolute; left: 0; color: var(--accent); font-size: 10px; top: 3px; }
+  .flag-item { background: rgba(255, 61, 90, 0.06); border: 1px solid rgba(255, 61, 90, 0.2); padding: 8px 12px; font-size: 13px; font-weight: 300; color: var(--nogo); line-height: 1.5; }
+  .flags-list { display: flex; flex-direction: column; gap: 6px; }
+  .result-footer { padding: 14px 24px; border-top: 1px solid var(--border); font-family: var(--mono); font-size: 10px; color: var(--text-dim); letter-spacing: 1px; display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .error-msg { font-family: var(--mono); font-size: 12px; color: var(--nogo); padding: 12px 16px; border: 1px solid rgba(255,61,90,0.3); background: var(--nogo-dim); margin-top: 12px; display: none; }
+  .error-msg.visible { display: block; }
+  .history-section { margin-top: 48px; border-top: 1px solid var(--border); padding-top: 32px; }
+  .history-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+  .history-title { font-family: var(--display); font-weight: 700; font-size: 20px; letter-spacing: 2px; text-transform: uppercase; color: var(--text-bright); }
+  .history-count { font-family: var(--mono); font-size: 10px; color: var(--text-dim); letter-spacing: 1px; }
+  .history-list { display: flex; flex-direction: column; gap: 8px; }
+  .history-item { background: var(--surface); border: 1px solid var(--border); padding: 12px 16px; display: flex; align-items: center; gap: 16px; cursor: pointer; transition: border-color 0.2s; }
+  .history-item:hover { border-color: var(--border-bright); }
+  .history-verdict { font-family: var(--display); font-weight: 700; font-size: 14px; letter-spacing: 2px; text-transform: uppercase; min-width: 70px; }
+  .history-verdict.go { color: var(--go); }
+  .history-verdict.nogo { color: var(--nogo); }
+  .history-verdict.caution { color: var(--caution); }
+  .history-ticker { font-family: var(--mono); font-size: 12px; color: var(--accent); min-width: 60px; }
+  .history-grade { font-family: var(--mono); font-size: 10px; color: var(--text-dim); letter-spacing: 1px; flex: 1; }
+  .history-time { font-family: var(--mono); font-size: 10px; color: var(--text-dim); letter-spacing: 1px; }
+  .history-empty { font-family: var(--mono); font-size: 11px; color: var(--text-dim); letter-spacing: 1px; padding: 20px 0; text-align: center; }
+  .stock-info-bar { display: none; background: var(--surface); border: 1px solid var(--border); border-bottom: none; padding: 10px 16px; font-family: var(--mono); font-size: 11px; color: var(--text-dim); letter-spacing: 1px; flex-wrap: wrap; gap: 6px 20px; }
+  .stock-info-bar.visible { display: flex; }
+  .stock-info-bar span { color: var(--text); }
+  .stock-info-bar strong { color: var(--accent); }
+  .grok-panel { border: 1px solid var(--border); background: var(--surface); padding: 16px 20px; display: none; margin-top: 0; border-top: 1px solid var(--border-bright); }
+  .grok-panel.visible { display: block; }
+  .grok-header { font-family: var(--mono); font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: var(--accent); margin-bottom: 12px; }
+  .grok-text { font-family: var(--body); font-size: 13px; font-weight: 300; line-height: 1.8; color: var(--text); white-space: pre-line; }
+  .dilution-panel { border: 1px solid var(--border); background: var(--surface); padding: 16px 20px; display: none; }
+  .dilution-panel.visible { display: block; }
+  .dilution-header { font-family: var(--mono); font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: var(--accent); margin-bottom: 12px; }
+  .dilution-badges { display: flex; flex-wrap: wrap; gap: 8px; }
+  .badge { display: flex; flex-direction: column; gap: 4px; padding: 8px 12px; border: 1px solid var(--border-bright); min-width: 120px; flex: 1; }
+  .badge-label { font-family: var(--mono); font-size: 9px; letter-spacing: 1.5px; text-transform: uppercase; color: rgba(200, 212, 224, 0.75); }
+  .badge-value { font-family: var(--display); font-weight: 700; font-size: 15px; letter-spacing: 2px; text-transform: uppercase; }
+  .badge-desc { font-family: var(--body); font-size: 10px; font-weight: 300; color: var(--text-dim); line-height: 1.4; margin-top: 2px; }
+  .badge.high { border-color: rgba(255,61,90,0.4); background: rgba(255,61,90,0.06); }
+  .badge.high .badge-value { color: var(--nogo); }
+  .badge.medium { border-color: rgba(255,179,0,0.4); background: rgba(255,179,0,0.06); }
+  .badge.medium .badge-value { color: var(--caution); }
+  .badge.low { border-color: rgba(0,230,118,0.3); background: rgba(0,230,118,0.04); }
+  .badge.low .badge-value { color: var(--go); }
+  .badge.unknown { border-color: var(--border-bright); }
+  .badge.unknown .badge-value { color: var(--text-dim); }
+  .dilution-loading { font-family: var(--mono); font-size: 11px; color: var(--text-dim); letter-spacing: 1px; padding: 8px 0; }
+  .droppiness-panel { border: 1px solid var(--border); border-top: none; background: var(--surface); padding: 12px 20px; display: none; }
+  .droppiness-panel.visible { display: block; }
+  .droppiness-panel.loading { display: block; }
+  .droppiness-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .droppiness-badge { display: flex; flex-direction: column; gap: 3px; padding: 8px 14px; border: 1px solid var(--border-bright); min-width: 100px; }
+  .droppiness-badge-label { font-family: var(--mono); font-size: 9px; letter-spacing: 1.5px; text-transform: uppercase; color: rgba(200, 212, 224, 0.75); }
+  .droppiness-badge-value { font-family: var(--display); font-weight: 700; font-size: 22px; letter-spacing: 2px; }
+  .droppiness-badge.high { border-color: rgba(0,230,118,0.4); background: rgba(0,230,118,0.06); }
+  .droppiness-badge.high .droppiness-badge-value { color: var(--go); }
+  .droppiness-badge.medium { border-color: rgba(255,179,0,0.4); background: rgba(255,179,0,0.06); }
+  .droppiness-badge.medium .droppiness-badge-value { color: var(--caution); }
+  .droppiness-badge.low { border-color: rgba(255,61,90,0.4); background: rgba(255,61,90,0.06); }
+  .droppiness-badge.low .droppiness-badge-value { color: var(--nogo); }
+  .droppiness-stats { display: flex; gap: 20px; flex-wrap: wrap; font-family: var(--mono); font-size: 10px; color: var(--text-dim); letter-spacing: 1px; }
+  .droppiness-stat strong { color: var(--text); }
+  .droppiness-loading { font-family: var(--mono); font-size: 11px; color: var(--accent); letter-spacing: 1px; animation: pulse 1.5s infinite; }
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+  @media (max-width: 600px) { .ticker-row { grid-template-columns: 1fr; } .logo-area h1 { font-size: 30px; } .verdict-label { font-size: 28px; } .verdict-meta { align-items: flex-start; } .badge { min-width: 100px; } }
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <div class="header-top">
+      <div class="logo-area">
+        <h1>News <span>Analyst</span></h1>
+        <p>Short Intelligence // Pre-Market Edition</p>
+      </div>
+      <div class="status-pill" id="dbStatus">Connecting...</div>
+    </div>
+  </header>
+
+  <div class="input-section">
+    <div class="ticker-row">
+      <div class="field-group">
+        <label>Ticker Symbol</label>
+        <input type="text" id="ticker" placeholder="e.g. ARTL" maxlength="10" />
+      </div>
+      <div class="field-group">
+        <label>Price Context (optional)</label>
+        <input type="text" id="priceContext" placeholder="e.g. +45% premarket, VWAP +38%" />
+      </div>
+      <button class="fetch-btn" id="fetchBtn" onclick="fetchNews()">Fetch News</button>
+    </div>
+
+    <div class="field-group">
+      <div class="news-label">
+        <label>Dilution Profile</label>
+        <span class="news-source" id="dilutionSource"></span>
+      </div>
+      <div class="stock-info-bar" id="stockInfoBar"></div>
+      <div class="dilution-panel" id="dilutionPanel">
+        <div class="dilution-badges" id="dilutionBadges"></div>
+      </div>
+      <div class="grok-panel" id="grokPanel">
+        <div class="grok-header">Ask Edgar — TLDR <span style="font-size:9px;color:var(--text-dim);letter-spacing:1px;font-weight:300;margin-left:8px;">🔴 BEARISH FOR STOCK (GOOD FOR SHORT) · 🟡 NEUTRAL · 🟢 BULLISH FOR STOCK (CAUTION)</span></div>
+        <div class="grok-text" id="grokText"></div>
+      </div>
+      <div class="droppiness-panel" id="droppinessPanel">
+        <div class="droppiness-row">
+          <div class="droppiness-badge" id="droppinessBadge">
+            <span class="droppiness-badge-label">Droppiness</span>
+            <span class="droppiness-badge-value" id="droppinessScore">—</span>
+          </div>
+          <div class="droppiness-stats" id="droppinessStats"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="field-group">
+      <div class="news-label">
+        <label>News / PR / Filing</label>
+        <span class="news-source" id="newsSource"></span>
+      </div>
+      <textarea id="newsInput" placeholder="Paste news here — or type a ticker above and click Fetch News..."></textarea>
+    </div>
+
+    <div class="btn-row">
+      <button class="analyse-btn" id="analyseBtn" onclick="analyse()">
+        <span class="scan-line"></span>
+        <span class="btn-text">Analyse</span>
+      </button>
+      <button class="clear-btn" onclick="clearAll()">New ↺</button>
+    </div>
+    <div class="save-indicator" id="saveIndicator"></div>
+  </div>
+
+  <div class="error-msg" id="errorMsg"></div>
+
+  <div class="result-panel" id="resultPanel">
+    <div class="verdict-banner" id="verdictBanner">
+      <div class="verdict-label" id="verdictLabel"></div>
+      <div class="verdict-meta">
+        <div class="catalyst-grade" id="catalystGrade"></div>
+        <div class="ticker-display" id="tickerDisplay"></div>
+      </div>
+    </div>
+    <div class="result-body">
+      <div class="result-section">
+        <div class="result-section-title">Why</div>
+        <p id="reasoningText"></p>
+      </div>
+      <div class="result-section" id="setupSection">
+        <div class="result-section-title">Setup Notes</div>
+        <ul id="setupList"></ul>
+      </div>
+      <div class="result-section" id="flagsSection">
+        <div class="result-section-title">Red Flags</div>
+        <div class="flags-list" id="flagsList"></div>
+      </div>
+      <div class="result-section" id="watchSection">
+        <div class="result-section-title">What Would Kill This Trade</div>
+        <ul id="watchList"></ul>
+      </div>
+    </div>
+    <div class="result-footer">
+      <span id="footerTime"></span>
+      <span>CATALYST ONLY — CHECK DILUTION + DROPPINESS BEFORE ENTRY</span>
+    </div>
+  </div>
+
+  <div class="history-section">
+    <div class="history-header">
+      <div class="history-title">Recent Analyses</div>
+      <div class="history-count" id="historyCount"></div>
+    </div>
+    <div class="history-list" id="historyList">
+      <div class="history-empty">Loading history...</div>
+    </div>
+  </div>
+</div>
+
+<script>
+const SUPABASE_URL = 'https://xuvzhykopirgojwhtzlf.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_6gz5N7Txd7FbmgwKMep-PQ_V3F5XIrd';
+const PROXY = 'https://anthropic-proxy.dcreggie08.workers.dev';
+
+const SYSTEM_PROMPT = `You are a short-selling trade analyst embedded inside a pre-market news analysis tool. Your job is to read raw news, PRs, filings, or headlines and assess them against a specific trader's framework.
+
+TRADER'S RULES:
+
+UNIVERSE & TIMING
+- Focus: Pre-market top gainers, preferred 7-9am
+- Only consider stocks 30%+ up from previous close
+- Waiting for news drops at 7am and 8am
+- Preferred market cap: up to $20m
+- Relative volume: 5x or greater required
+
+DILUTION PROFILE (when provided)
+- You may receive a dilution profile from Ask Edgar with 6 badges: Overall Risk, Dilution Risk, Offering Frequency, Cash Need, Warrant Exercise, Nasdaq Compliance
+- Each is rated Low, Medium, or High
+- Use this matrix to determine verdict:
+
+VERDICT MATRIX:
+- STRONG catalyst + any dilution = NO GO (strong news kills the short thesis regardless)
+- WEAK/FLUFF or MID catalyst + HIGH Cash Need + HIGH Dilution = GO
+- WEAK/FLUFF or MID catalyst + MEDIUM dilution scores = CAUTION (wait for price action confirmation)
+- WEAK/FLUFF or MID catalyst + LOW dilution scores = CAUTION (weak catalyst but no dilution pressure to support the short)
+- No dilution data provided = grade on catalyst alone
+
+IMPORTANT: NO GO should only come from a STRONG catalyst. Low dilution on weak news = CAUTION, not NO GO.
+
+DROPPINESS SCORE (when provided)
+- Score out of 100 based on 12 months of 4hr candle data
+- Measures how reliably the stock pops and then drops
+- Below 50 = Low — stock does not reliably fade, avoid
+- 50-66 = Medium — some fade history, trade with caution
+- 67+ = High — reliable fader, supports short thesis
+- Use droppiness to CONFIRM or REDUCE confidence in the verdict
+- HIGH droppiness + HIGH dilution + WEAK catalyst = strongest possible GO signal
+- LOW droppiness = reduce confidence even if dilution is high
+
+DROPPINESS SCORE (when provided)
+- Score out of 100 based on 12 months of 4-hour chart data
+- Measures how reliably the stock pops and then fades
+- High (67+) = stock has strong history of fading after moves = supports short thesis
+- Medium (50-66) = some fade history = trade with caution
+- Low (below 50) = stock does not reliably fade = avoid shorting
+- A High droppiness score combined with WEAK/FLUFF catalyst and HIGH dilution = strongest possible GO signal
+- A Low droppiness score should downgrade any GO to CAUTION regardless of other signals
+
+INSTITUTIONAL OWNERSHIP RULE (when provided in price context or dilution data)
+- Below 20% institutional ownership = no restriction, proceed with normal verdict
+- 20% to 40% institutional ownership = downgrade any GO to CAUTION, note the institutional risk
+- Above 40% institutional ownership = NO TRADE regardless of catalyst or dilution — high inst% means squeeze risk and smart money involvement. Flag this clearly in reasoning.
+
+CATALYST GRADING
+- STRONG NEWS: FDA approval, major partnership, genuine revenue contract, company-changing event. STAY AWAY.
+- MID NEWS: Small contract, vague partnership, licensing deal, minor milestone. Caution or pass.
+- WEAK/FLUFF/PR: Rebranding, vague initiatives, unquantified MOUs, paid PR, hype with no substance, ATM offering disguised as news, clinical updates with no data. PREFERRED for shorting.
+
+CATALYST PHILOSOPHY
+- You are not analysing the news. You are measuring the reaction to the news.
+- Weak news + strong move = highest probability fade
+- HOD often set in pre-market on weak/mid catalysts
+
+YOUR OUTPUT:
+Respond ONLY with a valid JSON object. No markdown, no preamble.
+
+{
+  "verdict": "GO" or "CAUTION" or "NO GO",
+  "catalystGrade": "WEAK/FLUFF" or "MID" or "STRONG",
+  "reasoning": "2-3 sentences explaining the catalyst grade and verdict in plain language",
+  "setupNotes": ["up to 4 bullet points about what to watch for"],
+  "redFlags": ["red flags IN THE NEWS ITSELF"],
+  "tradeKillers": ["2-3 things that would invalidate the short thesis"]
+}`;
+
+async function supabaseRequest(path, method, body) {
+  method = method || 'GET';
+  var options = {
+    method: method,
+    headers: {
+      'Content-Type': 'application/json',
+      'apikey': SUPABASE_KEY,
+      'Authorization': 'Bearer ' + SUPABASE_KEY,
+      'Prefer': method === 'POST' ? 'return=minimal' : ''
+    }
+  };
+  if (body) options.body = JSON.stringify(body);
+  return fetch(SUPABASE_URL + '/rest/v1/' + path, options);
+}
+
+async function loadHistory() {
+  try {
+    var res = await supabaseRequest('news_analyses?select=id,created_at,ticker,verdict,catalyst_grade&order=created_at.desc&limit=20');
+    var data = await res.json();
+    renderHistory(Array.isArray(data) ? data : []);
+    var pill = document.getElementById('dbStatus');
+    pill.textContent = 'DB Connected';
+    pill.style.color = 'var(--go)';
+    pill.style.borderColor = 'rgba(0,230,118,0.3)';
+  } catch(e) {
+    document.getElementById('dbStatus').textContent = 'DB Offline';
+    document.getElementById('historyList').innerHTML = '<div class="history-empty">Could not load history.</div>';
+  }
+}
+
+function renderHistory(items) {
+  var list = document.getElementById('historyList');
+  var count = document.getElementById('historyCount');
+  if (!items || items.length === 0) {
+    list.innerHTML = '<div class="history-empty">No analyses yet — run your first one above.</div>';
+    count.textContent = '';
+    return;
+  }
+  count.textContent = items.length + ' recent';
+  list.innerHTML = items.map(function(item) {
+    var vc = item.verdict === 'GO' ? 'go' : item.verdict === 'NO GO' ? 'nogo' : 'caution';
+    var time = new Date(item.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+    return '<div class="history-item" onclick="loadFromHistory(\'' + item.id + '\')">' +
+      '<div class="history-verdict ' + vc + '">' + (item.verdict || '-') + '</div>' +
+      '<div class="history-ticker">' + (item.ticker || '-') + '</div>' +
+      '<div class="history-grade">' + (item.catalyst_grade || '-') + '</div>' +
+      '<div class="history-time">' + time + '</div>' +
+      '</div>';
+  }).join('');
+}
+
+var currentDilution = null;
+var fetchCache = {};
+
+function badgeClass(val) {
+  if (!val) return 'unknown';
+  var v = val.toString().toLowerCase();
+  if (v === 'high') return 'high';
+  if (v === 'medium' || v === 'moderate') return 'medium';
+  if (v === 'low') return 'low';
+  return 'unknown';
+}
+
+function renderDilutionBadges(data) {
+  var panel = document.getElementById('dilutionPanel');
+  var badgesEl = document.getElementById('dilutionBadges');
+  var source = document.getElementById('dilutionSource');
+
+  var fields = [
+    { key: 'overall_offering_risk', label: 'Overall Risk',       descKey: null },
+    { key: 'dilution',              label: 'Dilution Risk',      descKey: 'dilution_desc' },
+    { key: 'offering_frequency',    label: 'Offering Freq',      descKey: 'offering_frequency_desc' },
+    { key: 'cash_need',             label: 'Cash Need',          descKey: 'cash_need_desc' },
+    { key: 'warrant_exercise',      label: 'Warrant Exercise',   descKey: 'warrant_exercise_desc' },
+    { key: 'nasdaq_compliance',     label: 'Nasdaq Compliance',  descKey: 'nasdaq_compliance_desc' }
+  ];
+
+  // Data is in results[0]
+  var r = (data.results && data.results.length > 0) ? data.results[0] : (data.result || data.data || data);
+
+  badgesEl.innerHTML = fields.map(function(f) {
+    var val = r[f.key] || 'N/A';
+    var cls = badgeClass(val);
+    return '<div class="badge ' + cls + '">' +
+      '<span class="badge-label">' + f.label + '</span>' +
+      '<span class="badge-value">' + val.toString().toUpperCase() + '</span>' +
+      '</div>';
+  }).join('');
+
+  // Store for use in AI prompt
+  currentDilution = r;
+
+  source.textContent = 'via Ask Edgar';
+  panel.classList.add('visible');
+}
+
+async function fetchNews() {
+  var ticker = document.getElementById('ticker').value.trim().toUpperCase();
+  var btn = document.getElementById('fetchBtn');
+  var newsSource = document.getElementById('newsSource');
+
+  if (!ticker) { showError('Enter a ticker first.'); return; }
+
+  btn.disabled = true;
+  btn.textContent = 'Fetching...';
+  newsSource.textContent = '';
+  document.getElementById('dilutionSource').textContent = '';
+  document.getElementById('dilutionPanel').classList.remove('visible');
+  document.getElementById('errorMsg').classList.remove('visible');
+  currentDilution = null;
+
+  // Check cache first
+  if (fetchCache[ticker]) {
+    var cached = fetchCache[ticker];
+    btn.disabled = false;
+    btn.textContent = 'Fetch News';
+    applyFetchedData(cached, ticker);
+    document.getElementById('dilutionSource').textContent = 'via Ask Edgar (cached)';
+    if (cached.droppinessData) {
+      renderDroppiness(cached.droppinessData);
+    } else {
+      document.getElementById('droppinessPanel').classList.add('visible');
+      fetch(PROXY + '/droppiness?ticker=' + ticker)
+        .then(function(r) { return r.json(); })
+        .then(function(d) { cached.droppinessData = d; renderDroppiness(d); })
+        .catch(function() { document.getElementById('droppinessLoading').textContent = 'Droppiness data unavailable'; });
+    }
+    return;
+  }
+
+  try {
+    // Fetch news, dilution, float AND tldr in parallel
+    var newsUrl     = PROXY + '/askedgar/v1/news?ticker=' + ticker + '&include_body=true&limit=1&hide_filings=false';
+    var dilutionUrl = PROXY + '/askedgar/v1/dilution-rating?ticker=' + ticker;
+    var floatUrl    = PROXY + '/askedgar/v1/float-outstanding?ticker=' + ticker;
+    var tldrUrl     = PROXY + '/askedgar/v1/research-reports-tldr?ticker=' + ticker + '&limit=1';
+
+    var [newsRes, dilutionRes, floatRes, tldrRes] = await Promise.all([
+      fetch(newsUrl),
+      fetch(dilutionUrl),
+      fetch(floatUrl),
+      fetch(tldrUrl)
+    ]);
+
+    var newsData     = await newsRes.json();
+    var dilutionData = await dilutionRes.json();
+    var floatData    = await floatRes.json();
+    var tldrData     = await tldrRes.json();
+
+    // Store in cache
+    fetchCache[ticker] = { newsData, dilutionData, floatData, tldrData };
+    applyFetchedData(fetchCache[ticker], ticker);
+
+    // Fetch droppiness separately (slower — Polygon candle calculation)
+    fetch(PROXY + '/droppiness?ticker=' + ticker)
+      .then(function(r) { return r.json(); })
+      .then(function(d) { fetchCache[ticker].droppinessData = d; renderDroppiness(d); })
+      .catch(function() { document.getElementById('droppinessLoading').textContent = 'Droppiness data unavailable'; });
+
+  } catch(e) {
+    showError('Could not fetch data: ' + e.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Fetch News';
+  }
+}
+
+function renderDroppiness(d) {
+  var loading = document.getElementById('droppinessLoading');
+  var badges  = document.getElementById('droppinessBadges');
+  loading.style.display = 'none';
+
+  if (!d || d.error || d.score === undefined) {
+    loading.textContent = 'Droppiness data unavailable';
+    loading.style.display = 'block';
+    return;
+  }
+
+  var cls = d.rating === 'High' ? 'high' : d.rating === 'Medium' ? 'medium' : 'low';
+
+  // Store for AI prompt
+  window.currentDroppiness = d;
+
+  badges.innerHTML =
+    '<div class="drop-badge ' + cls + '"><span class="drop-badge-label">Score</span><span class="drop-badge-value">' + d.score + '/100</span></div>' +
+    '<div class="drop-badge ' + cls + '"><span class="drop-badge-label">Rating</span><span class="drop-badge-value">' + d.rating.toUpperCase() + '</span></div>' +
+    '<div class="drop-badge unknown"><span class="drop-badge-label">Events (12M)</span><span class="drop-badge-value">' + d.total_events + '</span></div>' +
+    '<div class="drop-badge unknown"><span class="drop-badge-label">Avg Giveback</span><span class="drop-badge-value">' + d.avg_giveback + '%</span></div>' +
+    '<div class="drop-badge unknown"><span class="drop-badge-label">Last Event</span><span class="drop-badge-value" style="font-size:11px">' + d.last_event + '</span></div>' +
+    '<div class="drop-badge unknown"><span class="drop-badge-label">Trend</span><span class="drop-badge-value" style="font-size:11px">' + d.trend + '</span></div>';
+}
+
+async function fetchDroppiness(ticker) {
+  var panel = document.getElementById('droppinessPanel');
+  var badge = document.getElementById('droppinessBadge');
+  var scoreEl = document.getElementById('droppinessScore');
+  var statsEl = document.getElementById('droppinessStats');
+
+  // Show loading state
+  panel.className = 'droppiness-panel loading';
+  badge.className = 'droppiness-badge';
+  scoreEl.innerHTML = '<span class="droppiness-loading">Calculating...</span>';
+  statsEl.innerHTML = '';
+
+  try {
+    var res = await fetch(PROXY + '/droppiness?ticker=' + ticker);
+    var data = await res.json();
+
+    if (data.error && !data.score) {
+      scoreEl.textContent = 'N/A';
+      statsEl.innerHTML = '<span class="droppiness-stat">No data available</span>';
+      panel.className = 'droppiness-panel visible';
+      return;
+    }
+
+    // Store for AI prompt
+    window.currentDroppiness = data;
+
+    var cls = data.rating === 'High' ? 'high' : data.rating === 'Medium' ? 'medium' : 'low';
+    badge.className = 'droppiness-badge ' + cls;
+    scoreEl.textContent = data.score + ' / 100';
+
+    statsEl.innerHTML =
+      '<span class="droppiness-stat"><strong>Rating:</strong> ' + data.rating + '</span>' +
+      '<span class="droppiness-stat"><strong>Events (12M):</strong> ' + data.total_events + '</span>' +
+      '<span class="droppiness-stat"><strong>Avg Giveback:</strong> ' + data.avg_giveback + '%</span>' +
+      '<span class="droppiness-stat"><strong>Last Event:</strong> ' + data.last_event + '</span>' +
+      '<span class="droppiness-stat"><strong>Trend:</strong> ' + data.trend + '</span>';
+
+    panel.className = 'droppiness-panel visible';
+
+  } catch(e) {
+    scoreEl.textContent = 'Error';
+    panel.className = 'droppiness-panel visible';
+  }
+}
+
+function applyFetchedData(cached, ticker) {
+  var newsData     = cached.newsData;
+  var dilutionData = cached.dilutionData;
+  var floatData    = cached.floatData;
+  var tldrData     = cached.tldrData;
+  var newsSource   = document.getElementById('newsSource');
+
+  // Handle news
+  if (newsData.status === 'success' && newsData.results && newsData.results.length > 0) {
+    var item = newsData.results[0];
+    var text = item.summary || item.body || '';
+    var title = item.title || '';
+    var combined = title ? title + '\n\n' + text : text;
+    document.getElementById('newsInput').value = combined
+      .replace(/\*\*(.*?)\*\*/g, '$1')
+      .replace(/\*(.*?)\*/g, '$1')
+      .replace(/^- /gm, '• ')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim();
+    var d = new Date(item.filed_at);
+    newsSource.textContent = 'via Ask Edgar · ' + d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+  } else {
+    showError('No news found for ' + ticker);
+  }
+
+  // Handle dilution badges
+  if (dilutionData && dilutionData.results && dilutionData.results.length > 0) {
+    renderDilutionBadges(dilutionData);
+  } else {
+    document.getElementById('dilutionSource').textContent = 'Dilution data unavailable';
+  }
+
+  // Handle float/stock info bar
+  var infoBar = document.getElementById('stockInfoBar');
+  if (floatData && floatData.results && floatData.results.length > 0) {
+    var f = floatData.results[0];
+    function fmt(n) { return n ? (n >= 1000000 ? (n/1000000).toFixed(2) + 'M' : (n/1000).toFixed(0) + 'K') : 'N/A'; }
+    var instPct = f.institutions_percent ? (f.institutions_percent * 100) : 0;
+    var insiderPct = f.insider_percent ? (f.insider_percent * 100) : 0;
+    window.currentInstPct = instPct;
+    var instColor = instPct >= 40 ? 'var(--nogo)' : instPct >= 20 ? 'var(--caution)' : 'var(--go)';
+    var instWarning = instPct >= 40 ? ' <span style="color:var(--nogo)">⚠ NO TRADE</span>' : instPct >= 20 ? ' <span style="color:var(--caution)">⚠ CAUTION</span>' : '';
+    infoBar.innerHTML =
+      '<span style="color:var(--text-bright);font-weight:700">Float: <span style="color:var(--accent)">' + fmt(f.float) + '</span></span>' +
+      '<span style="color:var(--text-bright);font-weight:700">OS: <span style="color:var(--text-bright)">' + fmt(f.outstanding) + '</span></span>' +
+      '<span style="color:var(--text-bright);font-weight:700">MC: <span style="color:var(--accent)">$' + fmt(f.market_cap_final) + '</span></span>' +
+      '<span><strong>Sector:</strong> ' + (f.sector || 'N/A') + '</span>' +
+      '<span><strong>Industry:</strong> ' + (f.industry || 'N/A') + '</span>' +
+      '<span><strong>Country:</strong> ' + (f.country || 'N/A') + '</span>' +
+      (f.institutions_percent ? '<span style="color:var(--text-bright);font-weight:700">Inst%: <span style="color:' + instColor + '">' + instPct.toFixed(1) + '%' + instWarning + '</span></span>' : '') +
+      (f.insider_percent ? '<span style="color:var(--text-bright);font-weight:700">Insider%: <span style="color:var(--text)">' + insiderPct.toFixed(1) + '%</span></span>' : '');
+    infoBar.classList.add('visible');
+  }
+
+  // Handle GROK/TLDR
+  var grokPanel = document.getElementById('grokPanel');
+  var grokText  = document.getElementById('grokText');
+  if (tldrData && tldrData.results && tldrData.results.length > 0) {
+    var t = tldrData.results[0];
+    if (t.tldr_text) {
+      var tldrFormatted = t.tldr_text
+        .replace(/\\n/g, '\n')
+        .replace(/\n/g, '\n')
+        .replace(/:red_circle:/g, '🔴')
+        .replace(/:yellow_circle:/g, '🟡')
+        .replace(/:green_circle:/g, '🟢')
+        .replace(/:orange_circle:/g, '🟠')
+        .replace(/:white_circle:/g, '⚪')
+        .replace(/:black_circle:/g, '⚫')
+        .replace(/<https?:\/\/[^>]+>/g, '')
+        .replace(/https?:\/\/\S+/g, '')
+        .replace(/\s+\./g, '.')
+        .replace(/[ \t]{2,}/g, ' ')
+        .trim();
+      grokText.textContent = tldrFormatted;
+      grokPanel.classList.add('visible');
+    }
+  }
+}
+
+async function analyse() {
+  var ticker = document.getElementById('ticker').value.trim().toUpperCase();
+  var priceContext = document.getElementById('priceContext').value.trim();
+  var newsText = document.getElementById('newsInput').value.trim();
+  var btn = document.getElementById('analyseBtn');
+  var btnText = btn.querySelector('.btn-text');
+  var errorMsg = document.getElementById('errorMsg');
+  var saveIndicator = document.getElementById('saveIndicator');
+
+  errorMsg.classList.remove('visible');
+  saveIndicator.className = 'save-indicator';
+
+  if (!newsText) { showError('Paste some news first.'); return; }
+
+  btn.disabled = true;
+  btn.classList.add('loading');
+  btnText.textContent = 'Scanning...';
+
+  var userMessage = 'Analyse this news for a potential short trade.\n\n';
+  if (ticker) userMessage += 'TICKER: ' + ticker + '\n';
+  if (priceContext) userMessage += 'PRICE CONTEXT: ' + priceContext + '\n';
+  if (currentDilution) {
+    userMessage += '\nDILUTION PROFILE (from Ask Edgar):\n';
+    var fields = [
+      ['Overall Risk',       'overall_offering_risk'],
+      ['Dilution Risk',      'dilution'],
+      ['Offering Frequency', 'offering_frequency'],
+      ['Cash Need',          'cash_need'],
+      ['Warrant Exercise',   'warrant_exercise'],
+      ['Nasdaq Compliance',  'nasdaq_compliance']
+    ];
+    fields.forEach(function(f) {
+      var val = currentDilution[f[1]] || 'N/A';
+      userMessage += '- ' + f[0] + ': ' + val + '\n';
+    });
+  }
+  // Pass institutional ownership if available
+  if (window.currentInstPct !== undefined) {
+    userMessage += '- Institutional Ownership: ' + window.currentInstPct.toFixed(1) + '%\n';
+  }
+  // Pass droppiness if available
+  if (window.currentDroppiness) {
+    userMessage += '\nDROPPINESS SCORE (4hr chart, 12 month lookback):\n';
+    userMessage += '- Score: ' + window.currentDroppiness.score + '/100\n';
+    userMessage += '- Rating: ' + window.currentDroppiness.rating + '\n';
+    userMessage += '- Events (12M): ' + window.currentDroppiness.total_events + '\n';
+    userMessage += '- Avg Giveback: ' + window.currentDroppiness.avg_giveback + '%\n';
+    userMessage += '- Trend: ' + window.currentDroppiness.trend + '\n';
+  }
+  userMessage += '\nNEWS:\n' + newsText;
+
+  try {
+    var response = await fetch(PROXY, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-5',
+        max_tokens: 1000,
+        system: SYSTEM_PROMPT,
+        messages: [{ role: 'user', content: userMessage }]
+      })
+    });
+
+    var data = await response.json();
+    if (!response.ok) throw new Error((data.error && data.error.message) || 'API error');
+    if (!data.content || !Array.isArray(data.content)) throw new Error('Unexpected response from API: ' + JSON.stringify(data).substring(0, 100));
+
+    var rawText = data.content.map(function(b) { return b.text || ''; }).join('');
+    var clean = rawText.replace(/```json|```/g, '').trim();
+    var result = JSON.parse(clean);
+
+    renderResult(result, ticker, priceContext);
+
+    saveIndicator.className = 'save-indicator saving';
+    saveIndicator.textContent = 'Saving to database...';
+
+    var saveRes = await supabaseRequest('news_analyses', 'POST', {
+      ticker: ticker || null,
+      news_text: newsText,
+      price_context: priceContext || null,
+      verdict: result.verdict,
+      catalyst_grade: result.catalystGrade,
+      reasoning: result.reasoning,
+      setup_notes: JSON.stringify(result.setupNotes),
+      red_flags: JSON.stringify(result.redFlags),
+      trade_killers: JSON.stringify(result.tradeKillers)
+    });
+
+    if (saveRes.status === 201 || saveRes.ok) {
+      saveIndicator.className = 'save-indicator saved';
+      saveIndicator.textContent = 'Saved to database';
+      loadHistory();
+    } else {
+      saveIndicator.className = 'save-indicator save-error';
+      saveIndicator.textContent = 'Analysis complete — not saved';
+    }
+
+  } catch(e) {
+    showError('Something went wrong: ' + e.message);
+  } finally {
+    btn.disabled = false;
+    btn.classList.remove('loading');
+    btnText.textContent = 'Analyse';
+  }
+}
+
+function renderResult(r, ticker, priceContext) {
+  var panel = document.getElementById('resultPanel');
+  var banner = document.getElementById('verdictBanner');
+  banner.className = 'verdict-banner ' + (r.verdict === 'NO GO' ? 'nogo' : r.verdict === 'NO TRADE' ? 'notrade' : r.verdict === 'CAUTION' ? 'caution' : 'go');
+  document.getElementById('verdictLabel').textContent = r.verdict;
+  document.getElementById('catalystGrade').textContent = r.catalystGrade;
+  document.getElementById('tickerDisplay').textContent = ticker ? ticker + (priceContext ? ' · ' + priceContext : '') : (priceContext || '-');
+  document.getElementById('reasoningText').textContent = r.reasoning;
+
+  var setupList = document.getElementById('setupList');
+  setupList.innerHTML = '';
+  var setupSection = document.getElementById('setupSection');
+  if (r.setupNotes && r.setupNotes.length > 0) {
+    r.setupNotes.forEach(function(n) { var li = document.createElement('li'); li.textContent = n; setupList.appendChild(li); });
+    setupSection.style.display = 'block';
+  } else setupSection.style.display = 'none';
+
+  var flagsList = document.getElementById('flagsList');
+  flagsList.innerHTML = '';
+  var flagsSection = document.getElementById('flagsSection');
+  if (r.redFlags && r.redFlags.length > 0) {
+    r.redFlags.forEach(function(f) { var d = document.createElement('div'); d.className = 'flag-item'; d.textContent = f; flagsList.appendChild(d); });
+    flagsSection.style.display = 'block';
+  } else flagsSection.style.display = 'none';
+
+  var watchList = document.getElementById('watchList');
+  watchList.innerHTML = '';
+  var watchSection = document.getElementById('watchSection');
+  if (r.tradeKillers && r.tradeKillers.length > 0) {
+    r.tradeKillers.forEach(function(t) { var li = document.createElement('li'); li.textContent = t; watchList.appendChild(li); });
+    watchSection.style.display = 'block';
+  } else watchSection.style.display = 'none';
+
+  document.getElementById('footerTime').textContent = 'Analysed ' + new Date().toLocaleTimeString();
+  panel.style.display = 'block';
+  requestAnimationFrame(function() { panel.classList.add('visible'); });
+  panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function showError(msg) {
+  var el = document.getElementById('errorMsg');
+  el.textContent = msg;
+  el.classList.add('visible');
+}
+
+function clearAll() {
+  document.getElementById('ticker').value = '';
+  document.getElementById('priceContext').value = '';
+  document.getElementById('newsInput').value = '';
+  document.getElementById('newsSource').textContent = '';
+  document.getElementById('dilutionSource').textContent = '';
+  document.getElementById('dilutionPanel').classList.remove('visible');
+  document.getElementById('dilutionBadges').innerHTML = '';
+  document.getElementById('stockInfoBar').classList.remove('visible');
+  document.getElementById('stockInfoBar').innerHTML = '';
+  document.getElementById('grokPanel').classList.remove('visible');
+  document.getElementById('grokText').textContent = '';
+  currentDilution = null;
+  window.currentInstPct = undefined;
+  window.currentDroppiness = null;
+  var dp = document.getElementById('droppinessPanel');
+  dp.className = 'droppiness-panel';
+  document.getElementById('droppinessScore').textContent = '—';
+  document.getElementById('droppinessStats').innerHTML = '';
+  document.getElementById('errorMsg').classList.remove('visible');
+  document.getElementById('saveIndicator').className = 'save-indicator';
+  var panel = document.getElementById('resultPanel');
+  panel.classList.remove('visible');
+  setTimeout(function() { panel.style.display = 'none'; }, 400);
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+async function loadFromHistory(id) {
+  try {
+    var res = await supabaseRequest('news_analyses?id=eq.' + id + '&select=*');
+    var data = await res.json();
+    if (data && data[0]) {
+      var item = data[0];
+      document.getElementById('ticker').value = item.ticker || '';
+      document.getElementById('priceContext').value = item.price_context || '';
+      document.getElementById('newsInput').value = item.news_text || '';
+      renderResult({
+        verdict: item.verdict,
+        catalystGrade: item.catalyst_grade,
+        reasoning: item.reasoning,
+        setupNotes: JSON.parse(item.setup_notes || '[]'),
+        redFlags: JSON.parse(item.red_flags || '[]'),
+        tradeKillers: JSON.parse(item.trade_killers || '[]')
+      }, item.ticker, item.price_context);
+
+      // Also reload the dilution/float/TLDR if we have a ticker
+      if (item.ticker) {
+        var ticker = item.ticker.toUpperCase();
+        // Reset droppiness
+        window.currentDroppiness = null;
+        document.getElementById('droppinessPanel').className = 'droppiness-panel';
+        document.getElementById('droppinessScore').textContent = '—';
+        document.getElementById('droppinessStats').innerHTML = '';
+        if (fetchCache[ticker]) {
+          applyFetchedData(fetchCache[ticker], ticker);
+          document.getElementById('dilutionSource').textContent = 'via Ask Edgar (cached)';
+        } else {
+          // Fetch fresh data in background
+          var dilutionUrl = PROXY + '/askedgar/v1/dilution-rating?ticker=' + ticker;
+          var floatUrl    = PROXY + '/askedgar/v1/float-outstanding?ticker=' + ticker;
+          var tldrUrl     = PROXY + '/askedgar/v1/research-reports-tldr?ticker=' + ticker + '&limit=1';
+          Promise.all([
+            fetch(dilutionUrl).then(r => r.json()),
+            fetch(floatUrl).then(r => r.json()),
+            fetch(tldrUrl).then(r => r.json())
+          ]).then(function(results) {
+            var fakeCache = {
+              newsData: { status: 'success', results: [{ summary: item.news_text, filed_at: item.created_at }] },
+              dilutionData: results[0],
+              floatData: results[1],
+              tldrData: results[2]
+            };
+            fetchCache[ticker] = fakeCache;
+            applyFetchedData(fakeCache, ticker);
+          }).catch(function(e) { console.error('Could not reload ticker data', e); });
+        }
+        // Always fetch droppiness fresh
+        fetchDroppiness(ticker);
+      }
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  } catch(e) { console.error('Could not load history item', e); }
+}
+
+loadHistory();
+</script>
+</body>
+</html>
