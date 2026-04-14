@@ -151,8 +151,9 @@
   .droppiness-badge.low { border-color: rgba(255,61,90,0.4); background: rgba(255,61,90,0.06); }
   .droppiness-badge.low .droppiness-badge-value { color: var(--nogo); }
   .droppiness-stats { display: flex; gap: 20px; flex-wrap: wrap; font-family: var(--mono); font-size: 10px; letter-spacing: 1px; }
-  .droppiness-stat { color: var(--accent); font-weight: 400; }
-  .droppiness-stat strong { color: var(--text-bright); font-weight: 700; }
+  .droppiness-stat { color: var(--text-dim); }
+  .ds-label { color: var(--accent); font-weight: 400; }
+  .ds-value { color: var(--text-bright); font-weight: 700; }
   .droppiness-loading { font-family: var(--mono); font-size: 11px; color: var(--accent); letter-spacing: 1px; animation: pulse 1.5s infinite; }
   @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
   @media (max-width: 600px) { .ticker-row { grid-template-columns: 1fr; } .logo-area h1 { font-size: 30px; } .verdict-label { font-size: 28px; } .verdict-meta { align-items: flex-start; } .badge { min-width: 100px; } }
@@ -532,11 +533,11 @@ async function fetchDroppiness(ticker) {
     scoreEl.textContent = data.score + ' / 100';
 
     statsEl.innerHTML =
-      '<span class="droppiness-stat"><strong>Rating:</strong> <strong style="color:var(--text-bright)">' + data.rating + '</strong></span>' +
-      '<span class="droppiness-stat"><strong>Events (12M):</strong> <strong style="color:var(--text-bright)">' + data.total_events + '</strong></span>' +
-      '<span class="droppiness-stat"><strong>Avg Giveback:</strong> <strong style="color:var(--text-bright)">' + data.avg_giveback + '%</strong></span>' +
-      '<span class="droppiness-stat"><strong>Last Event:</strong> <strong style="color:var(--text-bright)">' + data.last_event + '</strong></span>' +
-      '<span class="droppiness-stat"><strong>Trend:</strong> <strong style="color:var(--text-bright)">' + data.trend + '</strong></span>';
+      '<span class="droppiness-stat"><span class="ds-label">Rating:</span> <span class="ds-value">' + data.rating + '</span></span>' +
+      '<span class="droppiness-stat"><span class="ds-label">Events (12M):</span> <span class="ds-value">' + data.total_events + '</span></span>' +
+      '<span class="droppiness-stat"><span class="ds-label">Avg Giveback:</span> <span class="ds-value">' + data.avg_giveback + '%</span></span>' +
+      '<span class="droppiness-stat"><span class="ds-label">Last Event:</span> <span class="ds-value">' + data.last_event + '</span></span>' +
+      '<span class="droppiness-stat"><span class="ds-label">Trend:</span> <span class="ds-value">' + data.trend + '</span></span>';
 
   } catch(e) {
     scoreEl.textContent = 'Error';
