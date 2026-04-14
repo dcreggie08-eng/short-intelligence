@@ -484,10 +484,10 @@ function applyFetchedData(cached, ticker) {
     var instPct = f.institutions_percent ? (f.institutions_percent * 100) : 0;
     window.currentInstPct = instPct;
     var instColor = instPct >= 40 ? 'var(--nogo)' : instPct >= 20 ? 'var(--caution)' : 'var(--go)';
-    var instWarning = instPct >= 40 ? ' ⚠ NO TRADE' : instPct >= 20 ? ' ⚠ CAUTION' : '';
+    var instWarning = instPct >= 40 ? ' <span style="color:var(--nogo)">⚠ NO TRADE</span>' : instPct >= 20 ? ' <span style="color:var(--caution)">⚠ CAUTION</span>' : '';
     infoBar.innerHTML =
       '<span style="color:var(--text-bright);font-weight:700">Float: <span style="color:var(--accent)">' + fmt(f.float) + '</span></span>' +
-      '<span><strong>OS:</strong> ' + fmt(f.outstanding) + '</span>' +
+      '<span style="color:var(--text-bright);font-weight:700">OS: <span style="color:var(--text-bright)">' + fmt(f.outstanding) + '</span></span>' +
       '<span style="color:var(--text-bright);font-weight:700">MC: <span style="color:var(--accent)">$' + fmt(f.market_cap_final) + '</span></span>' +
       '<span><strong>Sector:</strong> ' + (f.sector || 'N/A') + '</span>' +
       '<span><strong>Industry:</strong> ' + (f.industry || 'N/A') + '</span>' +
