@@ -282,7 +282,10 @@
           <span class="clock-tz" id="tzUK">GMT</span>
         </div>
       </div>
-      <div class="status-pill" id="dbStatus">Connecting...</div>
+      <div style="display:flex;align-items:flex-start;gap:10px;">
+        <a href="journal.html" style="font-family:var(--mono);font-size:10px;letter-spacing:1.5px;padding:6px 12px;border:1px solid var(--border-bright);color:var(--accent);text-decoration:none;text-transform:uppercase;transition:all 0.2s;align-self:flex-start;" onmouseover="this.style.borderColor='var(--accent)';this.style.background='var(--accent-dim)'" onmouseout="this.style.borderColor='var(--border-bright)';this.style.background='transparent'">Journal</a>
+        <div class="status-pill" id="dbStatus">Connecting...</div>
+      </div>
     </div>
   </header>
 
