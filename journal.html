@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Trade Journal — Short Intelligence</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow+Condensed:wght@300;400;600;700;900&family=Barlow:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0c0f; --surface: #0f1318; --border: #1e2530; --border-bright: #2e3a4a;
+    --text: #c8d4e0; --text-dim: #5a6a7a; --text-bright: #e8f0f8;
+    --accent: #00d4ff; --accent-dim: rgba(0,212,255,0.12);
+    --go: #00e676; --go-dim: rgba(0,230,118,0.1);
+    --nogo: #ff3d5a; --nogo-dim: rgba(255,61,90,0.1);
+    --caution: #ffb300; --caution-dim: rgba(255,179,0,0.1);
+    --mono: 'Share Tech Mono', monospace;
+    --display: 'Barlow Condensed', sans-serif;
+    --body: 'Barlow', sans-serif;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: var(--bg); color: var(--text); font-family: var(--body); min-height: 100vh; }
+  body::before { content: ''; position: fixed; inset: 0; background-image: linear-gradient(rgba(0,212,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(0,212,255,0.03) 1px, transparent 1px); background-size: 40px 40px; pointer-events: none; z-index: 0; }
+  .container { position: relative; z-index: 1; max-width: 1000px; margin: 0 auto; padding: 40px 24px 80px; }
+  header { margin-bottom: 40px; border-bottom: 1px solid var(--border); padding-bottom: 24px; display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+  .logo-area h1 { font-family: var(--display); font-weight: 900; font-size: 42px; letter-spacing: 2px; color: var(--text-bright); line-height: 1; text-transform: uppercase; }
+  .logo-area h1 span { color: var(--accent); }
+  .logo-area p { font-family: var(--mono); font-size: 11px; color: var(--text-dim); letter-spacing: 2px; margin-top: 6px; text-transform: uppercase; }
+  .nav-link { font-family: var(--mono); font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: var(--accent); text-decoration: none; border: 1px solid var(--border-bright); padding: 8px 14px; transition: all 0.2s; align-self: flex-start; }
+  .nav-link:hover { border-color: var(--accent); background: var(--accent-dim); }
+
+  /* Stats row */
+  .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 32px; }
+  .stat-card { background: var(--surface); border: 1px solid var(--border); padding: 16px; }
+  .stat-label { font-family: var(--mono); font-size: 9px; letter-spacing: 2px; text-transform: uppercase; color: var(--text-dim); margin-bottom: 8px; }
+  .stat-value { font-family: var(--display); font-weight: 900; font-size: 32px; letter-spacing: 2px; color: var(--text-bright); line-height: 1; }
+  .stat-value.green { color: var(--go); }
+  .stat-value.amber { color: var(--caution); }
+  .stat-value.red { color: var(--nogo); }
+  .stat-sub { font-family: var(--mono); font-size: 10px; color: var(--text-dim); margin-top: 4px; letter-spacing: 1px; }
+
+  /* Filters */
+  .filters { display: flex; gap: 10px; margin-bottom: 24px; flex-wrap: wrap; align-items: center; }
+  .filter-label { font-family: var(--mono); font-size: 9px; color: var(--text-dim); letter-spacing: 2px; text-transform: uppercase; }
+  .filter-btn { font-family: var(--mono); font-size: 10px; letter-spacing: 1px; padding: 6px 12px; border: 1px solid var(--border-bright); background: transparent; color: var(--text-dim); cursor: pointer; transition: all 0.2s; text-transform: uppercase; }
+  .filter-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .filter-btn.active { border-color: var(--accent); color: var(--accent); background: var(--accent-dim); }
+
+  /* Journal table */
+  .journal-table { width: 100%; border-collapse: collapse; }
+  .journal-table th { font-family: var(--mono); font-size: 9px; letter-spacing: 2px; text-transform: uppercase; color: var(--text-dim); text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--border-bright); }
+  .journal-table td { padding: 12px; border-bottom: 1px solid var(--border); font-family: var(--mono); font-size: 11px; }
+  .journal-table tr:hover td { background: rgba(0,212,255,0.02); }
+  .verdict-pill { font-family: var(--display); font-weight: 700; font-size: 13px; letter-spacing: 2px; }
+  .verdict-pill.go { color: var(--go); }
+  .verdict-pill.caution { color: var(--caution); }
+  .fade-yes { color: var(--go); font-weight: 700; }
+  .fade-no { color: var(--nogo); font-weight: 700; }
+  .ticker-cell { color: var(--accent); font-weight: 700; font-size: 13px; }
+  .note-cell { color: var(--text-dim); font-size: 10px; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .empty-state { font-family: var(--mono); font-size: 12px; color: var(--text-dim); text-align: center; padding: 48px; letter-spacing: 1px; line-height: 2; border: 1px solid var(--border); }
+  .loading-state { font-family: var(--mono); font-size: 11px; color: var(--accent); text-align: center; padding: 32px; letter-spacing: 1px; }
+
+  /* Pattern insights */
+  .insights-section { margin-top: 40px; border-top: 1px solid var(--border); padding-top: 32px; }
+  .insights-title { font-family: var(--display); font-weight: 700; font-size: 20px; letter-spacing: 2px; text-transform: uppercase; color: var(--text-bright); margin-bottom: 20px; }
+  .insights-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .insight-card { background: var(--surface); border: 1px solid var(--border); padding: 16px 20px; }
+  .insight-card-title { font-family: var(--mono); font-size: 9px; letter-spacing: 2px; text-transform: uppercase; color: var(--accent); margin-bottom: 12px; }
+  .insight-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--border); font-family: var(--mono); font-size: 11px; }
+  .insight-row:last-child { border-bottom: none; }
+  .insight-key { color: var(--text-dim); }
+  .insight-val { color: var(--text-bright); font-weight: 700; }
+  .insight-val.good { color: var(--go); }
+  .insight-val.bad { color: var(--nogo); }
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <div class="logo-area">
+      <h1>Trade <span>Journal</span></h1>
+      <p>Short Intelligence // Outcome Tracking</p>
+    </div>
+    <a href="news-analyst.html" class="nav-link">← News Analyst</a>
+  </header>
+
+  <div class="stats-row">
+    <div class="stat-card">
+      <div class="stat-label">Total Logged</div>
+      <div class="stat-value" id="statTotal">—</div>
+      <div class="stat-sub">outcomes recorded</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Fade Rate</div>
+      <div class="stat-value green" id="statFadeRate">—</div>
+      <div class="stat-sub">of GO verdicts faded</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Avg Giveback</div>
+      <div class="stat-value amber" id="statAvgGiveback">—</div>
+      <div class="stat-sub">when fade occurred</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Best Signal</div>
+      <div class="stat-value green" id="statBestSignal" style="font-size:18px;">—</div>
+      <div class="stat-sub" id="statBestSub">highest fade rate combo</div>
+    </div>
+  </div>
+
+  <div class="filters">
+    <span class="filter-label">Filter:</span>
+    <button class="filter-btn active" onclick="setFilter('all', this)">All</button>
+    <button class="filter-btn" onclick="setFilter('GO', this)">GO only</button>
+    <button class="filter-btn" onclick="setFilter('CAUTION', this)">CAUTION only</button>
+    <button class="filter-btn" onclick="setFilter('faded', this)">Faded</button>
+    <button class="filter-btn" onclick="setFilter('nofade', this)">Did not fade</button>
+  </div>
+
+  <div id="journalContent">
+    <div class="loading-state">Loading journal...</div>
+  </div>
+
+  <div class="insights-section">
+    <div class="insights-title">Pattern Insights</div>
+    <div class="insights-grid" id="insightsGrid">
+      <div class="insight-card">
+        <div class="insight-card-title">Fade rate by droppiness</div>
+        <div id="insightDroppiness"><div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);">Need more data...</div></div>
+      </div>
+      <div class="insight-card">
+        <div class="insight-card-title">Fade rate by catalyst grade</div>
+        <div id="insightCatalyst"><div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);">Need more data...</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const SUPABASE_URL = 'https://xuvzhykopirgojwhtzlf.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_6gz5N7Txd7FbmgwKMep-PQ_V3F5XIrd';
+
+var allOutcomes = [];
+var currentFilter = 'all';
+
+async function supabaseGet(path) {
+  var res = await fetch(SUPABASE_URL + '/rest/v1/' + path, {
+    headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY }
+  });
+  return res.json();
+}
+
+function setFilter(filter, btn) {
+  currentFilter = filter;
+  document.querySelectorAll('.filter-btn').forEach(function(b) { b.classList.remove('active'); });
+  btn.classList.add('active');
+  renderTable(allOutcomes);
+}
+
+function getFiltered(outcomes) {
+  if (currentFilter === 'GO') return outcomes.filter(function(o) { return o.verdict === 'GO'; });
+  if (currentFilter === 'CAUTION') return outcomes.filter(function(o) { return o.verdict === 'CAUTION'; });
+  if (currentFilter === 'faded') return outcomes.filter(function(o) { return o.did_fade === true; });
+  if (currentFilter === 'nofade') return outcomes.filter(function(o) { return o.did_fade === false; });
+  return outcomes;
+}
+
+function renderTable(outcomes) {
+  var filtered = getFiltered(outcomes);
+  var content = document.getElementById('journalContent');
+
+  if (filtered.length === 0) {
+    content.innerHTML = '<div class="empty-state">No outcomes logged yet.<br>Run an analysis, get a GO or CAUTION verdict,<br>then use the Log Outcome panel to record what happened.</div>';
+    return;
+  }
+
+  content.innerHTML = '<table class="journal-table">' +
+    '<thead><tr>' +
+    '<th>Date</th><th>Ticker</th><th>Verdict</th><th>Catalyst</th><th>Droppiness</th><th>Faded?</th><th>Giveback %</th><th>Note</th>' +
+    '</tr></thead>' +
+    '<tbody>' +
+    filtered.map(function(o) {
+      var date = new Date(o.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+      var vc = o.verdict === 'GO' ? 'go' : 'caution';
+      var dropRating = o.droppiness_score >= 67 ? '🟢 ' : o.droppiness_score >= 34 ? '🟡 ' : o.droppiness_score ? '🔴 ' : '';
+      return '<tr>' +
+        '<td style="color:var(--text-dim)">' + date + '</td>' +
+        '<td class="ticker-cell">' + (o.ticker || '—') + '</td>' +
+        '<td><span class="verdict-pill ' + vc + '">' + (o.verdict || '—') + '</span></td>' +
+        '<td style="color:var(--text-dim)">' + (o.catalyst_grade || '—') + '</td>' +
+        '<td>' + (o.droppiness_score ? dropRating + o.droppiness_score : '—') + '</td>' +
+        '<td class="' + (o.did_fade ? 'fade-yes' : 'fade-no') + '">' + (o.did_fade ? '✓ Yes' : '✗ No') + '</td>' +
+        '<td>' + (o.hod_giveback_pct ? o.hod_giveback_pct + '%' : '—') + '</td>' +
+        '<td class="note-cell">' + (o.note || '') + '</td>' +
+        '</tr>';
+    }).join('') +
+    '</tbody></table>';
+}
+
+function renderStats(outcomes) {
+  var total = outcomes.length;
+  document.getElementById('statTotal').textContent = total;
+
+  var goOutcomes = outcomes.filter(function(o) { return o.verdict === 'GO'; });
+  var goFaded = goOutcomes.filter(function(o) { return o.did_fade; });
+  var fadeRate = goOutcomes.length > 0 ? Math.round((goFaded.length / goOutcomes.length) * 100) : null;
+  document.getElementById('statFadeRate').textContent = fadeRate !== null ? fadeRate + '%' : '—';
+
+  var withGiveback = outcomes.filter(function(o) { return o.did_fade && o.hod_giveback_pct; });
+  var avgGiveback = withGiveback.length > 0 ? Math.round(withGiveback.reduce(function(s, o) { return s + o.hod_giveback_pct; }, 0) / withGiveback.length) : null;
+  document.getElementById('statAvgGiveback').textContent = avgGiveback !== null ? avgGiveback + '%' : '—';
+}
+
+function renderInsights(outcomes) {
+  // Droppiness breakdown
+  var dropBuckets = { 'High (67+)': [], 'Medium (34-66)': [], 'Low (<34)': [] };
+  outcomes.forEach(function(o) {
+    if (!o.droppiness_score) return;
+    var bucket = o.droppiness_score >= 67 ? 'High (67+)' : o.droppiness_score >= 34 ? 'Medium (34-66)' : 'Low (<34)';
+    dropBuckets[bucket].push(o);
+  });
+
+  var dropHTML = Object.keys(dropBuckets).map(function(key) {
+    var items = dropBuckets[key];
+    var faded = items.filter(function(o) { return o.did_fade; });
+    var rate = items.length > 0 ? Math.round((faded.length / items.length) * 100) : null;
+    var cls = rate >= 60 ? 'good' : rate !== null && rate < 40 ? 'bad' : '';
+    return '<div class="insight-row"><span class="insight-key">' + key + ' (' + items.length + ')</span><span class="insight-val ' + cls + '">' + (rate !== null ? rate + '%' : 'No data') + '</span></div>';
+  }).join('');
+  document.getElementById('insightDroppiness').innerHTML = dropHTML || '<div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);">Need more data...</div>';
+
+  // Catalyst breakdown
+  var catBuckets = {};
+  outcomes.forEach(function(o) {
+    if (!o.catalyst_grade) return;
+    if (!catBuckets[o.catalyst_grade]) catBuckets[o.catalyst_grade] = [];
+    catBuckets[o.catalyst_grade].push(o);
+  });
+
+  var catHTML = Object.keys(catBuckets).map(function(key) {
+    var items = catBuckets[key];
+    var faded = items.filter(function(o) { return o.did_fade; });
+    var rate = Math.round((faded.length / items.length) * 100);
+    var cls = rate >= 60 ? 'good' : rate < 40 ? 'bad' : '';
+    return '<div class="insight-row"><span class="insight-key">' + key + ' (' + items.length + ')</span><span class="insight-val ' + cls + '">' + rate + '%</span></div>';
+  }).join('');
+  document.getElementById('insightCatalyst').innerHTML = catHTML || '<div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);">Need more data...</div>';
+
+  // Best signal
+  var bestBucket = Object.keys(dropBuckets).reduce(function(best, key) {
+    var items = dropBuckets[key];
+    var faded = items.filter(function(o) { return o.did_fade; });
+    var rate = items.length >= 3 ? (faded.length / items.length) * 100 : 0;
+    return rate > best.rate ? { key: key, rate: rate } : best;
+  }, { key: null, rate: 0 });
+
+  if (bestBucket.key && bestBucket.rate > 0) {
+    document.getElementById('statBestSignal').textContent = Math.round(bestBucket.rate) + '%';
+    document.getElementById('statBestSub').textContent = 'Droppiness ' + bestBucket.key;
+  }
+}
+
+async function loadJournal() {
+  try {
+    var data = await supabaseGet('trade_outcomes?select=*&order=created_at.desc&limit=200');
+    allOutcomes = Array.isArray(data) ? data : [];
+    renderStats(allOutcomes);
+    renderTable(allOutcomes);
+    renderInsights(allOutcomes);
+  } catch(e) {
+    document.getElementById('journalContent').innerHTML = '<div class="empty-state">Could not load journal.<br>' + e.message + '</div>';
+  }
+}
+
+loadJournal();
+</script>
+</body>
+</html>
