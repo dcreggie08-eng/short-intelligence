@@ -116,7 +116,7 @@
   .chip-ticker { font-family: var(--display); font-weight: 900; font-size: 14px; letter-spacing: 1px; color: var(--accent); }
   .chip-pct { font-family: var(--mono); font-size: 11px; font-weight: 700; color: var(--go); }
   .chip-pct.hot { color: #ff9900; }
-  .chip-price { font-family: var(--mono); font-size: 9px; color: var(--text-dim); }
+  .chip-price { font-family: var(--mono); font-size: 9px; color: rgba(232,240,248,0.7); }
   .gainers-strip-status { font-family: var(--mono); font-size: 9px; color: var(--text-dim); letter-spacing: 1px; white-space: nowrap; flex-shrink: 0; margin-left: 8px; }
   .status-pill { font-family: var(--mono); font-size: 10px; letter-spacing: 1.5px; padding: 6px 12px; border: 1px solid var(--border-bright); color: var(--text-dim); text-transform: uppercase; align-self: flex-start; transition: color 0.3s, border-color 0.3s; }
   .input-section { display: grid; gap: 16px; margin-bottom: 24px; }
@@ -1086,6 +1086,31 @@ loadHistory();
 // ── TOP GAINERS STRIP ────────────────────────────────────────────────────────
 var gainersInterval = null;
 
+function getMarketSession() {
+  var now = new Date();
+  var etOffset = -4; // EDT (BST period). Automatically correct — ET is always 5hrs behind BST
+  var etHour = (now.getUTCHours() + etOffset + 24) % 24;
+  var etMin = now.getUTCMinutes();
+  var etTime = etHour + etMin / 60;
+  if (etTime >= 4 && etTime < 9.5)  return 'premarket';
+  if (etTime >= 9.5 && etTime < 16) return 'market';
+  if (etTime >= 16 && etTime < 20)  return 'afterhours';
+  return 'closed';
+}
+
+function getSessionDisplay(t) {
+  var session = getMarketSession();
+  var pct, price, label;
+  if (session === 'premarket' && t.premarketChange) {
+    pct = t.premarketChange; price = t.premarketClose; label = 'PRE';
+  } else if (session === 'afterhours' && t.postmarketChange) {
+    pct = t.postmarketChange; price = t.postmarketClose; label = 'AH';
+  } else {
+    pct = t.change; price = t.close; label = session === 'market' ? 'MKT' : '';
+  }
+  return { pct: pct || 0, price: price || t.close || 0, label: label };
+}
+
 async function loadGainers() {
   var strip = document.getElementById('gainersStrip');
   var status = document.getElementById('gainersStatus');
@@ -1095,22 +1120,25 @@ async function loadGainers() {
     var tickers = data.tickers || [];
 
     if (tickers.length === 0) {
-      status.textContent = 'No gainers 20%+ right now';
+      if (status) status.textContent = 'No gainers 20%+ right now';
       return;
     }
 
-    // Remove old chips, keep label
-    strip.innerHTML = '<span class="gainers-strip-label">Top Gainers</span>';
+    var session = getMarketSession();
+    var sessionLabel = session === 'premarket' ? 'PRE-MKT' : session === 'market' ? 'MARKET' : session === 'afterhours' ? 'AFTER-HRS' : 'CLOSED';
+
+    strip.innerHTML = '<span class="gainers-strip-label">TOP GAINERS · ' + sessionLabel + '</span>';
 
     tickers.forEach(function(t) {
-      var pct = t.changePercent.toFixed(1);
-      var isHot = t.changePercent >= 100;
-      var price = t.price ? '$' + t.price.toFixed(2) : '';
+      var disp = getSessionDisplay(t);
+      var pct = disp.pct.toFixed(1);
+      var isHot = disp.pct >= 100;
+      var price = disp.price ? '$' + disp.price.toFixed(2) : '';
       var chip = document.createElement('div');
       chip.className = 'gainer-chip';
       chip.innerHTML =
         '<span class="chip-ticker">' + t.ticker + '</span>' +
-        '<span class="chip-pct' + (isHot ? ' hot' : '') + '">+' + pct + '%</span>' +
+        '<span class="chip-pct' + (isHot ? ' hot' : '') + '">' + (disp.pct >= 0 ? '+' : '') + pct + '%</span>' +
         '<span class="chip-price">' + price + '</span>';
       chip.onclick = function() {
         document.querySelectorAll('.gainer-chip').forEach(function(c) { c.classList.remove('active'); });
