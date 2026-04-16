@@ -183,15 +183,21 @@
   .outcome-panel { border-top: 1px solid var(--border); padding: 16px 24px; display: none; background: rgba(0,212,255,0.03); }
   .outcome-panel.visible { display: block; }
   .outcome-title { font-family: var(--mono); font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: var(--accent); margin-bottom: 14px; }
-  .outcome-fields { display: grid; grid-template-columns: auto 1fr 2fr auto; gap: 12px; align-items: center; }
-  .outcome-fade-btns { display: flex; gap: 8px; }
-  .fade-btn { font-family: var(--mono); font-size: 11px; letter-spacing: 1px; padding: 8px 16px; border: 1px solid var(--border-bright); background: transparent; color: var(--text-dim); cursor: pointer; transition: all 0.2s; }
+  .outcome-row1 { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .outcome-fade-btns { display: flex; gap: 8px; flex-shrink: 0; }
+  .fade-btn { font-family: var(--mono); font-size: 11px; letter-spacing: 1px; padding: 8px 14px; border: 1px solid var(--border-bright); background: transparent; color: var(--text-dim); cursor: pointer; transition: all 0.2s; white-space: nowrap; }
   .fade-btn:hover { border-color: var(--accent); color: var(--accent); }
   .fade-btn.selected-yes { border-color: var(--go); color: var(--go); background: var(--go-dim); }
   .fade-btn.selected-no { border-color: var(--nogo); color: var(--nogo); background: var(--nogo-dim); }
-  .outcome-input { background: var(--surface); border: 1px solid var(--border); color: var(--text-bright); font-family: var(--mono); font-size: 12px; padding: 8px 12px; outline: none; width: 100%; }
+  .outcome-price-fields { display: flex; align-items: center; gap: 8px; }
+  .outcome-price-group { display: flex; flex-direction: column; gap: 3px; }
+  .outcome-price-label { font-family: var(--mono); font-size: 8px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--text-dim); }
+  .outcome-price { width: 80px; }
+  .outcome-calc { font-family: var(--display); font-weight: 900; font-size: 18px; letter-spacing: 1px; color: var(--accent); min-width: 60px; text-align: center; }
+  .outcome-input { background: var(--surface); border: 1px solid var(--border); color: var(--text-bright); font-family: var(--mono); font-size: 12px; padding: 8px 10px; outline: none; }
   .outcome-input:focus { border-color: var(--accent); }
-  .outcome-submit { font-family: var(--display); font-weight: 700; font-size: 13px; letter-spacing: 2px; padding: 8px 20px; background: var(--accent); color: #000; border: none; cursor: pointer; white-space: nowrap; }
+  .outcome-note { flex: 1; min-width: 140px; }
+  .outcome-submit { font-family: var(--display); font-weight: 700; font-size: 13px; letter-spacing: 2px; padding: 8px 20px; background: var(--accent); color: #000; border: none; cursor: pointer; white-space: nowrap; flex-shrink: 0; }
   .outcome-submit:hover { background: #33ddff; }
   .outcome-submit:disabled { background: var(--border-bright); color: var(--text-dim); cursor: not-allowed; }
   .outcome-saved { font-family: var(--mono); font-size: 11px; color: var(--go); letter-spacing: 1px; padding: 8px 0; display: none; }
@@ -389,13 +395,27 @@
     </div>
     <div class="outcome-panel" id="outcomePanel">
       <div class="outcome-title">Log Trade Outcome</div>
-      <div class="outcome-fields">
+      <div class="outcome-row1">
         <div class="outcome-fade-btns">
           <button class="fade-btn" id="fadeYes" onclick="selectFade(true)">✓ Faded</button>
           <button class="fade-btn" id="fadeNo" onclick="selectFade(false)">✗ Did Not Fade</button>
         </div>
-        <input type="number" class="outcome-input" id="givebackPct" placeholder="HOD giveback %" min="0" max="200" />
-        <input type="text" class="outcome-input" id="outcomeNote" placeholder="Note (optional)" maxlength="100" />
+        <div class="outcome-price-fields">
+          <div class="outcome-price-group">
+            <label class="outcome-price-label">HOD $</label>
+            <input type="number" class="outcome-input outcome-price" id="hodPrice" placeholder="0.00" min="0" step="0.01" oninput="calcGiveback()" />
+          </div>
+          <div class="outcome-price-group">
+            <label class="outcome-price-label">Entry $</label>
+            <input type="number" class="outcome-input outcome-price" id="entryPrice" placeholder="0.00" min="0" step="0.01" oninput="calcGiveback()" />
+          </div>
+          <div class="outcome-price-group">
+            <label class="outcome-price-label">Exit $</label>
+            <input type="number" class="outcome-input outcome-price" id="exitPrice" placeholder="0.00" min="0" step="0.01" oninput="calcGiveback()" />
+          </div>
+          <div class="outcome-calc" id="outcomeCalc">—</div>
+        </div>
+        <input type="text" class="outcome-input outcome-note" id="outcomeNote" placeholder="Note (optional)" maxlength="100" />
         <button class="outcome-submit" id="outcomeSubmit" onclick="logOutcome()">Save</button>
       </div>
       <div class="outcome-saved" id="outcomeSaved">✓ Outcome saved to journal</div>
@@ -1011,7 +1031,10 @@ function renderResult(r, ticker, priceContext) {
     currentFadeSelection = null;
     document.getElementById('fadeYes').className = 'fade-btn';
     document.getElementById('fadeNo').className = 'fade-btn';
-    document.getElementById('givebackPct').value = '';
+    document.getElementById('hodPrice').value = '';
+    document.getElementById('entryPrice').value = '';
+    document.getElementById('exitPrice').value = '';
+    document.getElementById('outcomeCalc').textContent = '—';
     document.getElementById('outcomeNote').value = '';
   } else {
     outcomePanel.className = 'outcome-panel';
@@ -1144,16 +1167,38 @@ function selectFade(didFade) {
   document.getElementById('fadeNo').className = 'fade-btn' + (!didFade ? ' selected-no' : '');
 }
 
+function calcGiveback() {
+  var hod = parseFloat(document.getElementById('hodPrice').value);
+  var exit = parseFloat(document.getElementById('exitPrice').value);
+  var calc = document.getElementById('outcomeCalc');
+  if (hod > 0 && exit > 0 && hod > exit) {
+    var pct = Math.round(((hod - exit) / hod) * 100);
+    calc.textContent = pct + '%';
+    calc.style.color = 'var(--go)';
+  } else {
+    calc.textContent = '—';
+    calc.style.color = 'var(--accent)';
+  }
+}
+
 async function logOutcome() {
   if (currentFadeSelection === null) { alert('Please select whether it faded or not.'); return; }
   var btn = document.getElementById('outcomeSubmit');
   var savedMsg = document.getElementById('outcomeSaved');
-  var givebackPct = document.getElementById('givebackPct').value;
+  var hodPrice = parseFloat(document.getElementById('hodPrice').value) || null;
+  var entryPrice = parseFloat(document.getElementById('entryPrice').value) || null;
+  var exitPrice = parseFloat(document.getElementById('exitPrice').value) || null;
   var note = document.getElementById('outcomeNote').value.trim();
   var ticker = document.getElementById('ticker').value.trim().toUpperCase();
   var verdict = document.getElementById('verdictLabel').textContent;
   var catalystGrade = document.getElementById('catalystGrade').textContent;
   var droppinessScore = window.currentDroppiness ? window.currentDroppiness.score : null;
+
+  // Calculate giveback % from prices
+  var givebackPct = null;
+  if (hodPrice && exitPrice && hodPrice > exitPrice) {
+    givebackPct = Math.round(((hodPrice - exitPrice) / hodPrice) * 100);
+  }
 
   btn.disabled = true;
   btn.textContent = 'Saving...';
@@ -1166,15 +1211,18 @@ async function logOutcome() {
       catalyst_grade: catalystGrade || null,
       droppiness_score: droppinessScore ? parseFloat(droppinessScore) : null,
       did_fade: currentFadeSelection,
-      hod_giveback_pct: givebackPct ? parseFloat(givebackPct) : null,
+      hod_giveback_pct: givebackPct,
       note: note || null
     });
 
     if (res.status === 201 || res.ok) {
       savedMsg.className = 'outcome-saved visible';
       btn.textContent = 'Saved ✓';
-      document.getElementById('givebackPct').value = '';
+      document.getElementById('hodPrice').value = '';
+      document.getElementById('entryPrice').value = '';
+      document.getElementById('exitPrice').value = '';
       document.getElementById('outcomeNote').value = '';
+      document.getElementById('outcomeCalc').textContent = '—';
       currentFadeSelection = null;
       document.getElementById('fadeYes').className = 'fade-btn';
       document.getElementById('fadeNo').className = 'fade-btn';
