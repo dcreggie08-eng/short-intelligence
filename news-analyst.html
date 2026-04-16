@@ -92,18 +92,32 @@
   .gainers-empty { font-family: var(--mono); font-size: 10px; color: var(--text-dim); padding: 20px 14px; text-align: center; letter-spacing: 1px; line-height: 1.7; }
   .gainers-footer { padding: 8px 14px; border-top: 1px solid var(--border); font-family: var(--mono); font-size: 9px; color: var(--text-dim); letter-spacing: 1px; flex-shrink: 0; }
   /* push main content right of sidebar */
-  .page-body { margin-left: 225px; flex: 1; min-width: 0; }
-  header { margin-bottom: 48px; border-bottom: 1px solid var(--border); padding-bottom: 24px; }
+  .page-body { flex: 1; min-width: 0; }
+  header { margin-bottom: 24px; border-bottom: 1px solid var(--border); padding-bottom: 24px; }
   .header-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
   .logo-area h1 { font-family: var(--display); font-weight: 900; font-size: 42px; letter-spacing: 2px; color: var(--text-bright); line-height: 1; text-transform: uppercase; }
   .logo-area h1 span { color: var(--accent); }
   .logo-area p { font-family: var(--mono); font-size: 11px; color: var(--text-dim); letter-spacing: 2px; margin-top: 6px; text-transform: uppercase; }
-  .clocks { display: flex; gap: 20px; align-items: center; }
-  .clock-item { display: flex; flex-direction: column; align-items: center; gap: 3px; }
+  .clocks { display: flex; gap: 0; align-items: center; border: 1px solid rgba(0,212,255,0.25); padding: 6px 12px; }
+  .clock-item { display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 0 12px; }
+  .clock-item:first-child { border-right: 1px solid rgba(0,212,255,0.2); }
   .clock-flag { font-size: 20px; line-height: 1; }
   .clock-time { font-family: var(--mono); font-size: 15px; font-weight: 700; color: var(--caution); letter-spacing: 1px; line-height: 1; }
   .clock-ampm { color: var(--text-bright); font-weight: 400; font-size: 11px; }
   .clock-tz { font-family: var(--mono); font-size: 9px; color: var(--text-dim); letter-spacing: 1.5px; text-transform: uppercase; }
+  .gainers-strip-wrap { border-bottom: 1px solid var(--border); padding-bottom: 12px; margin-bottom: 24px; }
+  .gainers-strip { display: flex; align-items: center; gap: 6px; overflow-x: auto; padding-bottom: 4px; }
+  .gainers-strip::-webkit-scrollbar { height: 2px; }
+  .gainers-strip::-webkit-scrollbar-thumb { background: var(--border-bright); }
+  .gainers-strip-label { font-family: var(--mono); font-size: 9px; letter-spacing: 2px; color: var(--text-dim); text-transform: uppercase; white-space: nowrap; flex-shrink: 0; padding-right: 10px; border-right: 1px solid var(--border); margin-right: 4px; }
+  .gainer-chip { display: flex; flex-direction: column; gap: 2px; padding: 5px 10px; border: 1px solid var(--border-bright); cursor: pointer; min-width: 72px; flex-shrink: 0; transition: border-color 0.15s; }
+  .gainer-chip:hover { border-color: var(--accent); }
+  .gainer-chip.active { border-color: var(--accent); background: var(--accent-dim); }
+  .chip-ticker { font-family: var(--display); font-weight: 900; font-size: 14px; letter-spacing: 1px; color: var(--accent); }
+  .chip-pct { font-family: var(--mono); font-size: 11px; font-weight: 700; color: var(--go); }
+  .chip-pct.hot { color: #ff9900; }
+  .chip-price { font-family: var(--mono); font-size: 9px; color: var(--text-dim); }
+  .gainers-strip-status { font-family: var(--mono); font-size: 9px; color: var(--text-dim); letter-spacing: 1px; white-space: nowrap; flex-shrink: 0; margin-left: 8px; }
   .status-pill { font-family: var(--mono); font-size: 10px; letter-spacing: 1.5px; padding: 6px 12px; border: 1px solid var(--border-bright); color: var(--text-dim); text-transform: uppercase; align-self: flex-start; transition: color 0.3s, border-color 0.3s; }
   .input-section { display: grid; gap: 16px; margin-bottom: 24px; }
   .ticker-row { display: grid; grid-template-columns: 1fr 1fr auto; gap: 16px; align-items: end; }
@@ -228,23 +242,10 @@
   .ds-value { color: var(--text-bright); font-weight: 700; }
   .droppiness-loading { font-family: var(--mono); font-size: 11px; color: var(--accent); letter-spacing: 1px; animation: pulse 1.5s infinite; }
   @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
-  @media (max-width: 600px) { .ticker-row { grid-template-columns: 1fr; } .logo-area h1 { font-size: 30px; } .verdict-label { font-size: 28px; } .verdict-meta { align-items: flex-start; } .badge { min-width: 100px; } .gainers-sidebar { display: none; } .page-body { margin-left: 0; } }
+  @media (max-width: 600px) { .ticker-row { grid-template-columns: 1fr; } .logo-area h1 { font-size: 30px; } .verdict-label { font-size: 28px; } .verdict-meta { align-items: flex-start; } .badge { min-width: 100px; } }
 </style>
 </head>
 <body>
-
-<!-- TOP GAINERS SIDEBAR -->
-<aside class="gainers-sidebar">
-  <div class="gainers-header">
-    <div class="gainers-title"><span class="dot"></span>Top Gainers</div>
-    <div class="gainers-subtitle">20%+ movers · Click to analyse</div>
-    <div class="gainers-refresh" id="gainersRefreshLabel">Loading...</div>
-  </div>
-  <div class="gainers-list" id="gainersList">
-    <div class="gainers-empty">Fetching gainers...</div>
-  </div>
-  <div class="gainers-footer" id="gainersFooter">↻ refreshes every 15s</div>
-</aside>
 
 <div class="page-body">
 <div class="container">
@@ -269,6 +270,13 @@
       <div class="status-pill" id="dbStatus">Connecting...</div>
     </div>
   </header>
+
+  <div class="gainers-strip-wrap">
+    <div class="gainers-strip" id="gainersStrip">
+      <span class="gainers-strip-label">Top Gainers</span>
+      <span class="gainers-strip-status" id="gainersStatus">Loading...</span>
+    </div>
+  </div>
 
   <div class="input-section">
     <div class="ticker-row">
@@ -1075,146 +1083,57 @@ setInterval(updateClocks, 1000);
 
 loadHistory();
 
-// ── TOP GAINERS SIDEBAR ──────────────────────────────────────────────────────
+// ── TOP GAINERS STRIP ────────────────────────────────────────────────────────
 var gainersInterval = null;
-var dilutionFetchQueue = {};
 
 async function loadGainers() {
-  var list = document.getElementById('gainersList');
-  var label = document.getElementById('gainersRefreshLabel');
-  var footer = document.getElementById('gainersFooter');
-
+  var strip = document.getElementById('gainersStrip');
+  var status = document.getElementById('gainersStatus');
   try {
-    // Routed through Cloudflare Worker — keeps API key off the browser
-    var url = PROXY + '/gainers';
-    var res = await fetch(url);
+    var res = await fetch(PROXY + '/gainers');
     var data = await res.json();
+    var tickers = data.tickers || [];
 
-    var tickers = (data.tickers || []);
-
-    // Filter: 20%+ gainers only, max 10
-    var filtered = tickers
-      .filter(function(t) {
-        var pct = t.todaysChangePerc || 0;
-        return pct >= 20;
-      })
-      .sort(function(a, b) { return (b.todaysChangePerc || 0) - (a.todaysChangePerc || 0); })
-      .slice(0, 10);
-
-    if (filtered.length === 0) {
-      list.innerHTML = '<div class="gainers-empty">No gainers 20%+<br>found right now.<br>Checking again in 15s...</div>';
-    } else {
-      list.innerHTML = filtered.map(function(t) {
-        var sym = t.ticker;
-        var pct = (t.todaysChangePerc || 0).toFixed(1);
-        var price = t.day ? (t.day.c || t.lastTrade && t.lastTrade.p || 0).toFixed(4) : '—';
-        var vol = t.day ? formatVol(t.day.v) : '—';
-        var isHot = parseFloat(pct) >= 100;
-        return '<div class="gainer-item" onclick="gainersSelectTicker(\'' + sym + '\')" id="gitem-' + sym + '">' +
-          '<div class="gainer-row1">' +
-            '<span class="gainer-ticker">' + sym + '</span>' +
-            '<span class="gainer-pct' + (isHot ? ' hot' : '') + '">+' + pct + '%</span>' +
-          '</div>' +
-          '<div class="gainer-row2">' +
-            '<span class="gainer-price">$' + price + '</span>' +
-            '<span class="gainer-vol">Vol ' + vol + '</span>' +
-          '</div>' +
-          '<div class="gainer-row3">' +
-            '<span class="gainer-info" id="ginfo-' + sym + '">—</span>' +
-            '<span class="gainer-dil-badge loading" id="gdil-' + sym + '">···</span>' +
-          '</div>' +
-        '</div>';
-      }).join('');
-
-      // Fetch dilution for each — staggered so we don't hammer Ask Edgar
-      filtered.forEach(function(t, i) {
-        setTimeout(function() { fetchGainerDilution(t.ticker); }, i * 400);
-      });
+    if (tickers.length === 0) {
+      status.textContent = 'No gainers 20%+ right now';
+      return;
     }
+
+    // Remove old chips, keep label
+    strip.innerHTML = '<span class="gainers-strip-label">Top Gainers</span>';
+
+    tickers.forEach(function(t) {
+      var pct = t.changePercent.toFixed(1);
+      var isHot = t.changePercent >= 100;
+      var price = t.price ? '$' + t.price.toFixed(2) : '';
+      var chip = document.createElement('div');
+      chip.className = 'gainer-chip';
+      chip.innerHTML =
+        '<span class="chip-ticker">' + t.ticker + '</span>' +
+        '<span class="chip-pct' + (isHot ? ' hot' : '') + '">+' + pct + '%</span>' +
+        '<span class="chip-price">' + price + '</span>';
+      chip.onclick = function() {
+        document.querySelectorAll('.gainer-chip').forEach(function(c) { c.classList.remove('active'); });
+        chip.classList.add('active');
+        document.getElementById('ticker').value = t.ticker;
+        document.getElementById('ticker').focus();
+      };
+      strip.appendChild(chip);
+    });
 
     var now = new Date();
-    label.textContent = 'Updated ' + now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-    footer.textContent = '↻ next refresh in 15s · ' + filtered.length + ' movers';
+    var updated = document.createElement('span');
+    updated.className = 'gainers-strip-status';
+    updated.textContent = '↻ ' + now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+    strip.appendChild(updated);
 
   } catch(e) {
-    list.innerHTML = '<div class="gainers-empty">Could not load gainers.<br>' + e.message + '</div>';
-    label.textContent = 'Error — retrying...';
+    if (status) status.textContent = 'Gainers unavailable';
   }
 }
 
-async function fetchGainerDilution(ticker) {
-  if (dilutionFetchQueue[ticker]) return; // already fetching
-  dilutionFetchQueue[ticker] = true;
-
-  var dilEl = document.getElementById('gdil-' + ticker);
-  var infoEl = document.getElementById('ginfo-' + ticker);
-  if (!dilEl) return;
-
-  try {
-    // Use Ask Edgar via our proxy — same as main tool
-    var dilUrl = PROXY + '/askedgar/v1/dilution-rating?ticker=' + ticker;
-    var floatUrl = PROXY + '/askedgar/v1/float-outstanding?ticker=' + ticker;
-
-    var [dilRes, floatRes] = await Promise.all([fetch(dilUrl), fetch(floatUrl)]);
-    var dilData = await dilRes.json();
-    var floatData = await floatRes.json();
-
-    // Dilution badge
-    var r = (dilData.results && dilData.results[0]) || dilData.result || dilData;
-    var overall = (r.overall_offering_risk || '').toLowerCase();
-    var cls = overall === 'high' ? 'high' : overall === 'medium' || overall === 'moderate' ? 'medium' : overall === 'low' ? 'low' : 'loading';
-    var label = overall ? overall.toUpperCase() : '?';
-    if (dilEl) { dilEl.className = 'gainer-dil-badge ' + cls; dilEl.textContent = label; }
-
-    // Info line: MC + float
-    if (floatData && floatData.results && floatData.results[0]) {
-      var f = floatData.results[0];
-      function fmtM(n) { return n ? (n >= 1e9 ? (n/1e9).toFixed(1)+'B' : n >= 1e6 ? (n/1e6).toFixed(1)+'M' : (n/1e3).toFixed(0)+'K') : '?'; }
-      var mc = f.market_cap_final ? 'MC $' + fmtM(f.market_cap_final) : '';
-      var fl = f.float ? 'Fl ' + fmtM(f.float) : '';
-      if (infoEl) infoEl.textContent = [mc, fl].filter(Boolean).join(' · ') || '—';
-    }
-
-  } catch(e) {
-    if (dilEl) { dilEl.className = 'gainer-dil-badge loading'; dilEl.textContent = 'ERR'; }
-  }
-}
-
-function formatVol(v) {
-  if (!v) return '—';
-  if (v >= 1e9) return (v/1e9).toFixed(1) + 'B';
-  if (v >= 1e6) return (v/1e6).toFixed(1) + 'M';
-  if (v >= 1e3) return (v/1e3).toFixed(0) + 'K';
-  return v.toString();
-}
-
-function gainersSelectTicker(ticker) {
-  // Highlight selected
-  document.querySelectorAll('.gainer-item').forEach(function(el) {
-    el.style.background = '';
-    el.style.borderLeft = '';
-  });
-  var el = document.getElementById('gitem-' + ticker);
-  if (el) { el.style.background = 'rgba(0,212,255,0.08)'; el.style.borderLeft = '2px solid var(--accent)'; }
-
-  // Populate ticker field and trigger fetch
-  document.getElementById('ticker').value = ticker;
-  document.getElementById('priceContext').value = '';
-  document.getElementById('newsInput').value = '';
-
-  // Scroll to top of main content
-  window.scrollTo({ top: 0, behavior: 'smooth' });
-
-  // Auto-fetch
-  fetchNews();
-}
-
-// Start gainers on load, refresh every 15s
 loadGainers();
-gainersInterval = setInterval(function() {
-  dilutionFetchQueue = {}; // reset so fresh dilution loads on each cycle
-  loadGainers();
-}, 15000);
+gainersInterval = setInterval(loadGainers, 60000);
 </script>
 </div><!-- /page-body -->
 </body>
