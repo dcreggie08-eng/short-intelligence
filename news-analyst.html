@@ -98,6 +98,12 @@
   .logo-area h1 { font-family: var(--display); font-weight: 900; font-size: 42px; letter-spacing: 2px; color: var(--text-bright); line-height: 1; text-transform: uppercase; }
   .logo-area h1 span { color: var(--accent); }
   .logo-area p { font-family: var(--mono); font-size: 11px; color: var(--text-dim); letter-spacing: 2px; margin-top: 6px; text-transform: uppercase; }
+  .clocks { display: flex; gap: 20px; align-items: center; }
+  .clock-item { display: flex; flex-direction: column; align-items: center; gap: 3px; }
+  .clock-flag { font-size: 20px; line-height: 1; }
+  .clock-time { font-family: var(--mono); font-size: 15px; font-weight: 700; color: var(--caution); letter-spacing: 1px; line-height: 1; }
+  .clock-ampm { color: var(--text-bright); font-weight: 400; font-size: 11px; }
+  .clock-tz { font-family: var(--mono); font-size: 9px; color: var(--text-dim); letter-spacing: 1.5px; text-transform: uppercase; }
   .status-pill { font-family: var(--mono); font-size: 10px; letter-spacing: 1.5px; padding: 6px 12px; border: 1px solid var(--border-bright); color: var(--text-dim); text-transform: uppercase; align-self: flex-start; transition: color 0.3s, border-color 0.3s; }
   .input-section { display: grid; gap: 16px; margin-bottom: 24px; }
   .ticker-row { display: grid; grid-template-columns: 1fr 1fr auto; gap: 16px; align-items: end; }
@@ -172,6 +178,7 @@
   .history-verdict { font-family: var(--display); font-weight: 700; font-size: 14px; letter-spacing: 2px; text-transform: uppercase; min-width: 70px; }
   .history-verdict.go { color: var(--go); }
   .history-verdict.nogo { color: var(--nogo); }
+  .history-verdict.notrade { color: var(--nogo); }
   .history-verdict.caution { color: var(--caution); }
   .history-ticker { font-family: var(--mono); font-size: 12px; color: var(--accent); min-width: 60px; }
   .history-grade { font-family: var(--mono); font-size: 10px; color: var(--text-dim); letter-spacing: 1px; flex: 1; }
@@ -246,6 +253,18 @@
       <div class="logo-area">
         <h1>News <span>Analyst</span></h1>
         <p>Short Intelligence // Pre-Market Edition</p>
+      </div>
+      <div class="clocks">
+        <div class="clock-item">
+          <span class="clock-flag">🇺🇸</span>
+          <span class="clock-time" id="clockNY">--:-- --</span>
+          <span class="clock-tz" id="tzNY">ET</span>
+        </div>
+        <div class="clock-item">
+          <span class="clock-flag">🇬🇧</span>
+          <span class="clock-time" id="clockUK">--:-- --</span>
+          <span class="clock-tz" id="tzUK">GMT</span>
+        </div>
       </div>
       <div class="status-pill" id="dbStatus">Connecting...</div>
     </div>
@@ -462,7 +481,7 @@ function renderHistory(items) {
   }
   count.textContent = items.length + ' recent';
   list.innerHTML = items.map(function(item) {
-    var vc = item.verdict === 'GO' ? 'go' : item.verdict === 'NO GO' ? 'nogo' : 'caution';
+    var vc = item.verdict === 'GO' ? 'go' : item.verdict === 'NO GO' ? 'nogo' : item.verdict === 'NO TRADE' ? 'notrade' : 'caution';
     var time = new Date(item.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
     return '<div class="history-item" onclick="loadFromHistory(\'' + item.id + '\')">' +
       '<div class="history-verdict ' + vc + '">' + (item.verdict || '-') + '</div>' +
@@ -1029,6 +1048,30 @@ async function loadFromHistory(id) {
     }
   } catch(e) { console.error('Could not load history item', e); }
 }
+
+function updateClocks() {
+  var now = new Date();
+
+  function formatClock(timeStr) {
+    var parts = timeStr.trim().match(/^(.+?)\s*(AM|PM)$/i);
+    if (parts) {
+      return parts[1] + '<span class="clock-ampm"> ' + parts[2].toLowerCase() + '</span>';
+    }
+    return timeStr;
+  }
+
+  var nyTime = now.toLocaleTimeString('en-US', { timeZone: 'America/New_York', hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true });
+  var nyTZ = now.toLocaleDateString('en-US', { timeZone: 'America/New_York', timeZoneName: 'short' }).split(', ')[1] || 'ET';
+  document.getElementById('clockNY').innerHTML = formatClock(nyTime);
+  document.getElementById('tzNY').textContent = nyTZ;
+
+  var ukTime = now.toLocaleTimeString('en-GB', { timeZone: 'Europe/London', hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true });
+  var ukTZ = now.toLocaleDateString('en-GB', { timeZone: 'Europe/London', timeZoneName: 'short' }).split(', ')[1] || 'GMT';
+  document.getElementById('clockUK').innerHTML = formatClock(ukTime);
+  document.getElementById('tzUK').textContent = ukTZ;
+}
+updateClocks();
+setInterval(updateClocks, 1000);
 
 loadHistory();
 
