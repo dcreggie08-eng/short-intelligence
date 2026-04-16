@@ -32,66 +32,6 @@
   body::before { content: ''; position: fixed; inset: 0; background-image: linear-gradient(rgba(0,212,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(0,212,255,0.03) 1px, transparent 1px); background-size: 40px 40px; pointer-events: none; z-index: 0; }
   .container { position: relative; z-index: 1; flex: 1; max-width: 900px; margin: 0 auto; padding: 40px 24px 80px; min-width: 0; }
 
-  /* ── TOP GAINERS SIDEBAR ── */
-  .gainers-sidebar {
-    position: fixed; top: 0; left: 0; width: 220px; height: 100vh;
-    background: #0b0e12; border-right: 1px solid var(--border-bright);
-    display: flex; flex-direction: column; z-index: 100; overflow: hidden;
-  }
-  .gainers-header {
-    padding: 14px 14px 10px; border-bottom: 1px solid var(--border);
-    flex-shrink: 0;
-  }
-  .gainers-title {
-    font-family: var(--display); font-weight: 900; font-size: 15px;
-    letter-spacing: 3px; text-transform: uppercase; color: var(--accent);
-    display: flex; align-items: center; gap: 8px;
-  }
-  .gainers-title .dot {
-    width: 6px; height: 6px; border-radius: 50%; background: var(--go);
-    animation: pulse 2s infinite;
-  }
-  .gainers-subtitle {
-    font-family: var(--mono); font-size: 9px; letter-spacing: 1.5px;
-    color: var(--text-dim); margin-top: 4px; text-transform: uppercase;
-  }
-  .gainers-refresh {
-    font-family: var(--mono); font-size: 9px; color: var(--text-dim);
-    letter-spacing: 1px; margin-top: 3px;
-  }
-  .gainers-list {
-    flex: 1; overflow-y: auto; padding: 6px 0;
-  }
-  .gainers-list::-webkit-scrollbar { width: 3px; }
-  .gainers-list::-webkit-scrollbar-track { background: transparent; }
-  .gainers-list::-webkit-scrollbar-thumb { background: var(--border-bright); }
-  .gainer-item {
-    padding: 9px 14px; cursor: pointer; border-bottom: 1px solid var(--border);
-    transition: background 0.15s; position: relative;
-  }
-  .gainer-item:hover { background: rgba(0,212,255,0.05); }
-  .gainer-item:last-child { border-bottom: none; }
-  .gainer-row1 { display: flex; justify-content: space-between; align-items: center; margin-bottom: 3px; }
-  .gainer-ticker { font-family: var(--display); font-weight: 900; font-size: 16px; letter-spacing: 1px; color: var(--accent); }
-  .gainer-pct { font-family: var(--mono); font-size: 13px; font-weight: 700; color: var(--go); }
-  .gainer-pct.hot { color: #ff9900; }
-  .gainer-row2 { display: flex; justify-content: space-between; align-items: center; }
-  .gainer-price { font-family: var(--mono); font-size: 10px; color: var(--text-dim); }
-  .gainer-vol { font-family: var(--mono); font-size: 9px; color: var(--text-dim); }
-  .gainer-row3 { margin-top: 4px; display: flex; justify-content: space-between; align-items: center; gap: 4px; }
-  .gainer-info { font-family: var(--mono); font-size: 9px; color: var(--text-dim); flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .gainer-dil-badge {
-    font-family: var(--mono); font-size: 8px; letter-spacing: 1px;
-    text-transform: uppercase; padding: 2px 5px; border: 1px solid;
-    font-weight: 700; white-space: nowrap; flex-shrink: 0;
-  }
-  .gainer-dil-badge.high { border-color: rgba(255,61,90,0.5); color: var(--nogo); background: rgba(255,61,90,0.08); }
-  .gainer-dil-badge.medium { border-color: rgba(255,179,0,0.5); color: var(--caution); background: rgba(255,179,0,0.08); }
-  .gainer-dil-badge.low { border-color: rgba(0,230,118,0.4); color: var(--go); background: rgba(0,230,118,0.06); }
-  .gainer-dil-badge.loading { border-color: var(--border-bright); color: var(--text-dim); }
-  .gainers-empty { font-family: var(--mono); font-size: 10px; color: var(--text-dim); padding: 20px 14px; text-align: center; letter-spacing: 1px; line-height: 1.7; }
-  .gainers-footer { padding: 8px 14px; border-top: 1px solid var(--border); font-family: var(--mono); font-size: 9px; color: var(--text-dim); letter-spacing: 1px; flex-shrink: 0; }
-  /* push main content right of sidebar */
   .page-body { flex: 1; min-width: 0; }
   header { margin-bottom: 24px; border-bottom: 1px solid var(--border); padding-bottom: 24px; }
   .header-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
@@ -160,7 +100,12 @@
   .verdict-banner.nogo .verdict-label { color: var(--nogo); }
   .verdict-banner.caution .verdict-label { color: var(--caution); }
   .verdict-banner.notrade .verdict-label { color: var(--nogo); }
-  .verdict-left { display: flex; flex-direction: column; gap: 8px; }
+  .verdict-left { display: flex; flex-direction: column; gap: 6px; }
+  .verdict-state { font-family: var(--mono); font-size: 10px; letter-spacing: 2px; text-transform: uppercase; padding: 3px 10px; border: 1px solid; display: inline-block; align-self: flex-start; }
+  .verdict-banner.go .verdict-state { color: var(--go); border-color: var(--go); }
+  .verdict-banner.caution .verdict-state { color: var(--caution); border-color: var(--caution); }
+  .verdict-banner.nogo .verdict-state { color: var(--nogo); border-color: var(--nogo); }
+  .verdict-banner.notrade .verdict-state { color: var(--nogo); border-color: var(--nogo); }
   .gatekeeper-reason { font-family: var(--mono); font-size: 11px; letter-spacing: 1px; color: var(--text); line-height: 1.5; max-width: 480px; opacity: 0.85; }
   .gatekeeper-tag { font-family: var(--mono); font-size: 9px; letter-spacing: 2px; text-transform: uppercase; color: var(--text-dim); border: 1px solid var(--border-bright); padding: 3px 8px; text-align: center; }
   .verdict-meta { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
@@ -363,6 +308,7 @@
     <div class="verdict-banner" id="verdictBanner">
       <div class="verdict-left">
         <div class="verdict-label" id="verdictLabel"></div>
+        <div class="verdict-state" id="verdictState"></div>
         <div class="gatekeeper-reason" id="gatekeeperReason"></div>
       </div>
       <div class="verdict-meta">
@@ -989,6 +935,8 @@ function renderResult(r, ticker, priceContext) {
   var banner = document.getElementById('verdictBanner');
   banner.className = 'verdict-banner ' + (r.verdict === 'NO GO' ? 'nogo' : r.verdict === 'NO TRADE' ? 'notrade' : r.verdict === 'CAUTION' ? 'caution' : 'go');
   document.getElementById('verdictLabel').textContent = r.verdict;
+  var stateMap = { 'GO': 'STATE: TRADE ALLOWED', 'CAUTION': 'STATE: WATCH · NO TRADE YET', 'NO GO': 'STATE: BLOCKED', 'NO TRADE': 'STATE: BLOCKED' };
+  document.getElementById('verdictState').textContent = stateMap[r.verdict] || '';
   document.getElementById('catalystGrade').textContent = r.catalystGrade;
   document.getElementById('tickerDisplay').textContent = ticker ? ticker + (priceContext ? ' · ' + priceContext : '') : (priceContext || '-');
   document.getElementById('gatekeeperReason').textContent = r.gatekeeperReason || '';
