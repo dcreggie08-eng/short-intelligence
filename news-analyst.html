@@ -1303,9 +1303,17 @@ loadHistory();
 // ── TOP GAINERS STRIP ────────────────────────────────────────────────────────
 var gainersInterval = null;
 
+function getETOffset() {
+  // Auto-detect EDT (-4) vs EST (-5) using the browser's own timezone logic
+  var now = new Date();
+  var etTime = new Date(now.toLocaleString('en-US', { timeZone: 'America/New_York' }));
+  var utcTime = new Date(now.toLocaleString('en-US', { timeZone: 'UTC' }));
+  return (etTime - utcTime) / (1000 * 60 * 60);
+}
+
 function getMarketSession() {
   var now = new Date();
-  var etOffset = -4;
+  var etOffset = getETOffset();
   var etHour = (now.getUTCHours() + etOffset + 24) % 24;
   var etMin = now.getUTCMinutes();
   var etTime = etHour + etMin / 60;
