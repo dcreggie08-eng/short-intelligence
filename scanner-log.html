@@ -189,6 +189,7 @@
     </div>
     <div class="analytics-section"><div class="analytics-title">Fade Rate by Droppiness Band</div><div id="dropTable"></div></div>
     <div class="analytics-section"><div class="analytics-title">Fade Rate by Verdict</div><div id="verdictTable"></div></div>
+    <div class="analytics-section"><div class="analytics-title">VWAP Extension % vs Fade Outcome</div><div id="vwapTable"></div></div>
     <div class="analytics-section"><div class="analytics-title">Pre-Market HOD vs Open Market HOD — by Catalyst Grade</div><div id="hodTable"></div></div>
     <div class="analytics-section"><div class="analytics-title">Most Common Fade Destinations</div><div id="fadeDestTable"></div></div>
   </div>
@@ -628,7 +629,7 @@ async function loadAnalytics() {
     document.getElementById('statReviewed').textContent=reviewed;
     document.getElementById('statFadeRate').textContent=fadeRate!==null?fadeRate+'%':'—';
     document.getElementById('statGoAccuracy').textContent=goAcc!==null?goAcc+'%':'—';
-    renderDropTable(data); renderVerdictTable(data); renderHODTable(data); renderFadeDestTable(data);
+    renderDropTable(data); renderVerdictTable(data); renderVwapTable(data); renderHODTable(data); renderFadeDestTable(data);
   } catch(e) { console.error('Analytics error:',e); }
 }
 
@@ -655,6 +656,48 @@ function renderVerdictTable(data) {
     rows.map(function(r){var bc=r.pct>=65?'high-fade':r.pct<40?'low-fade':'',col=r.verdict==='GO'?'var(--go)':r.verdict==='CAUTION'?'var(--caution)':'var(--nogo)';
       return '<tr><td style="color:'+col+'">'+r.verdict+'</td><td>'+r.n+'</td><td>'+r.correct+'</td><td><div class="pct-bar-wrap"><div class="pct-bar '+bc+'" style="width:'+(r.pct||0)+'px"></div><span>'+(r.pct!==null?r.pct+'%':'—')+'</span>'+sampleNote(r.n)+'</div></td></tr>';
     }).join('')+'</tbody></table>';
+}
+
+function renderVwapTable(data) {
+  var el = document.getElementById('vwapTable');
+  var withVwap = data.filter(function(d) { return d.vwap_extension_pct !== null && d.vwap_extension_pct !== undefined && d.gatekeeper_correct; });
+
+  if (withVwap.length < 3) {
+    el.innerHTML = '<div class="analytics-note">Need 3+ entries with VWAP data. You have ' + withVwap.length + ' — keep filling in the VWAP field in evening reviews.</div>';
+    return;
+  }
+
+  var bands = [
+    { label: 'Below 20% above VWAP', f: function(d) { return d.vwap_extension_pct < 20; }, note: 'Not extended' },
+    { label: '20–30% above VWAP',    f: function(d) { return d.vwap_extension_pct >= 20 && d.vwap_extension_pct < 30; }, note: 'Getting interesting' },
+    { label: '30–50% above VWAP',    f: function(d) { return d.vwap_extension_pct >= 30 && d.vwap_extension_pct < 50; }, note: 'Extended — HOD likely in' },
+    { label: '50%+ above VWAP',      f: function(d) { return d.vwap_extension_pct >= 50; }, note: 'Very extended' }
+  ];
+
+  var rows = bands.map(function(band) {
+    var group = withVwap.filter(band.f);
+    var correct = group.filter(function(d) { return d.gatekeeper_correct === 'YES'; }).length;
+    var pct = group.length > 0 ? Math.round((correct / group.length) * 100) : null;
+    return { label: band.label, note: band.note, n: group.length, correct: correct, pct: pct };
+  });
+
+  el.innerHTML = '<table class="analytics-table"><thead><tr>' +
+    '<th>VWAP Extension</th><th>Signal</th><th>Entries</th><th>GK Correct</th><th>Fade Rate</th>' +
+    '</tr></thead><tbody>' +
+    rows.map(function(r) {
+      var bc = r.pct >= 65 ? 'high-fade' : r.pct !== null && r.pct < 40 ? 'low-fade' : '';
+      var noteColor = r.note === 'Extended — HOD likely in' ? 'var(--caution)' : r.note === 'Very extended' ? 'var(--nogo)' : 'var(--text-dim)';
+      return '<tr>' +
+        '<td>' + r.label + '</td>' +
+        '<td style="color:' + noteColor + ';font-size:11px">' + r.note + '</td>' +
+        '<td>' + r.n + '</td>' +
+        '<td>' + r.correct + '</td>' +
+        '<td><div class="pct-bar-wrap"><div class="pct-bar ' + bc + '" style="width:' + (r.pct || 0) + 'px"></div>' +
+        '<span>' + (r.pct !== null ? r.pct + '%' : '—') + '</span>' +
+        (r.n < 5 ? ' <span style="color:var(--text-dim);font-size:10px">(need ' + (5 - r.n) + ' more)</span>' : '') +
+        '</div></td></tr>';
+    }).join('') +
+    '</tbody></table>';
 }
 
 function renderHODTable(data) {
