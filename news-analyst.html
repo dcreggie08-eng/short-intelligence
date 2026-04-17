@@ -115,6 +115,20 @@
   .verdict-banner.caution .catalyst-grade { color: var(--caution); }
   .verdict-banner.notrade .catalyst-grade { color: var(--nogo); }
   .ticker-display { font-family: var(--mono); font-size: 13px; color: var(--text-dim); letter-spacing: 1px; }
+
+  /* ── SAVE TO LOG BOX ── */
+  .save-log-box { display: none; margin: 0; padding: 14px 24px; background: rgba(255,255,255,0.05); border-bottom: 1px solid var(--border); }
+  .save-log-box.visible { display: block; }
+  .save-log-inner { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
+  .save-log-label { font-family: var(--mono); font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: rgba(255,255,255,0.7); margin-bottom: 2px; }
+  .save-log-sub { font-family: var(--mono); font-size: 10px; color: var(--text-dim); letter-spacing: 0.5px; }
+  .save-log-btn { background: rgba(255,255,255,0.85); color: #0a0a0a; border: none; border-radius: 6px; padding: 9px 22px; font-family: var(--mono); font-size: 12px; font-weight: 700; letter-spacing: 0.05em; cursor: pointer; transition: all 0.2s; white-space: nowrap; }
+  .save-log-btn:hover:not(:disabled) { background: #ffffff; }
+  .save-log-btn:disabled { background: rgba(255,255,255,0.3); cursor: not-allowed; }
+  .save-log-btn.saved { background: rgba(0,230,118,0.85); color: #000; }
+  .save-log-status { font-family: var(--mono); font-size: 10px; color: var(--text-dim); margin-top: 6px; display: none; }
+  .save-log-status.visible { display: block; }
+
   .result-body { padding: 24px; display: grid; gap: 24px; }
   .result-section { border-left: 2px solid var(--border-bright); padding-left: 16px; }
   .result-section-title { font-family: var(--mono); font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: var(--accent); margin-bottom: 10px; }
@@ -317,6 +331,19 @@
         <div class="ticker-display" id="tickerDisplay"></div>
       </div>
     </div>
+
+    <!-- ── SAVE TO SCANNER LOG ── -->
+    <div class="save-log-box" id="saveLogBox">
+      <div class="save-log-inner">
+        <div>
+          <div class="save-log-label">📋 Scanner Log</div>
+          <div class="save-log-sub">Save this analysis to your morning log — one click, no extra API calls</div>
+        </div>
+        <button class="save-log-btn" id="saveLogBtn" onclick="saveToScannerLog()">Save to Log</button>
+      </div>
+      <div class="save-log-status" id="saveLogStatus"></div>
+    </div>
+
     <div class="result-body">
       <div class="result-section">
         <div class="result-section-title">AI Analyst — Catalyst Reasoning</div>
@@ -523,7 +550,6 @@ function renderDilutionBadges(data) {
     { key: 'nasdaq_compliance',     label: 'Nasdaq Compliance',  descKey: 'nasdaq_compliance_desc' }
   ];
 
-  // Data is in results[0]
   var r = (data.results && data.results.length > 0) ? data.results[0] : (data.result || data.data || data);
 
   badgesEl.innerHTML = fields.map(function(f) {
@@ -535,9 +561,7 @@ function renderDilutionBadges(data) {
       '</div>';
   }).join('');
 
-  // Store for use in AI prompt
   currentDilution = r;
-
   source.textContent = 'via Ask Edgar';
   panel.classList.add('visible');
 }
@@ -557,7 +581,6 @@ async function fetchNews() {
   document.getElementById('errorMsg').classList.remove('visible');
   currentDilution = null;
 
-  // Check cache first
   if (fetchCache[ticker]) {
     var cached = fetchCache[ticker];
     btn.disabled = false;
@@ -569,7 +592,6 @@ async function fetchNews() {
   }
 
   try {
-    // Fetch news, dilution, float AND tldr in parallel
     var newsUrl     = PROXY + '/askedgar/v1/news?ticker=' + ticker + '&include_body=true&limit=1&hide_filings=false';
     var dilutionUrl = PROXY + '/askedgar/v1/dilution-rating?ticker=' + ticker;
     var floatUrl    = PROXY + '/askedgar/v1/float-outstanding?ticker=' + ticker;
@@ -587,11 +609,8 @@ async function fetchNews() {
     var floatData    = await floatRes.json();
     var tldrData     = await tldrRes.json();
 
-    // Store in cache
     fetchCache[ticker] = { newsData, dilutionData, floatData, tldrData };
     applyFetchedData(fetchCache[ticker], ticker);
-
-    // Fetch droppiness separately — runs after main data, takes longer
     fetchDroppiness(ticker);
 
   } catch(e) {
@@ -608,7 +627,6 @@ async function fetchDroppiness(ticker) {
   var scoreEl = document.getElementById('droppinessScore');
   var statsEl = document.getElementById('droppinessStats');
 
-  // Show loading state immediately
   panel.className = 'droppiness-panel visible';
   badge.className = 'droppiness-badge';
   scoreEl.innerHTML = '<span class="droppiness-loading">Calculating...</span>';
@@ -624,7 +642,6 @@ async function fetchDroppiness(ticker) {
       return;
     }
 
-    // Store for AI prompt
     window.currentDroppiness = data;
 
     var cls = data.rating === 'High' ? 'high' : data.rating === 'Medium' ? 'medium' : 'low';
@@ -651,7 +668,6 @@ function applyFetchedData(cached, ticker) {
   var tldrData     = cached.tldrData;
   var newsSource   = document.getElementById('newsSource');
 
-  // Handle news
   if (newsData.status === 'success' && newsData.results && newsData.results.length > 0) {
     var item = newsData.results[0];
     var text = item.summary || item.body || '';
@@ -669,14 +685,12 @@ function applyFetchedData(cached, ticker) {
     showError('No news found for ' + ticker);
   }
 
-  // Handle dilution badges
   if (dilutionData && dilutionData.results && dilutionData.results.length > 0) {
     renderDilutionBadges(dilutionData);
   } else {
     document.getElementById('dilutionSource').textContent = 'Dilution data unavailable';
   }
 
-  // Handle float/stock info bar
   var infoBar = document.getElementById('stockInfoBar');
   if (floatData && floatData.results && floatData.results.length > 0) {
     var f = floatData.results[0];
@@ -684,6 +698,10 @@ function applyFetchedData(cached, ticker) {
     var instPct = f.institutions_percent ? (f.institutions_percent * 100) : 0;
     var insiderPct = f.insider_percent ? (f.insider_percent * 100) : 0;
     window.currentInstPct = instPct;
+    // Store for scanner log
+    window.currentFloat = f.float || null;
+    window.currentMarketCap = f.market_cap_final || null;
+    window.currentInsiderPct = insiderPct;
     var instColor = instPct >= 40 ? 'var(--nogo)' : instPct >= 20 ? 'var(--caution)' : 'var(--go)';
     var instWarning = instPct >= 40 ? ' <span style="color:var(--nogo)">⚠ NO TRADE</span>' : instPct >= 20 ? ' <span style="color:var(--caution)">⚠ CAUTION</span>' : '';
     infoBar.innerHTML =
@@ -698,7 +716,6 @@ function applyFetchedData(cached, ticker) {
     infoBar.classList.add('visible');
   }
 
-  // Handle GROK/TLDR
   var grokPanel = document.getElementById('grokPanel');
   var grokText  = document.getElementById('grokText');
   if (tldrData && tldrData.results && tldrData.results.length > 0) {
@@ -742,7 +759,6 @@ function gatekeeperVerdict(catalystGrade) {
   var dropMed    = droppiness !== null && droppiness >= 50 && droppiness < 67;
   var dropLow    = droppiness !== null && droppiness < 50;
 
-  // ── HARD BLOCKS — nothing overrides these ──
   if (grade === 'STRONG') {
     return { verdict: 'NO GO', reason: 'Strong catalyst detected — short thesis is invalid. Do not trade.' };
   }
@@ -752,7 +768,6 @@ function gatekeeperVerdict(catalystGrade) {
 
   var verdict, reason;
 
-  // ── WEAK / FLUFF catalyst ──
   if (grade.indexOf('WEAK') !== -1 || grade.indexOf('FLUFF') !== -1) {
     if (isHighDil && isHighCash) {
       if (dropHigh) {
@@ -788,7 +803,6 @@ function gatekeeperVerdict(catalystGrade) {
       reason  = 'Weak catalyst but dilution data is incomplete. Run Fetch News first for a full verdict.';
     }
 
-  // ── MID catalyst ──
   } else if (grade === 'MID') {
     if (isHighDil && isHighCash && dropHigh) {
       verdict = 'CAUTION';
@@ -798,13 +812,11 @@ function gatekeeperVerdict(catalystGrade) {
       reason  = 'Mid catalyst — requires high dilution + high cash need + droppiness 67+ to qualify even for CAUTION. Conditions not met.';
     }
 
-  // ── Fallback ──
   } else {
     verdict = 'CAUTION';
     reason  = 'Catalyst grade unclear — defaulting to caution. Check news and rerun.';
   }
 
-  // ── Inst% modifier — downgrade GO to CAUTION ──
   if (verdict === 'GO' && instPct >= 20 && instPct <= 40) {
     verdict = 'CAUTION';
     reason += ' ⚠ Downgraded: institutional ownership at ' + instPct.toFixed(1) + '% introduces squeeze risk.';
@@ -849,11 +861,9 @@ async function analyse() {
       userMessage += '- ' + f[0] + ': ' + val + '\n';
     });
   }
-  // Pass institutional ownership if available
   if (window.currentInstPct !== undefined) {
     userMessage += '- Institutional Ownership: ' + window.currentInstPct.toFixed(1) + '%\n';
   }
-  // Pass droppiness if available
   if (window.currentDroppiness) {
     userMessage += '\nDROPPINESS SCORE (4hr chart, 12 month lookback):\n';
     userMessage += '- Score: ' + window.currentDroppiness.score + '/100\n';
@@ -884,7 +894,6 @@ async function analyse() {
     var clean = rawText.replace(/```json|```/g, '').trim();
     var result = JSON.parse(clean);
 
-    // ── GATEKEEPER — hard logic overrides AI verdict ──
     var gk = gatekeeperVerdict(result.catalystGrade);
     result.verdict = gk.verdict;
     result.gatekeeperReason = gk.reason;
@@ -909,7 +918,6 @@ async function analyse() {
     if (saveRes.status === 201 || saveRes.ok) {
       saveIndicator.className = 'save-indicator saved';
       saveIndicator.textContent = 'Saved to database';
-      // Try to capture the analysis id for outcome logging
       try {
         var savedData = await supabaseRequest('news_analyses?select=id&order=created_at.desc&limit=1');
         var savedJson = await savedData.json();
@@ -942,6 +950,13 @@ function renderResult(r, ticker, priceContext) {
   document.getElementById('gatekeeperReason').textContent = r.gatekeeperReason || '';
   document.getElementById('reasoningText').textContent = r.reasoning;
 
+  // Store current result for scanner log
+  window.currentResultTicker = ticker;
+  window.currentResultVerdict = r.verdict;
+  window.currentResultGrade = r.catalystGrade;
+  window.currentResultReason = r.gatekeeperReason || '';
+  window.currentResultReasoning = r.reasoning || '';
+
   var setupList = document.getElementById('setupList');
   setupList.innerHTML = '';
   var setupSection = document.getElementById('setupSection');
@@ -968,6 +983,17 @@ function renderResult(r, ticker, priceContext) {
 
   document.getElementById('footerTime').textContent = 'Analysed ' + new Date().toLocaleTimeString();
 
+  // Show Save to Log box — always visible after any analysis
+  var saveLogBox = document.getElementById('saveLogBox');
+  var saveLogBtn = document.getElementById('saveLogBtn');
+  var saveLogStatus = document.getElementById('saveLogStatus');
+  saveLogBox.classList.add('visible');
+  saveLogBtn.disabled = false;
+  saveLogBtn.textContent = 'Save to Log';
+  saveLogBtn.className = 'save-log-btn';
+  saveLogStatus.className = 'save-log-status';
+  saveLogStatus.textContent = '';
+
   // Show outcome panel only for GO or CAUTION
   var outcomePanel = document.getElementById('outcomePanel');
   var outcomeSaved = document.getElementById('outcomeSaved');
@@ -992,6 +1018,70 @@ function renderResult(r, ticker, priceContext) {
   panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
+// ── SAVE TO SCANNER LOG ──────────────────────────────────────────────────────
+async function saveToScannerLog() {
+  var btn = document.getElementById('saveLogBtn');
+  var status = document.getElementById('saveLogStatus');
+
+  btn.disabled = true;
+  btn.textContent = 'Saving...';
+  status.className = 'save-log-status';
+  status.textContent = '';
+
+  try {
+    var today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
+
+    var payload = {
+      trading_date: today,
+      ticker: window.currentResultTicker || '',
+      catalyst_description: window.currentResultReasoning || '',
+      catalyst_grade: window.currentResultGrade || '',
+      verdict: window.currentResultVerdict || '',
+      verdict_reason: window.currentResultReason || '',
+      droppiness_score: window.currentDroppiness ? parseFloat(window.currentDroppiness.score) : null,
+      droppiness_rating: window.currentDroppiness ? window.currentDroppiness.rating : '',
+      dilution_overall: currentDilution ? (currentDilution.overall_offering_risk || '') : '',
+      dilution_cash_need: currentDilution ? (currentDilution.cash_need || '') : '',
+      dilution_offering_risk: currentDilution ? (currentDilution.dilution || '') : '',
+      dilution_offering_frequency: currentDilution ? (currentDilution.offering_frequency || '') : '',
+      dilution_warrant_exercise: currentDilution ? (currentDilution.warrant_exercise || '') : '',
+      dilution_nasdaq_compliance: currentDilution ? (currentDilution.nasdaq_compliance || '') : '',
+      inst_percent: window.currentInstPct !== undefined ? window.currentInstPct : null,
+      insider_percent: window.currentInsiderPct !== undefined ? window.currentInsiderPct : null,
+      float_shares: window.currentFloat || null,
+      market_cap: window.currentMarketCap || null,
+      price_at_analysis: null
+    };
+
+    var res = await fetch(SUPABASE_URL + '/rest/v1/scanner_log', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': SUPABASE_KEY,
+        'Authorization': 'Bearer ' + SUPABASE_KEY,
+        'Prefer': 'return=minimal'
+      },
+      body: JSON.stringify(payload)
+    });
+
+    if (res.status === 201 || res.ok) {
+      btn.textContent = '✅ Saved to Log';
+      btn.className = 'save-log-btn saved';
+      status.className = 'save-log-status visible';
+      status.textContent = (payload.ticker || 'Ticker') + ' logged for ' + today + ' — fill in HOD and outcome this evening on the Scanner Log page';
+    } else {
+      throw new Error('Save failed — status ' + res.status);
+    }
+  } catch(e) {
+    btn.disabled = false;
+    btn.textContent = 'Save to Log';
+    status.className = 'save-log-status visible';
+    status.style.color = 'var(--nogo)';
+    status.textContent = 'Could not save — try again';
+    console.error('Scanner log save error:', e);
+  }
+}
+
 function showError(msg) {
   var el = document.getElementById('errorMsg');
   el.textContent = msg;
@@ -1012,13 +1102,22 @@ function clearAll() {
   document.getElementById('grokText').textContent = '';
   currentDilution = null;
   window.currentInstPct = undefined;
+  window.currentInsiderPct = undefined;
+  window.currentFloat = null;
+  window.currentMarketCap = null;
   window.currentDroppiness = null;
+  window.currentResultTicker = null;
+  window.currentResultVerdict = null;
+  window.currentResultGrade = null;
+  window.currentResultReason = null;
+  window.currentResultReasoning = null;
   var dp = document.getElementById('droppinessPanel');
   dp.className = 'droppiness-panel';
   document.getElementById('droppinessScore').textContent = '—';
   document.getElementById('droppinessStats').innerHTML = '';
   document.getElementById('errorMsg').classList.remove('visible');
   document.getElementById('saveIndicator').className = 'save-indicator';
+  document.getElementById('saveLogBox').classList.remove('visible');
   var panel = document.getElementById('resultPanel');
   panel.classList.remove('visible');
   setTimeout(function() { panel.style.display = 'none'; }, 400);
@@ -1043,10 +1142,8 @@ async function loadFromHistory(id) {
         tradeKillers: JSON.parse(item.trade_killers || '[]')
       }, item.ticker, item.price_context);
 
-      // Also reload the dilution/float/TLDR if we have a ticker
       if (item.ticker) {
         var ticker = item.ticker.toUpperCase();
-        // Reset droppiness
         window.currentDroppiness = null;
         document.getElementById('droppinessPanel').className = 'droppiness-panel';
         document.getElementById('droppinessScore').textContent = '—';
@@ -1055,7 +1152,6 @@ async function loadFromHistory(id) {
           applyFetchedData(fetchCache[ticker], ticker);
           document.getElementById('dilutionSource').textContent = 'via Ask Edgar (cached)';
         } else {
-          // Fetch fresh data in background
           var dilutionUrl = PROXY + '/askedgar/v1/dilution-rating?ticker=' + ticker;
           var floatUrl    = PROXY + '/askedgar/v1/float-outstanding?ticker=' + ticker;
           var tldrUrl     = PROXY + '/askedgar/v1/research-reports-tldr?ticker=' + ticker + '&limit=1';
@@ -1074,7 +1170,6 @@ async function loadFromHistory(id) {
             applyFetchedData(fakeCache, ticker);
           }).catch(function(e) { console.error('Could not reload ticker data', e); });
         }
-        // Always fetch droppiness fresh
         fetchDroppiness(ticker);
       }
       window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -1142,7 +1237,6 @@ async function logOutcome() {
   var catalystGrade = document.getElementById('catalystGrade').textContent;
   var droppinessScore = window.currentDroppiness ? window.currentDroppiness.score : null;
 
-  // Calculate giveback % from prices
   var givebackPct = null;
   if (hodPrice && exitPrice && hodPrice > exitPrice) {
     givebackPct = Math.round(((hodPrice - exitPrice) / hodPrice) * 100);
@@ -1193,7 +1287,7 @@ var gainersInterval = null;
 
 function getMarketSession() {
   var now = new Date();
-  var etOffset = -4; // EDT (BST period). Automatically correct — ET is always 5hrs behind BST
+  var etOffset = -4;
   var etHour = (now.getUTCHours() + etOffset + 24) % 24;
   var etMin = now.getUTCMinutes();
   var etTime = etHour + etMin / 60;
