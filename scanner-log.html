@@ -99,7 +99,19 @@
   .review-save-msg { font-family:var(--mono); font-size:12px; color:var(--go); letter-spacing:1px; display:none; }
   .review-save-msg.visible { display:block; }
   .empty-state { font-family:var(--mono); font-size:13px; color:var(--text-dim); letter-spacing:1px; padding:40px 0; text-align:center; border:1px solid var(--border); }
-  .analytics-panel { display:none; }
+  .session-strip-wrap { margin-bottom:16px; }
+  .session-strip-label { font-family:var(--mono); font-size:10px; letter-spacing:2px; text-transform:uppercase; color:var(--text-dim); margin-bottom:8px; display:flex; align-items:center; gap:10px; cursor:pointer; user-select:none; }
+  .session-strip-label span { color:var(--accent); font-size:10px; }
+  .session-strip { display:flex; gap:6px; flex-wrap:wrap; }
+  .session-chip { font-family:var(--mono); font-size:10px; padding:5px 10px; border:1px solid var(--border-bright); color:var(--text-dim); cursor:pointer; transition:all 0.15s; display:flex; align-items:center; gap:6px; }
+  .session-chip:hover { border-color:var(--accent); color:var(--accent); }
+  .session-chip.active { border-color:var(--accent); color:var(--accent); background:var(--accent-dim); }
+  .session-chip.has-reviews { border-color:rgba(0,230,118,0.3); }
+  .session-chip.has-reviews:hover { border-color:var(--go); color:var(--go); }
+  .session-chip.active.has-reviews { border-color:var(--go); color:var(--go); background:var(--go-dim); }
+  .chip-date { font-weight:700; }
+  .chip-badge { font-size:9px; color:var(--text-dim); letter-spacing:0; }
+  .chip-badge.reviewed { color:var(--go); }
   .analytics-panel.active { display:block; }
   .log-tab-panel { display:none; }
   .log-tab-panel.active { display:block; }
@@ -148,6 +160,12 @@
   </div>
 
   <div class="log-tab-panel active" id="tabLog">
+    <div class="session-strip-wrap" id="sessionStripWrap">
+      <div class="session-strip-label" onclick="toggleSessionStrip()">
+        Session History <span id="sessionStripToggle">▼ show all days</span>
+      </div>
+      <div class="session-strip" id="sessionStrip" style="display:none;"></div>
+    </div>
     <div class="date-bar">
       <label>Date</label>
       <button class="date-nav" onclick="shiftDate(-1)">◀</button>
@@ -194,7 +212,76 @@ function switchTab(tab) {
 }
 
 function todayNY() { return new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' }); }
-function initDate() { document.getElementById('dateInput').value = todayNY(); }
+function initDate() {
+  document.getElementById('dateInput').value = todayNY();
+  loadSessionHistory();
+}
+
+var sessionStripOpen = false;
+
+function toggleSessionStrip() {
+  sessionStripOpen = !sessionStripOpen;
+  document.getElementById('sessionStrip').style.display = sessionStripOpen ? 'flex' : 'none';
+  document.getElementById('sessionStripToggle').textContent = sessionStripOpen ? '▲ hide' : '▼ show all days';
+}
+
+async function loadSessionHistory() {
+  try {
+    // Get all distinct trading dates with counts
+    var res = await sbFetch('scanner_log?select=trading_date,gatekeeper_correct&order=trading_date.desc');
+    var data = await res.json();
+    if (!Array.isArray(data) || data.length === 0) return;
+
+    // Group by date
+    var dateMap = {};
+    data.forEach(function(row) {
+      var d = row.trading_date;
+      if (!dateMap[d]) dateMap[d] = { total: 0, reviewed: 0 };
+      dateMap[d].total++;
+      if (row.gatekeeper_correct) dateMap[d].reviewed++;
+    });
+
+    var dates = Object.keys(dateMap).sort().reverse();
+    if (dates.length <= 1) return; // Only today — no point showing strip
+
+    var strip = document.getElementById('sessionStrip');
+    var currentDate = document.getElementById('dateInput').value;
+
+    strip.innerHTML = dates.map(function(d) {
+      var info = dateMap[d];
+      var parts = d.split('-');
+      var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+      var label = parts[2] + ' ' + months[parseInt(parts[1])-1];
+      var hasReviews = info.reviewed > 0;
+      var isActive = d === currentDate;
+      var cls = 'session-chip' + (hasReviews ? ' has-reviews' : '') + (isActive ? ' active' : '');
+      var badge = info.reviewed + '/' + info.total + ' reviewed';
+      return '<div class="' + cls + '" onclick="jumpToDate(\'' + d + '\')">' +
+        '<span class="chip-date">' + label + '</span>' +
+        '<span class="chip-badge' + (hasReviews ? ' reviewed' : '') + '">' + badge + '</span>' +
+        '</div>';
+    }).join('');
+
+    // Auto-show if more than 3 days of history
+    if (dates.length > 3) {
+      sessionStripOpen = true;
+      strip.style.display = 'flex';
+      document.getElementById('sessionStripToggle').textContent = '▲ hide';
+    }
+
+  } catch(e) { console.error('Session history error:', e); }
+}
+
+function jumpToDate(date) {
+  document.getElementById('dateInput').value = date;
+  loadEntries();
+  // Update active chip
+  document.querySelectorAll('.session-chip').forEach(function(chip) {
+    chip.classList.toggle('active', chip.onclick.toString().includes(date));
+  });
+  // Refresh chip active states properly
+  loadSessionHistory();
+}
 function shiftDate(days) {
   var d = new Date(document.getElementById('dateInput').value + 'T12:00:00');
   d.setDate(d.getDate() + days);
