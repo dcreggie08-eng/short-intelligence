@@ -321,6 +321,15 @@ function buildReviewForm(entry) {
       '<button class="btn-option '+tradeSel('NO')+'" onclick="selectTrade(\''+id+'\',false)">No</button>' +
     '</div></div>' +
     '<div class="review-row-full"><div class="review-label">Your Actual Exit Level (if traded)</div>' + exitSelect + '</div>' +
+    '<div class="review-row-full trade-prices-row" id="tradePrices-'+id+'" style="display:'+(didTrade?'flex':'none')+';flex-direction:column;gap:6px;">' +
+      '<div class="review-label">Trade Prices — for Journal</div>' +
+      '<div style="display:flex;gap:12px;flex-wrap:wrap;">' +
+        '<div class="review-field" style="flex:1;min-width:120px;"><div class="review-label" style="font-size:10px;">Entry $</div><input type="number" class="review-input" id="entryPrice-'+id+'" placeholder="0.00" step="0.01" min="0" value="'+(entry.entry_price||'')+'" /></div>' +
+        '<div class="review-field" style="flex:1;min-width:120px;"><div class="review-label" style="font-size:10px;">Exit $</div><input type="number" class="review-input" id="exitPrice-'+id+'" placeholder="0.00" step="0.01" min="0" value="'+(entry.exit_price||'')+'" oninput="calcGivebackPreview(\''+id+'\')" /></div>' +
+        '<div style="display:flex;align-items:flex-end;padding-bottom:2px;"><div style="font-family:var(--display);font-weight:900;font-size:22px;color:var(--accent);min-width:60px;text-align:center;" id="givebackPreview-'+id+'">—</div></div>' +
+      '</div>' +
+      '<div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);margin-top:2px;">Giveback % calculated from PM HOD vs your exit. Saves automatically to Journal.</div>' +
+    '</div>' +
     '<div class="review-row-full"><div class="review-label">Note</div><input type="text" class="review-input" id="note-'+id+'" placeholder="One line — what happened, why, what you noticed" maxlength="200" value="'+note.replace(/"/g,'&quot;')+'" /></div>' +
     '<div class="review-actions"><button class="save-review-btn" id="saveBtn-'+id+'" onclick="saveReview(\''+id+'\')">Save Review</button><div class="review-save-msg" id="saveMsg-'+id+'">✓ Saved</div></div>';
 }
@@ -345,35 +354,125 @@ function selectTrade(id, val) {
   tradeSel[id] = val;
   var g = document.querySelectorAll('#form-'+id+' .btn-group')[2];
   if (g) g.querySelectorAll('.btn-option').forEach(function(b,i){var m=(i===0&&val===true)||(i===1&&val===false);b.className='btn-option'+(m?(i===0?' sel-yes':' sel-no'):'');});
+  // Show/hide trade price fields
+  var priceRow = document.getElementById('tradePrices-'+id);
+  if (priceRow) priceRow.style.display = val === true ? 'flex' : 'none';
+}
+
+function calcGivebackPreview(id) {
+  var pmHod = parseFloat(document.getElementById('pmHod-'+id).value) || 0;
+  var exit = parseFloat(document.getElementById('exitPrice-'+id).value) || 0;
+  var preview = document.getElementById('givebackPreview-'+id);
+  if (!preview) return;
+  if (pmHod > 0 && exit > 0 && pmHod > exit) {
+    var pct = Math.round(((pmHod - exit) / pmHod) * 100);
+    preview.textContent = pct + '%';
+    preview.style.color = 'var(--go)';
+  } else {
+    preview.textContent = '—';
+    preview.style.color = 'var(--accent)';
+  }
 }
 
 async function saveReview(id) {
   var btn = document.getElementById('saveBtn-'+id);
   var msg = document.getElementById('saveMsg-'+id);
   btn.disabled = true; btn.textContent = 'Saving...';
+
+  var pmHod = parseFloat(document.getElementById('pmHod-'+id).value)||null;
+  var omHod = parseFloat(document.getElementById('omHod-'+id).value)||null;
+  var fadeDest = document.getElementById('fadeDest-'+id).value||null;
+  var exitLevel = document.getElementById('exitLevel-'+id).value||null;
+  var note = document.getElementById('note-'+id).value.trim()||null;
+  var hodHigher = hodSel[id]||null;
+  var gkCorrect = gkSel[id]||null;
+  var didTrade = tradeSel[id]!==undefined?tradeSel[id]:null;
+  var entryPrice = parseFloat(document.getElementById('entryPrice-'+id) && document.getElementById('entryPrice-'+id).value)||null;
+  var exitPrice = parseFloat(document.getElementById('exitPrice-'+id) && document.getElementById('exitPrice-'+id).value)||null;
+
   var payload = {
-    premarket_hod: parseFloat(document.getElementById('pmHod-'+id).value)||null,
-    open_market_hod: parseFloat(document.getElementById('omHod-'+id).value)||null,
-    hod_which_higher: hodSel[id]||null,
-    fade_destination: document.getElementById('fadeDest-'+id).value||null,
-    gatekeeper_correct: gkSel[id]||null,
-    did_trade: tradeSel[id]!==undefined?tradeSel[id]:null,
-    actual_exit_level: document.getElementById('exitLevel-'+id).value||null,
-    note: document.getElementById('note-'+id).value.trim()||null
+    premarket_hod: pmHod,
+    open_market_hod: omHod,
+    hod_which_higher: hodHigher,
+    fade_destination: fadeDest,
+    gatekeeper_correct: gkCorrect,
+    did_trade: didTrade,
+    actual_exit_level: exitLevel,
+    note: note
   };
+
   try {
+    // Step 1 — save scanner log
     var res = await sbFetch('scanner_log?id=eq.'+id, 'PATCH', payload);
-    if (res.ok) {
-      btn.textContent='✓ Saved'; btn.className='save-review-btn saved'; msg.className='review-save-msg visible';
-      var h = document.querySelector('#card-'+id+' .entry-header');
-      if (h && !h.querySelector('.entry-saved-indicator')) {
-        var b=document.createElement('span'); b.className='entry-saved-indicator'; b.textContent='✓ Reviewed';
-        h.insertBefore(b, h.querySelector('.entry-toggle'));
+    if (!res.ok) throw new Error('Scanner log save failed');
+
+    // Step 2 — if traded, derive did_fade and write to trade_outcomes
+    if (didTrade === true) {
+      // Fetch the full scanner log entry to get ticker, verdict, grade, droppiness
+      var entryRes = await sbFetch('scanner_log?id=eq.'+id+'&select=*');
+      var entryData = await entryRes.json();
+      var entry = entryData && entryData[0];
+
+      if (entry) {
+        // Derive did_fade from verdict + gatekeeper_correct
+        // GO/CAUTION + YES = faded (gatekeeper was right to say trade)
+        // NO TRADE/NO GO + YES = did NOT fade (gatekeeper was right to block)
+        // NO TRADE/NO GO + NO = faded (gatekeeper was wrong to block)
+        // PARTIAL = treat as faded
+        var isBlockVerdict = entry.verdict === 'NO TRADE' || entry.verdict === 'NO GO';
+        var didFade;
+        if (gkCorrect === 'YES') {
+          didFade = !isBlockVerdict;
+        } else if (gkCorrect === 'NO') {
+          didFade = isBlockVerdict ? true : false;
+        } else {
+          // PARTIAL or unknown — treat as faded
+          didFade = true;
+        }
+
+        // Calculate giveback % from PM HOD vs exit price
+        var givebackPct = null;
+        if (pmHod && exitPrice && pmHod > exitPrice) {
+          givebackPct = Math.round(((pmHod - exitPrice) / pmHod) * 100);
+        }
+
+        await fetch(SUPABASE_URL + '/rest/v1/trade_outcomes', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': SUPABASE_KEY,
+            'Authorization': 'Bearer ' + SUPABASE_KEY,
+            'Prefer': 'return=minimal'
+          },
+          body: JSON.stringify({
+            ticker: entry.ticker || null,
+            analysis_id: null,
+            verdict: entry.verdict || null,
+            catalyst_grade: entry.catalyst_grade || null,
+            droppiness_score: entry.droppiness_score ? parseFloat(entry.droppiness_score) : null,
+            did_fade: didFade,
+            hod_giveback_pct: givebackPct,
+            note: note || null
+          })
+        });
       }
-    } else { throw new Error('fail'); }
+    }
+
+    // Step 3 — update UI
+    btn.textContent = didTrade ? '✓ Saved + Journal Updated' : '✓ Saved';
+    btn.className='save-review-btn saved';
+    msg.className='review-save-msg visible';
+    msg.textContent = didTrade ? '✓ Scanner log saved and trade written to Journal' : '';
+    var h = document.querySelector('#card-'+id+' .entry-header');
+    if (h && !h.querySelector('.entry-saved-indicator')) {
+      var b=document.createElement('span'); b.className='entry-saved-indicator'; b.textContent='✓ Reviewed';
+      h.insertBefore(b, h.querySelector('.entry-toggle'));
+    }
+
   } catch(e) {
     btn.disabled=false; btn.textContent='Save Review';
     msg.className='review-save-msg visible'; msg.style.color='var(--nogo)'; msg.textContent='Could not save — try again';
+    console.error('saveReview error:', e);
   }
 }
 
