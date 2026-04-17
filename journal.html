@@ -81,7 +81,10 @@
       <h1>Trade <span>Journal</span></h1>
       <p>Short Intelligence // Outcome Tracking</p>
     </div>
-    <a href="news-analyst.html" class="nav-link">← News Analyst</a>
+    <div style="display:flex;gap:10px;align-items:flex-start;flex-wrap:wrap;">
+      <a href="scanner-log.html" class="nav-link">Scanner Log</a>
+      <a href="news-analyst.html" class="nav-link">← News Analyst</a>
+    </div>
   </header>
 
   <div class="stats-row">
@@ -181,7 +184,8 @@ function renderTable(outcomes) {
     filtered.map(function(o) {
       var date = new Date(o.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
       var vc = o.verdict === 'GO' ? 'go' : 'caution';
-      var dropRating = o.droppiness_score >= 67 ? '🟢 ' : o.droppiness_score >= 34 ? '🟡 ' : o.droppiness_score ? '🔴 ' : '';
+      // Fixed: thresholds now match rest of system — 67+ High, 50-66 Medium, below 50 Low
+      var dropRating = o.droppiness_score >= 67 ? '🟢 ' : o.droppiness_score >= 50 ? '🟡 ' : o.droppiness_score ? '🔴 ' : '';
       return '<tr>' +
         '<td style="color:var(--text-dim)">' + date + '</td>' +
         '<td class="ticker-cell">' + (o.ticker || '—') + '</td>' +
@@ -211,11 +215,11 @@ function renderStats(outcomes) {
 }
 
 function renderInsights(outcomes) {
-  // Droppiness breakdown
-  var dropBuckets = { 'High (67+)': [], 'Medium (34-66)': [], 'Low (<34)': [] };
+  // Fixed: droppiness thresholds now match rest of system — 67+ High, 50-66 Medium, below 50 Low
+  var dropBuckets = { 'High (67+)': [], 'Medium (50-66)': [], 'Low (below 50)': [] };
   outcomes.forEach(function(o) {
     if (!o.droppiness_score) return;
-    var bucket = o.droppiness_score >= 67 ? 'High (67+)' : o.droppiness_score >= 34 ? 'Medium (34-66)' : 'Low (<34)';
+    var bucket = o.droppiness_score >= 67 ? 'High (67+)' : o.droppiness_score >= 50 ? 'Medium (50-66)' : 'Low (below 50)';
     dropBuckets[bucket].push(o);
   });
 
