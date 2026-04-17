@@ -11,9 +11,9 @@
     --surface: #0f1318;
     --border: #1e2530;
     --border-bright: #2e3a4a;
-    --text: #c8d4e0;
-    --text-dim: #5a6a7a;
-    --text-bright: #e8f0f8;
+    --text: #ffffff;
+    --text-dim: #8a9aaa;
+    --text-bright: #ffffff;
     --accent: #00d4ff;
     --accent-dim: rgba(0,212,255,0.12);
     --go: #00e676;
@@ -27,74 +27,62 @@
     --body: 'Barlow', sans-serif;
   }
   * { margin:0; padding:0; box-sizing:border-box; }
-  body { background:var(--bg); color:var(--text); font-family:var(--body); min-height:100vh; overflow-x:hidden; }
+  body { background:var(--bg); color:var(--text); font-family:var(--body); font-size:16px; min-height:100vh; overflow-x:hidden; }
   body::before { content:''; position:fixed; inset:0; background-image:linear-gradient(rgba(0,212,255,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(0,212,255,0.03) 1px,transparent 1px); background-size:40px 40px; pointer-events:none; z-index:0; }
   .container { position:relative; z-index:1; max-width:960px; margin:0 auto; padding:40px 24px 80px; }
-
-  /* HEADER */
   header { margin-bottom:28px; border-bottom:1px solid var(--border); padding-bottom:24px; }
   .header-top { display:flex; align-items:flex-start; justify-content:space-between; gap:16px; flex-wrap:wrap; }
   .logo-area h1 { font-family:var(--display); font-weight:900; font-size:38px; letter-spacing:2px; color:var(--text-bright); text-transform:uppercase; line-height:1; }
   .logo-area h1 span { color:var(--accent); }
-  .logo-area p { font-family:var(--mono); font-size:11px; color:var(--text-dim); letter-spacing:2px; margin-top:6px; text-transform:uppercase; }
+  .logo-area p { font-family:var(--mono); font-size:12px; color:var(--text-dim); letter-spacing:2px; margin-top:6px; text-transform:uppercase; }
   .header-links { display:flex; align-items:flex-start; gap:10px; flex-wrap:wrap; }
-  .nav-link { font-family:var(--mono); font-size:10px; letter-spacing:1.5px; padding:6px 12px; border:1px solid var(--border-bright); color:var(--accent); text-decoration:none; text-transform:uppercase; transition:all 0.2s; }
+  .nav-link { font-family:var(--mono); font-size:11px; letter-spacing:1.5px; padding:6px 12px; border:1px solid var(--border-bright); color:var(--accent); text-decoration:none; text-transform:uppercase; transition:all 0.2s; }
   .nav-link:hover { border-color:var(--accent); background:var(--accent-dim); }
-  .status-pill { font-family:var(--mono); font-size:10px; letter-spacing:1.5px; padding:6px 12px; border:1px solid var(--border-bright); color:var(--text-dim); text-transform:uppercase; }
-
-  /* TABS */
-  .tabs { display:flex; gap:0; border-bottom:1px solid var(--border); margin-bottom:28px; }
-  .tab { font-family:var(--mono); font-size:11px; letter-spacing:2px; text-transform:uppercase; padding:12px 20px; cursor:pointer; color:var(--text-dim); border-bottom:2px solid transparent; transition:all 0.2s; background:none; border-top:none; border-left:none; border-right:none; }
+  .status-pill { font-family:var(--mono); font-size:11px; letter-spacing:1.5px; padding:6px 12px; border:1px solid var(--border-bright); color:var(--text-dim); text-transform:uppercase; }
+  .tabs { display:flex; border-bottom:1px solid var(--border); margin-bottom:28px; }
+  .tab { font-family:var(--mono); font-size:12px; letter-spacing:2px; text-transform:uppercase; padding:12px 20px; cursor:pointer; color:var(--text-dim); border-bottom:2px solid transparent; transition:all 0.2s; background:none; border-top:none; border-left:none; border-right:none; }
   .tab:hover { color:var(--text); }
   .tab.active { color:var(--accent); border-bottom-color:var(--accent); }
-
-  /* DATE BAR */
   .date-bar { display:flex; align-items:center; gap:12px; margin-bottom:24px; flex-wrap:wrap; }
-  .date-bar label { font-family:var(--mono); font-size:10px; letter-spacing:2px; text-transform:uppercase; color:var(--text-dim); }
-  .date-input { background:var(--surface); border:1px solid var(--border); color:var(--text-bright); font-family:var(--mono); font-size:12px; padding:8px 12px; outline:none; }
+  .date-bar label { font-family:var(--mono); font-size:11px; letter-spacing:2px; text-transform:uppercase; color:var(--text-dim); }
+  .date-input { background:var(--surface); border:1px solid var(--border); color:var(--text-bright); font-family:var(--mono); font-size:13px; padding:8px 12px; outline:none; }
   .date-input:focus { border-color:var(--accent); }
-  .date-nav { font-family:var(--mono); font-size:12px; padding:8px 14px; border:1px solid var(--border-bright); color:var(--text-dim); cursor:pointer; background:transparent; transition:all 0.2s; }
+  .date-nav { font-family:var(--mono); font-size:13px; padding:8px 14px; border:1px solid var(--border-bright); color:var(--text-dim); cursor:pointer; background:transparent; transition:all 0.2s; }
   .date-nav:hover { border-color:var(--accent); color:var(--accent); }
-  .entry-count { font-family:var(--mono); font-size:10px; color:var(--text-dim); letter-spacing:1px; margin-left:auto; }
-
-  /* ENTRY CARDS */
+  .entry-count { font-family:var(--mono); font-size:12px; color:var(--text-dim); letter-spacing:1px; margin-left:auto; }
   .entries-list { display:flex; flex-direction:column; gap:10px; }
   .entry-card { background:var(--surface); border:1px solid var(--border); overflow:hidden; }
   .entry-header { display:flex; align-items:center; gap:12px; padding:14px 18px; cursor:pointer; transition:background 0.15s; flex-wrap:wrap; }
   .entry-header:hover { background:rgba(255,255,255,0.02); }
-  .entry-verdict { font-family:var(--display); font-weight:700; font-size:15px; letter-spacing:2px; text-transform:uppercase; min-width:80px; }
+  .entry-verdict { font-family:var(--display); font-weight:700; font-size:17px; letter-spacing:2px; text-transform:uppercase; min-width:85px; }
   .entry-verdict.go { color:var(--go); }
   .entry-verdict.caution { color:var(--caution); }
   .entry-verdict.nogo, .entry-verdict.notrade { color:var(--nogo); }
-  .entry-ticker { font-family:var(--mono); font-size:14px; color:var(--accent); font-weight:700; min-width:60px; }
-  .entry-grade { font-family:var(--mono); font-size:10px; letter-spacing:1px; color:var(--text-dim); padding:2px 8px; border:1px solid var(--border-bright); }
-  .entry-drop { font-family:var(--mono); font-size:11px; color:var(--text-dim); }
+  .entry-ticker { font-family:var(--mono); font-size:16px; color:var(--accent); font-weight:700; min-width:60px; }
+  .entry-grade { font-family:var(--mono); font-size:12px; letter-spacing:1px; color:var(--text-dim); padding:2px 8px; border:1px solid var(--border-bright); }
+  .entry-drop { font-family:var(--mono); font-size:13px; color:var(--text-dim); }
   .entry-drop span { color:var(--text-bright); }
   .entry-dilution-row { display:flex; gap:6px; flex-wrap:wrap; }
-  .mini-badge { font-family:var(--mono); font-size:9px; letter-spacing:1px; padding:2px 6px; border:1px solid; text-transform:uppercase; }
+  .mini-badge { font-family:var(--mono); font-size:10px; letter-spacing:1px; padding:2px 7px; border:1px solid; text-transform:uppercase; }
   .mini-badge.high { color:var(--nogo); border-color:rgba(255,61,90,0.4); }
   .mini-badge.medium { color:var(--caution); border-color:rgba(255,179,0,0.4); }
   .mini-badge.low { color:var(--go); border-color:rgba(0,230,118,0.3); }
   .mini-badge.unknown { color:var(--text-dim); border-color:var(--border-bright); }
   .entry-toggle { margin-left:auto; font-family:var(--mono); font-size:14px; color:var(--text-dim); flex-shrink:0; }
-  .entry-saved-indicator { font-family:var(--mono); font-size:9px; letter-spacing:1.5px; padding:2px 8px; border:1px solid rgba(0,230,118,0.3); color:var(--go); text-transform:uppercase; background:var(--go-dim); }
-
-  /* ENTRY REASON (collapsed preview) */
-  .entry-reason { padding:0 18px 12px; font-family:var(--mono); font-size:10px; color:var(--text-dim); letter-spacing:0.5px; line-height:1.5; border-bottom:1px solid var(--border); }
-
-  /* EVENING REVIEW FORM */
+  .entry-saved-indicator { font-family:var(--mono); font-size:10px; letter-spacing:1.5px; padding:2px 8px; border:1px solid rgba(0,230,118,0.3); color:var(--go); text-transform:uppercase; background:var(--go-dim); }
+  .entry-reason { padding:0 18px 12px; font-family:var(--mono); font-size:12px; color:var(--text-dim); letter-spacing:0.5px; line-height:1.6; border-bottom:1px solid var(--border); }
   .review-form { display:none; padding:20px 18px; border-top:1px solid var(--border); background:rgba(0,212,255,0.02); }
   .review-form.open { display:block; }
-  .review-title { font-family:var(--mono); font-size:10px; letter-spacing:2px; text-transform:uppercase; color:var(--accent); margin-bottom:16px; }
+  .review-title { font-family:var(--mono); font-size:12px; letter-spacing:2px; text-transform:uppercase; color:var(--accent); margin-bottom:16px; }
   .review-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px; }
   .review-field { display:flex; flex-direction:column; gap:6px; }
-  .review-label { font-family:var(--mono); font-size:9px; letter-spacing:2px; text-transform:uppercase; color:var(--text-dim); }
-  .review-input { background:var(--bg); border:1px solid var(--border); color:var(--text-bright); font-family:var(--mono); font-size:12px; padding:9px 12px; outline:none; width:100%; }
+  .review-label { font-family:var(--mono); font-size:11px; letter-spacing:2px; text-transform:uppercase; color:var(--text-dim); }
+  .review-input { background:var(--bg); border:1px solid var(--border); color:var(--text-bright); font-family:var(--mono); font-size:14px; padding:9px 12px; outline:none; width:100%; }
   .review-input:focus { border-color:var(--accent); }
-  .review-select { background:var(--bg); border:1px solid var(--border); color:var(--text-bright); font-family:var(--mono); font-size:12px; padding:9px 12px; outline:none; width:100%; cursor:pointer; appearance:none; }
+  .review-select { background:var(--bg); border:1px solid var(--border); color:var(--text-bright); font-family:var(--mono); font-size:14px; padding:9px 12px; outline:none; width:100%; cursor:pointer; appearance:none; }
   .review-select:focus { border-color:var(--accent); }
   .btn-group { display:flex; gap:6px; flex-wrap:wrap; }
-  .btn-option { font-family:var(--mono); font-size:10px; letter-spacing:1px; padding:7px 12px; border:1px solid var(--border-bright); background:transparent; color:var(--text-dim); cursor:pointer; transition:all 0.2s; text-transform:uppercase; }
+  .btn-option { font-family:var(--mono); font-size:12px; letter-spacing:1px; padding:8px 14px; border:1px solid var(--border-bright); background:transparent; color:var(--text-dim); cursor:pointer; transition:all 0.2s; text-transform:uppercase; }
   .btn-option:hover { border-color:var(--accent); color:var(--accent); }
   .btn-option.sel-yes { border-color:var(--go); color:var(--go); background:var(--go-dim); }
   .btn-option.sel-no { border-color:var(--nogo); color:var(--nogo); background:var(--nogo-dim); }
@@ -104,40 +92,33 @@
   .btn-option.sel-same { border-color:var(--text-dim); color:var(--text-dim); background:rgba(90,106,122,0.1); }
   .review-row-full { display:flex; flex-direction:column; gap:6px; margin-bottom:16px; }
   .review-actions { display:flex; align-items:center; gap:12px; margin-top:4px; }
-  .save-review-btn { font-family:var(--display); font-weight:700; font-size:14px; letter-spacing:2px; text-transform:uppercase; padding:10px 24px; background:rgba(255,255,255,0.85); color:#0a0a0a; border:none; cursor:pointer; transition:all 0.2s; }
+  .save-review-btn { font-family:var(--display); font-weight:700; font-size:15px; letter-spacing:2px; text-transform:uppercase; padding:10px 24px; background:rgba(255,255,255,0.85); color:#0a0a0a; border:none; cursor:pointer; transition:all 0.2s; }
   .save-review-btn:hover:not(:disabled) { background:#fff; }
   .save-review-btn:disabled { background:rgba(255,255,255,0.2); cursor:not-allowed; }
   .save-review-btn.saved { background:rgba(0,230,118,0.85); color:#000; }
-  .review-save-msg { font-family:var(--mono); font-size:10px; color:var(--go); letter-spacing:1px; display:none; }
+  .review-save-msg { font-family:var(--mono); font-size:12px; color:var(--go); letter-spacing:1px; display:none; }
   .review-save-msg.visible { display:block; }
-  .empty-state { font-family:var(--mono); font-size:12px; color:var(--text-dim); letter-spacing:1px; padding:40px 0; text-align:center; border:1px solid var(--border); }
-
-  /* ANALYTICS TAB */
+  .empty-state { font-family:var(--mono); font-size:13px; color:var(--text-dim); letter-spacing:1px; padding:40px 0; text-align:center; border:1px solid var(--border); }
   .analytics-panel { display:none; }
   .analytics-panel.active { display:block; }
   .log-tab-panel { display:none; }
   .log-tab-panel.active { display:block; }
-
-  /* STAT CARDS */
   .stat-cards { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:32px; }
   .stat-card { background:var(--surface); border:1px solid var(--border); padding:16px; }
-  .stat-card-label { font-family:var(--mono); font-size:9px; letter-spacing:2px; text-transform:uppercase; color:var(--text-dim); margin-bottom:8px; }
+  .stat-card-label { font-family:var(--mono); font-size:11px; letter-spacing:2px; text-transform:uppercase; color:var(--text-dim); margin-bottom:8px; }
   .stat-card-value { font-family:var(--display); font-weight:900; font-size:32px; letter-spacing:1px; color:var(--accent); line-height:1; }
-  .stat-card-sub { font-family:var(--mono); font-size:10px; color:var(--text-dim); margin-top:4px; }
-
-  /* ANALYTICS TABLES */
+  .stat-card-sub { font-family:var(--mono); font-size:12px; color:var(--text-dim); margin-top:4px; }
   .analytics-section { margin-bottom:32px; }
-  .analytics-title { font-family:var(--mono); font-size:10px; letter-spacing:2px; text-transform:uppercase; color:var(--accent); margin-bottom:14px; padding-bottom:8px; border-bottom:1px solid var(--border); }
+  .analytics-title { font-family:var(--mono); font-size:12px; letter-spacing:2px; text-transform:uppercase; color:var(--accent); margin-bottom:14px; padding-bottom:8px; border-bottom:1px solid var(--border); }
   .analytics-table { width:100%; border-collapse:collapse; }
-  .analytics-table th { font-family:var(--mono); font-size:9px; letter-spacing:2px; text-transform:uppercase; color:var(--text-dim); padding:8px 12px; text-align:left; border-bottom:1px solid var(--border); }
-  .analytics-table td { font-family:var(--mono); font-size:11px; color:var(--text); padding:10px 12px; border-bottom:1px solid rgba(30,37,48,0.6); }
+  .analytics-table th { font-family:var(--mono); font-size:11px; letter-spacing:2px; text-transform:uppercase; color:var(--text-dim); padding:8px 12px; text-align:left; border-bottom:1px solid var(--border); }
+  .analytics-table td { font-family:var(--mono); font-size:13px; color:var(--text); padding:10px 12px; border-bottom:1px solid rgba(30,37,48,0.6); }
   .analytics-table tr:hover td { background:rgba(255,255,255,0.02); }
   .pct-bar-wrap { display:flex; align-items:center; gap:8px; }
   .pct-bar { height:6px; background:var(--accent); border-radius:2px; min-width:2px; }
   .pct-bar.high-fade { background:var(--go); }
   .pct-bar.low-fade { background:var(--nogo); }
-  .analytics-note { font-family:var(--mono); font-size:10px; color:var(--text-dim); letter-spacing:1px; padding:20px; text-align:center; border:1px solid var(--border); }
-
+  .analytics-note { font-family:var(--mono); font-size:12px; color:var(--text-dim); letter-spacing:1px; padding:20px; text-align:center; border:1px solid var(--border); }
   @media (max-width:640px) {
     .stat-cards { grid-template-columns:1fr 1fr; }
     .review-grid { grid-template-columns:1fr; }
@@ -147,7 +128,6 @@
 </head>
 <body>
 <div class="container">
-
   <header>
     <div class="header-top">
       <div class="logo-area">
@@ -167,7 +147,6 @@
     <button class="tab" onclick="switchTab('analytics')">Analytics</button>
   </div>
 
-  <!-- ── DAILY LOG TAB ── -->
   <div class="log-tab-panel active" id="tabLog">
     <div class="date-bar">
       <label>Date</label>
@@ -181,36 +160,18 @@
     </div>
   </div>
 
-  <!-- ── ANALYTICS TAB ── -->
   <div class="analytics-panel" id="tabAnalytics">
-    <div class="stat-cards" id="statCards">
+    <div class="stat-cards">
       <div class="stat-card"><div class="stat-card-label">Total Logged</div><div class="stat-card-value" id="statTotal">—</div><div class="stat-card-sub">all time</div></div>
       <div class="stat-card"><div class="stat-card-label">Reviewed</div><div class="stat-card-value" id="statReviewed">—</div><div class="stat-card-sub">with outcomes</div></div>
       <div class="stat-card"><div class="stat-card-label">Fade Rate</div><div class="stat-card-value" id="statFadeRate">—</div><div class="stat-card-sub">gatekeeper was right</div></div>
       <div class="stat-card"><div class="stat-card-label">GO Accuracy</div><div class="stat-card-value" id="statGoAccuracy">—</div><div class="stat-card-sub">GO calls that faded</div></div>
     </div>
-
-    <div class="analytics-section">
-      <div class="analytics-title">Fade Rate by Droppiness Band</div>
-      <div id="dropTable"></div>
-    </div>
-
-    <div class="analytics-section">
-      <div class="analytics-title">Fade Rate by Verdict</div>
-      <div id="verdictTable"></div>
-    </div>
-
-    <div class="analytics-section">
-      <div class="analytics-title">Pre-Market HOD vs Open Market HOD — by Catalyst Grade</div>
-      <div id="hodTable"></div>
-    </div>
-
-    <div class="analytics-section">
-      <div class="analytics-title">Most Common Fade Destinations</div>
-      <div id="fadeDestTable"></div>
-    </div>
+    <div class="analytics-section"><div class="analytics-title">Fade Rate by Droppiness Band</div><div id="dropTable"></div></div>
+    <div class="analytics-section"><div class="analytics-title">Fade Rate by Verdict</div><div id="verdictTable"></div></div>
+    <div class="analytics-section"><div class="analytics-title">Pre-Market HOD vs Open Market HOD — by Catalyst Grade</div><div id="hodTable"></div></div>
+    <div class="analytics-section"><div class="analytics-title">Most Common Fade Destinations</div><div id="fadeDestTable"></div></div>
   </div>
-
 </div>
 
 <script>
@@ -219,38 +180,20 @@ const SUPABASE_KEY = 'sb_publishable_6gz5N7Txd7FbmgwKMep-PQ_V3F5XIrd';
 
 async function sbFetch(path, method, body) {
   method = method || 'GET';
-  var opts = {
-    method: method,
-    headers: {
-      'Content-Type': 'application/json',
-      'apikey': SUPABASE_KEY,
-      'Authorization': 'Bearer ' + SUPABASE_KEY,
-      'Prefer': method === 'PATCH' ? 'return=minimal' : ''
-    }
-  };
+  var opts = { method: method, headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Prefer': method === 'PATCH' ? 'return=minimal' : '' } };
   if (body) opts.body = JSON.stringify(body);
   return fetch(SUPABASE_URL + '/rest/v1/' + path, opts);
 }
 
-// ── TAB SWITCHING ────────────────────────────────────────────────────────────
 function switchTab(tab) {
-  document.querySelectorAll('.tab').forEach(function(t, i) {
-    t.classList.toggle('active', (i === 0 && tab === 'log') || (i === 1 && tab === 'analytics'));
-  });
+  document.querySelectorAll('.tab').forEach(function(t, i) { t.classList.toggle('active', (i===0&&tab==='log')||(i===1&&tab==='analytics')); });
   document.getElementById('tabLog').classList.toggle('active', tab === 'log');
   document.getElementById('tabAnalytics').classList.toggle('active', tab === 'analytics');
   if (tab === 'analytics') loadAnalytics();
 }
 
-// ── DATE HANDLING ────────────────────────────────────────────────────────────
-function todayNY() {
-  return new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
-}
-
-function initDate() {
-  document.getElementById('dateInput').value = todayNY();
-}
-
+function todayNY() { return new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' }); }
+function initDate() { document.getElementById('dateInput').value = todayNY(); }
 function shiftDate(days) {
   var d = new Date(document.getElementById('dateInput').value + 'T12:00:00');
   d.setDate(d.getDate() + days);
@@ -258,102 +201,71 @@ function shiftDate(days) {
   loadEntries();
 }
 
-// ── LOAD ENTRIES FOR SELECTED DATE ──────────────────────────────────────────
-async function loadEntries() {
-  var date = document.getElementById('dateInput').value;
-  var list = document.getElementById('entriesList');
-  var count = document.getElementById('entryCount');
-  list.innerHTML = '<div class="empty-state">Loading...</div>';
-
-  try {
-    var res = await sbFetch('scanner_log?trading_date=eq.' + date + '&order=created_at.asc&select=*');
-    var data = await res.json();
-
-    if (!Array.isArray(data) || data.length === 0) {
-      list.innerHTML = '<div class="empty-state">No entries for ' + formatDate(date) + ' — run analyses in the morning and hit Save to Log</div>';
-      count.textContent = '';
-      return;
-    }
-
-    count.textContent = data.length + ' ' + (data.length === 1 ? 'entry' : 'entries');
-    list.innerHTML = '';
-    data.forEach(function(entry) { list.appendChild(buildEntryCard(entry)); });
-
-    var pill = document.getElementById('dbStatus');
-    pill.textContent = 'DB Connected';
-    pill.style.color = 'var(--go)';
-    pill.style.borderColor = 'rgba(0,230,118,0.3)';
-
-  } catch(e) {
-    list.innerHTML = '<div class="empty-state">Could not load entries — check connection</div>';
-  }
-}
-
 function formatDate(d) {
-  var parts = d.split('-');
-  var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  return parts[2] + ' ' + months[parseInt(parts[1])-1] + ' ' + parts[0];
+  var p = d.split('-'), m = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  return p[2] + ' ' + m[parseInt(p[1])-1] + ' ' + p[0];
 }
 
 function verdictClass(v) {
   if (!v) return '';
   var u = v.toUpperCase();
-  if (u === 'GO') return 'go';
-  if (u === 'NO GO') return 'nogo';
-  if (u === 'NO TRADE') return 'notrade';
-  return 'caution';
+  return u==='GO'?'go':u==='NO GO'?'nogo':u==='NO TRADE'?'notrade':'caution';
 }
 
 function badgeClass(val) {
   if (!val) return 'unknown';
   var v = val.toString().toLowerCase();
-  if (v === 'high') return 'high';
-  if (v === 'medium' || v === 'moderate') return 'medium';
-  if (v === 'low') return 'low';
-  return 'unknown';
+  return v==='high'?'high':(v==='medium'||v==='moderate')?'medium':v==='low'?'low':'unknown';
 }
 
-// ── BUILD ENTRY CARD ─────────────────────────────────────────────────────────
+async function loadEntries() {
+  var date = document.getElementById('dateInput').value;
+  var list = document.getElementById('entriesList');
+  var count = document.getElementById('entryCount');
+  list.innerHTML = '<div class="empty-state">Loading...</div>';
+  try {
+    var res = await sbFetch('scanner_log?trading_date=eq.' + date + '&order=created_at.asc&select=*');
+    var data = await res.json();
+    if (!Array.isArray(data) || data.length === 0) {
+      list.innerHTML = '<div class="empty-state">No entries for ' + formatDate(date) + ' — run analyses in the morning and hit Save to Log</div>';
+      count.textContent = ''; return;
+    }
+    // Dedupe by ticker — keep most recent per ticker (which has review data if saved)
+    var seen = {}, deduped = [];
+    data.reverse().forEach(function(d) { if (!seen[d.ticker]) { seen[d.ticker]=true; deduped.push(d); } });
+    deduped.reverse();
+    count.textContent = deduped.length + ' ' + (deduped.length===1?'entry':'entries');
+    list.innerHTML = '';
+    deduped.forEach(function(entry) { list.appendChild(buildEntryCard(entry)); });
+    var pill = document.getElementById('dbStatus');
+    pill.textContent = 'DB Connected'; pill.style.color = 'var(--go)'; pill.style.borderColor = 'rgba(0,230,118,0.3)';
+  } catch(e) { list.innerHTML = '<div class="empty-state">Could not load entries — check connection</div>'; }
+}
+
 function buildEntryCard(entry) {
   var card = document.createElement('div');
   card.className = 'entry-card';
   card.id = 'card-' + entry.id;
-
   var hasReview = entry.fade_destination || entry.gatekeeper_correct || entry.premarket_hod;
   var dropScore = entry.droppiness_score ? entry.droppiness_score + '/100' : '—';
-  var dropRating = entry.droppiness_rating || '';
-
   var dilBadges = '';
-  var dilFields = [
-    { key: 'dilution_overall', label: 'Overall' },
-    { key: 'dilution_cash_need', label: 'Cash' },
-    { key: 'dilution_offering_risk', label: 'Dilution' }
-  ];
-  dilFields.forEach(function(f) {
+  [{ key:'dilution_overall',label:'Overall'},{ key:'dilution_cash_need',label:'Cash'},{ key:'dilution_offering_risk',label:'Dilution'}].forEach(function(f) {
     var val = entry[f.key];
-    if (val && val !== '') {
-      var cls = badgeClass(val);
-      dilBadges += '<span class="mini-badge ' + cls + '">' + f.label + ': ' + val.toUpperCase() + '</span>';
-    }
+    if (val && val!=='') dilBadges += '<span class="mini-badge ' + badgeClass(val) + '">' + f.label + ': ' + val.toUpperCase() + '</span>';
   });
-
   var savedBadge = hasReview ? '<span class="entry-saved-indicator">✓ Reviewed</span>' : '';
-
   card.innerHTML =
     '<div class="entry-header" onclick="toggleCard(\'' + entry.id + '\')">' +
-      '<div class="entry-verdict ' + verdictClass(entry.verdict) + '">' + (entry.verdict || '—') + '</div>' +
-      '<div class="entry-ticker">' + (entry.ticker || '—') + '</div>' +
-      '<div class="entry-grade">' + (entry.catalyst_grade || '—') + '</div>' +
-      (entry.droppiness_score ? '<div class="entry-drop">Drop: <span>' + dropScore + ' ' + dropRating + '</span></div>' : '') +
+      '<div class="entry-verdict ' + verdictClass(entry.verdict) + '">' + (entry.verdict||'—') + '</div>' +
+      '<div class="entry-ticker">' + (entry.ticker||'—') + '</div>' +
+      '<div class="entry-grade">' + (entry.catalyst_grade||'—') + '</div>' +
+      (entry.droppiness_score ? '<div class="entry-drop">Drop: <span>' + dropScore + ' ' + (entry.droppiness_rating||'') + '</span></div>' : '') +
       '<div class="entry-dilution-row">' + dilBadges + '</div>' +
       savedBadge +
       '<div class="entry-toggle" id="toggle-' + entry.id + '">▼</div>' +
     '</div>' +
     (entry.verdict_reason ? '<div class="entry-reason">' + entry.verdict_reason + '</div>' : '') +
-    '<div class="review-form" id="form-' + entry.id + '">' +
-      buildReviewForm(entry) +
-    '</div>';
-
+    '<div class="review-form" id="form-' + entry.id + '">' + buildReviewForm(entry) + '</div>';
   return card;
 }
 
@@ -365,7 +277,6 @@ function toggleCard(id) {
   toggle.textContent = isOpen ? '▼' : '▲';
 }
 
-// ── BUILD REVIEW FORM ────────────────────────────────────────────────────────
 function buildReviewForm(entry) {
   var id = entry.id;
   var pmHod = entry.premarket_hod || '';
@@ -377,322 +288,161 @@ function buildReviewForm(entry) {
   var actualExit = entry.actual_exit_level || '';
   var note = entry.note || '';
 
-  function hodSel(val) { return hodHigher === val ? 'sel-' + (val === 'PM' ? 'pm' : val === 'OM' ? 'om' : 'same') : ''; }
-  function gkSel(val) { return gkCorrect === val ? (val === 'YES' ? 'sel-yes' : val === 'NO' ? 'sel-no' : 'sel-partial') : ''; }
-  function tradeSel(val) { return (val === 'YES' && didTrade === true) || (val === 'NO' && didTrade === false) ? (val === 'YES' ? 'sel-yes' : 'sel-no') : ''; }
+  function hodSel(v) { return hodHigher===v?'sel-'+(v==='PM'?'pm':v==='OM'?'om':'same'):''; }
+  function gkSel(v) { return gkCorrect===v?(v==='YES'?'sel-yes':v==='NO'?'sel-no':'sel-partial'):''; }
+  function tradeSel(v) { return (v==='YES'&&didTrade===true)||(v==='NO'&&didTrade===false)?(v==='YES'?'sel-yes':'sel-no'):''; }
 
-  var fadeOptions = ['VWAP', 'Ghost Pivot', '76% Fib', '61% Fib', '38% Fib', 'Below VWAP', 'Did Not Fade'];
-  var fadeSelect = '<select class="review-select" id="fadeDest-' + id + '">' +
-    '<option value="">Select destination...</option>' +
-    fadeOptions.map(function(o) { return '<option value="' + o + '"' + (fadeDest === o ? ' selected' : '') + '>' + o + '</option>'; }).join('') +
-    '</select>';
+  var fadeOpts = ['VWAP','Ghost Pivot','76% Fib','61% Fib','38% Fib','Below VWAP','Did Not Fade'];
+  var exitOpts = ['VWAP','Ghost Pivot','76% Fib','61% Fib','38% Fib','Below VWAP','Stopped Out'];
 
-  var exitOptions = ['VWAP', 'Ghost Pivot', '76% Fib', '61% Fib', '38% Fib', 'Below VWAP', 'Stopped Out'];
-  var exitSelect = '<select class="review-select" id="exitLevel-' + id + '"' + (didTrade ? '' : '') + '>' +
-    '<option value="">Select exit...</option>' +
-    exitOptions.map(function(o) { return '<option value="' + o + '"' + (actualExit === o ? ' selected' : '') + '>' + o + '</option>'; }).join('') +
-    '</select>';
+  var fadeSelect = '<select class="review-select" id="fadeDest-' + id + '"><option value="">Select destination...</option>' +
+    fadeOpts.map(function(o){return '<option value="'+o+'"'+(fadeDest===o?' selected':'')+'>'+o+'</option>';}).join('') + '</select>';
+  var exitSelect = '<select class="review-select" id="exitLevel-' + id + '"><option value="">Select exit...</option>' +
+    exitOpts.map(function(o){return '<option value="'+o+'"'+(actualExit===o?' selected':'')+'>'+o+'</option>';}).join('') + '</select>';
 
   return '<div class="review-title">Evening Review</div>' +
-
     '<div class="review-grid">' +
-      '<div class="review-field"><div class="review-label">Pre-Market HOD $</div>' +
-        '<input type="number" class="review-input" id="pmHod-' + id + '" placeholder="0.00" step="0.01" min="0" value="' + pmHod + '" /></div>' +
-      '<div class="review-field"><div class="review-label">Open Market HOD $</div>' +
-        '<input type="number" class="review-input" id="omHod-' + id + '" placeholder="0.00" step="0.01" min="0" value="' + omHod + '" /></div>' +
+      '<div class="review-field"><div class="review-label">Pre-Market HOD $</div><input type="number" class="review-input" id="pmHod-'+id+'" placeholder="0.00" step="0.01" min="0" value="'+pmHod+'" /></div>' +
+      '<div class="review-field"><div class="review-label">Open Market HOD $</div><input type="number" class="review-input" id="omHod-'+id+'" placeholder="0.00" step="0.01" min="0" value="'+omHod+'" /></div>' +
     '</div>' +
-
-    '<div class="review-row-full"><div class="review-label">Which HOD was Higher?</div>' +
-      '<div class="btn-group">' +
-        '<button class="btn-option ' + hodSel('PM') + '" onclick="selectHOD(\'' + id + '\',\'PM\')">Pre-Market</button>' +
-        '<button class="btn-option ' + hodSel('OM') + '" onclick="selectHOD(\'' + id + '\',\'OM\')">Open Market</button>' +
-        '<button class="btn-option ' + hodSel('Same') + '" onclick="selectHOD(\'' + id + '\',\'Same\')">Same / Close</button>' +
-      '</div></div>' +
-
+    '<div class="review-row-full"><div class="review-label">Which HOD was Higher?</div><div class="btn-group">' +
+      '<button class="btn-option '+hodSel('PM')+'" onclick="selectHOD(\''+id+'\',\'PM\')">Pre-Market</button>' +
+      '<button class="btn-option '+hodSel('OM')+'" onclick="selectHOD(\''+id+'\',\'OM\')">Open Market</button>' +
+      '<button class="btn-option '+hodSel('Same')+'" onclick="selectHOD(\''+id+'\',\'Same\')">Same / Close</button>' +
+    '</div></div>' +
     '<div class="review-row-full"><div class="review-label">Where Did It Fade To?</div>' + fadeSelect + '</div>' +
-
-    '<div class="review-row-full"><div class="review-label">Was the Gatekeeper Correct?</div>' +
-      '<div class="btn-group">' +
-        '<button class="btn-option ' + gkSel('YES') + '" onclick="selectGK(\'' + id + '\',\'YES\')">✓ Yes</button>' +
-        '<button class="btn-option ' + gkSel('NO') + '" onclick="selectGK(\'' + id + '\',\'NO\')">✗ No</button>' +
-        '<button class="btn-option ' + gkSel('PARTIAL') + '" onclick="selectGK(\'' + id + '\',\'PARTIAL\')">~ Partial</button>' +
-      '</div></div>' +
-
-    '<div class="review-row-full"><div class="review-label">Did You Trade It?</div>' +
-      '<div class="btn-group">' +
-        '<button class="btn-option ' + tradeSel('YES') + '" onclick="selectTrade(\'' + id + '\',true)">Yes</button>' +
-        '<button class="btn-option ' + tradeSel('NO') + '" onclick="selectTrade(\'' + id + '\',false)">No</button>' +
-      '</div></div>' +
-
+    '<div class="review-row-full"><div class="review-label">Was the Gatekeeper Correct?</div><div class="btn-group">' +
+      '<button class="btn-option '+gkSel('YES')+'" onclick="selectGK(\''+id+'\',\'YES\')">✓ Yes</button>' +
+      '<button class="btn-option '+gkSel('NO')+'" onclick="selectGK(\''+id+'\',\'NO\')">✗ No</button>' +
+      '<button class="btn-option '+gkSel('PARTIAL')+'" onclick="selectGK(\''+id+'\',\'PARTIAL\')">~ Partial</button>' +
+    '</div></div>' +
+    '<div class="review-row-full"><div class="review-label">Did You Trade It?</div><div class="btn-group">' +
+      '<button class="btn-option '+tradeSel('YES')+'" onclick="selectTrade(\''+id+'\',true)">Yes</button>' +
+      '<button class="btn-option '+tradeSel('NO')+'" onclick="selectTrade(\''+id+'\',false)">No</button>' +
+    '</div></div>' +
     '<div class="review-row-full"><div class="review-label">Your Actual Exit Level (if traded)</div>' + exitSelect + '</div>' +
-
-    '<div class="review-row-full"><div class="review-label">Note</div>' +
-      '<input type="text" class="review-input" id="note-' + id + '" placeholder="One line — what happened, why, what you noticed" maxlength="200" value="' + note.replace(/"/g, '&quot;') + '" /></div>' +
-
-    '<div class="review-actions">' +
-      '<button class="save-review-btn" id="saveBtn-' + id + '" onclick="saveReview(\'' + id + '\')">Save Review</button>' +
-      '<div class="review-save-msg" id="saveMsg-' + id + '">✓ Saved</div>' +
-    '</div>';
+    '<div class="review-row-full"><div class="review-label">Note</div><input type="text" class="review-input" id="note-'+id+'" placeholder="One line — what happened, why, what you noticed" maxlength="200" value="'+note.replace(/"/g,'&quot;')+'" /></div>' +
+    '<div class="review-actions"><button class="save-review-btn" id="saveBtn-'+id+'" onclick="saveReview(\''+id+'\')">Save Review</button><div class="review-save-msg" id="saveMsg-'+id+'">✓ Saved</div></div>';
 }
 
-// ── BUTTON STATE TRACKING ────────────────────────────────────────────────────
-var hodSelections = {};
-var gkSelections = {};
-var tradeSelections = {};
+var hodSel={}, gkSel={}, tradeSel={};
 
 function selectHOD(id, val) {
-  hodSelections[id] = val;
-  var opts = ['PM','OM','Same'];
-  var classMap = { 'PM':'sel-pm', 'OM':'sel-om', 'Same':'sel-same' };
-  document.querySelectorAll('#form-' + id + ' .btn-group').forEach(function(group, idx) {
-    if (idx === 0) {
-      group.querySelectorAll('.btn-option').forEach(function(btn, i) {
-        btn.className = 'btn-option' + (opts[i] === val ? ' ' + classMap[opts[i]] : '');
-      });
-    }
-  });
+  hodSel[id] = val;
+  var opts=['PM','OM','Same'], map={'PM':'sel-pm','OM':'sel-om','Same':'sel-same'};
+  var g = document.querySelectorAll('#form-'+id+' .btn-group')[0];
+  if (g) g.querySelectorAll('.btn-option').forEach(function(b,i){b.className='btn-option'+(opts[i]===val?' '+map[opts[i]]:'')+''});
 }
 
 function selectGK(id, val) {
-  gkSelections[id] = val;
-  document.querySelectorAll('#form-' + id + ' .btn-group').forEach(function(group, idx) {
-    if (idx === 1) {
-      var opts = ['YES','NO','PARTIAL'];
-      var classMap = { 'YES':'sel-yes', 'NO':'sel-no', 'PARTIAL':'sel-partial' };
-      group.querySelectorAll('.btn-option').forEach(function(btn, i) {
-        btn.className = 'btn-option' + (opts[i] === val ? ' ' + classMap[opts[i]] : '');
-      });
-    }
-  });
+  gkSel[id] = val;
+  var opts=['YES','NO','PARTIAL'], map={'YES':'sel-yes','NO':'sel-no','PARTIAL':'sel-partial'};
+  var g = document.querySelectorAll('#form-'+id+' .btn-group')[1];
+  if (g) g.querySelectorAll('.btn-option').forEach(function(b,i){b.className='btn-option'+(opts[i]===val?' '+map[opts[i]]:'');});
 }
 
 function selectTrade(id, val) {
-  tradeSelections[id] = val;
-  document.querySelectorAll('#form-' + id + ' .btn-group').forEach(function(group, idx) {
-    if (idx === 2) {
-      group.querySelectorAll('.btn-option').forEach(function(btn, i) {
-        var isMatch = (i === 0 && val === true) || (i === 1 && val === false);
-        btn.className = 'btn-option' + (isMatch ? (i === 0 ? ' sel-yes' : ' sel-no') : '');
-      });
-    }
-  });
+  tradeSel[id] = val;
+  var g = document.querySelectorAll('#form-'+id+' .btn-group')[2];
+  if (g) g.querySelectorAll('.btn-option').forEach(function(b,i){var m=(i===0&&val===true)||(i===1&&val===false);b.className='btn-option'+(m?(i===0?' sel-yes':' sel-no'):'');});
 }
 
-// ── SAVE REVIEW ──────────────────────────────────────────────────────────────
 async function saveReview(id) {
-  var btn = document.getElementById('saveBtn-' + id);
-  var msg = document.getElementById('saveMsg-' + id);
-
-  btn.disabled = true;
-  btn.textContent = 'Saving...';
-
-  var pmHod = parseFloat(document.getElementById('pmHod-' + id).value) || null;
-  var omHod = parseFloat(document.getElementById('omHod-' + id).value) || null;
-  var fadeDest = document.getElementById('fadeDest-' + id).value || null;
-  var exitLevel = document.getElementById('exitLevel-' + id).value || null;
-  var note = document.getElementById('note-' + id).value.trim() || null;
-  var hodHigher = hodSelections[id] || null;
-  var gkCorrect = gkSelections[id] || null;
-  var didTrade = tradeSelections[id] !== undefined ? tradeSelections[id] : null;
-
+  var btn = document.getElementById('saveBtn-'+id);
+  var msg = document.getElementById('saveMsg-'+id);
+  btn.disabled = true; btn.textContent = 'Saving...';
   var payload = {
-    premarket_hod: pmHod,
-    open_market_hod: omHod,
-    hod_which_higher: hodHigher,
-    fade_destination: fadeDest,
-    gatekeeper_correct: gkCorrect,
-    did_trade: didTrade,
-    actual_exit_level: exitLevel,
-    note: note
+    premarket_hod: parseFloat(document.getElementById('pmHod-'+id).value)||null,
+    open_market_hod: parseFloat(document.getElementById('omHod-'+id).value)||null,
+    hod_which_higher: hodSel[id]||null,
+    fade_destination: document.getElementById('fadeDest-'+id).value||null,
+    gatekeeper_correct: gkSel[id]||null,
+    did_trade: tradeSel[id]!==undefined?tradeSel[id]:null,
+    actual_exit_level: document.getElementById('exitLevel-'+id).value||null,
+    note: document.getElementById('note-'+id).value.trim()||null
   };
-
   try {
-    var res = await sbFetch('scanner_log?id=eq.' + id, 'PATCH', payload);
+    var res = await sbFetch('scanner_log?id=eq.'+id, 'PATCH', payload);
     if (res.ok) {
-      btn.textContent = '✓ Saved';
-      btn.className = 'save-review-btn saved';
-      msg.className = 'review-save-msg visible';
-      // Update the header to show reviewed badge
-      var header = document.querySelector('#card-' + id + ' .entry-header');
-      if (header && !header.querySelector('.entry-saved-indicator')) {
-        var badge = document.createElement('span');
-        badge.className = 'entry-saved-indicator';
-        badge.textContent = '✓ Reviewed';
-        var toggle = header.querySelector('.entry-toggle');
-        header.insertBefore(badge, toggle);
+      btn.textContent='✓ Saved'; btn.className='save-review-btn saved'; msg.className='review-save-msg visible';
+      var h = document.querySelector('#card-'+id+' .entry-header');
+      if (h && !h.querySelector('.entry-saved-indicator')) {
+        var b=document.createElement('span'); b.className='entry-saved-indicator'; b.textContent='✓ Reviewed';
+        h.insertBefore(b, h.querySelector('.entry-toggle'));
       }
-    } else {
-      throw new Error('Save failed');
-    }
+    } else { throw new Error('fail'); }
   } catch(e) {
-    btn.disabled = false;
-    btn.textContent = 'Save Review';
-    msg.className = 'review-save-msg visible';
-    msg.style.color = 'var(--nogo)';
-    msg.textContent = 'Could not save — try again';
+    btn.disabled=false; btn.textContent='Save Review';
+    msg.className='review-save-msg visible'; msg.style.color='var(--nogo)'; msg.textContent='Could not save — try again';
   }
 }
 
-// ── ANALYTICS ────────────────────────────────────────────────────────────────
 async function loadAnalytics() {
   try {
     var res = await sbFetch('scanner_log?select=*&order=trading_date.desc');
     var data = await res.json();
     if (!Array.isArray(data)) return;
-
     var total = data.length;
-    var reviewed = data.filter(function(d) { return d.fade_destination || d.gatekeeper_correct; }).length;
-    var faded = data.filter(function(d) { return d.gatekeeper_correct === 'YES'; }).length;
-    var fadeRate = reviewed > 0 ? Math.round((faded / reviewed) * 100) : null;
-
-    var goCalls = data.filter(function(d) { return d.verdict === 'GO' && d.gatekeeper_correct; });
-    var goCorrect = goCalls.filter(function(d) { return d.gatekeeper_correct === 'YES'; }).length;
-    var goAccuracy = goCalls.length > 0 ? Math.round((goCorrect / goCalls.length) * 100) : null;
-
-    document.getElementById('statTotal').textContent = total;
-    document.getElementById('statReviewed').textContent = reviewed;
-    document.getElementById('statFadeRate').textContent = fadeRate !== null ? fadeRate + '%' : '—';
-    document.getElementById('statGoAccuracy').textContent = goAccuracy !== null ? goAccuracy + '%' : '—';
-
-    // Droppiness band table
-    renderDropTable(data);
-    renderVerdictTable(data);
-    renderHODTable(data);
-    renderFadeDestTable(data);
-
-  } catch(e) {
-    console.error('Analytics error:', e);
-  }
+    var reviewed = data.filter(function(d){return d.fade_destination||d.gatekeeper_correct;}).length;
+    var faded = data.filter(function(d){return d.gatekeeper_correct==='YES';}).length;
+    var fadeRate = reviewed>0?Math.round(faded/reviewed*100):null;
+    var goCalls = data.filter(function(d){return d.verdict==='GO'&&d.gatekeeper_correct;});
+    var goCorrect = goCalls.filter(function(d){return d.gatekeeper_correct==='YES';}).length;
+    var goAcc = goCalls.length>0?Math.round(goCorrect/goCalls.length*100):null;
+    document.getElementById('statTotal').textContent=total;
+    document.getElementById('statReviewed').textContent=reviewed;
+    document.getElementById('statFadeRate').textContent=fadeRate!==null?fadeRate+'%':'—';
+    document.getElementById('statGoAccuracy').textContent=goAcc!==null?goAcc+'%':'—';
+    renderDropTable(data); renderVerdictTable(data); renderHODTable(data); renderFadeDestTable(data);
+  } catch(e) { console.error('Analytics error:',e); }
 }
 
-function minSampleNote(n) {
-  if (n < 10) return ' <span style="color:var(--text-dim);font-size:9px">(need ' + (10-n) + ' more)</span>';
-  return '';
-}
+function sampleNote(n) { return n<10?' <span style="color:var(--text-dim);font-size:10px">(need '+(10-n)+' more)</span>':''; }
 
 function renderDropTable(data) {
-  var el = document.getElementById('dropTable');
-  var reviewed = data.filter(function(d) { return d.droppiness_score !== null && d.gatekeeper_correct; });
-
-  if (reviewed.length < 5) {
-    el.innerHTML = '<div class="analytics-note">Need at least 5 reviewed entries to show droppiness patterns. You have ' + reviewed.length + ' so far — keep logging.</div>';
-    return;
-  }
-
-  var bands = [
-    { label: 'High (67+)', filter: function(d) { return d.droppiness_score >= 67; } },
-    { label: 'Medium (50-66)', filter: function(d) { return d.droppiness_score >= 50 && d.droppiness_score < 67; } },
-    { label: 'Low (below 50)', filter: function(d) { return d.droppiness_score < 50; } }
-  ];
-
-  var rows = bands.map(function(band) {
-    var group = reviewed.filter(function(d) { return band.filter(d); });
-    var correct = group.filter(function(d) { return d.gatekeeper_correct === 'YES'; }).length;
-    var pct = group.length > 0 ? Math.round((correct / group.length) * 100) : null;
-    return { label: band.label, n: group.length, correct: correct, pct: pct };
-  });
-
-  el.innerHTML = '<table class="analytics-table"><thead><tr>' +
-    '<th>Band</th><th>Entries</th><th>Gatekeeper Correct</th><th>Rate</th>' +
-    '</tr></thead><tbody>' +
-    rows.map(function(r) {
-      var barClass = r.pct >= 65 ? 'high-fade' : r.pct < 40 ? 'low-fade' : '';
-      return '<tr><td>' + r.label + '</td><td>' + r.n + '</td><td>' + r.correct + '</td>' +
-        '<td><div class="pct-bar-wrap"><div class="pct-bar ' + barClass + '" style="width:' + (r.pct || 0) + 'px"></div>' +
-        '<span>' + (r.pct !== null ? r.pct + '%' : '—') + '</span>' + minSampleNote(r.n) + '</div></td></tr>';
-    }).join('') +
-    '</tbody></table>';
+  var el=document.getElementById('dropTable');
+  var rev=data.filter(function(d){return d.droppiness_score!==null&&d.gatekeeper_correct;});
+  if (rev.length<5){el.innerHTML='<div class="analytics-note">Need at least 5 reviewed entries to show droppiness patterns. You have '+rev.length+' so far.</div>';return;}
+  var bands=[{label:'High (67+)',f:function(d){return d.droppiness_score>=67;}},{label:'Medium (50-66)',f:function(d){return d.droppiness_score>=50&&d.droppiness_score<67;}},{label:'Low (below 50)',f:function(d){return d.droppiness_score<50;}}];
+  el.innerHTML='<table class="analytics-table"><thead><tr><th>Band</th><th>Entries</th><th>Gatekeeper Correct</th><th>Rate</th></tr></thead><tbody>'+
+    bands.map(function(b){var g=rev.filter(b.f),c=g.filter(function(d){return d.gatekeeper_correct==='YES';}).length,p=g.length>0?Math.round(c/g.length*100):null,bc=p>=65?'high-fade':p<40?'low-fade':'';
+      return '<tr><td>'+b.label+'</td><td>'+g.length+'</td><td>'+c+'</td><td><div class="pct-bar-wrap"><div class="pct-bar '+bc+'" style="width:'+(p||0)+'px"></div><span>'+(p!==null?p+'%':'—')+'</span>'+sampleNote(g.length)+'</div></td></tr>';
+    }).join('')+'</tbody></table>';
 }
 
 function renderVerdictTable(data) {
-  var el = document.getElementById('verdictTable');
-  var reviewed = data.filter(function(d) { return d.verdict && d.gatekeeper_correct; });
-
-  if (reviewed.length < 5) {
-    el.innerHTML = '<div class="analytics-note">Need 5+ reviewed entries. You have ' + reviewed.length + '.</div>';
-    return;
-  }
-
-  var verdicts = ['GO','CAUTION','NO TRADE','NO GO'];
-  var rows = verdicts.map(function(v) {
-    var group = reviewed.filter(function(d) { return d.verdict === v; });
-    var correct = group.filter(function(d) { return d.gatekeeper_correct === 'YES'; }).length;
-    var pct = group.length > 0 ? Math.round((correct / group.length) * 100) : null;
-    return { verdict: v, n: group.length, correct: correct, pct: pct };
-  }).filter(function(r) { return r.n > 0; });
-
-  el.innerHTML = '<table class="analytics-table"><thead><tr>' +
-    '<th>Verdict</th><th>Entries</th><th>Correct</th><th>Accuracy</th>' +
-    '</tr></thead><tbody>' +
-    rows.map(function(r) {
-      var barClass = r.pct >= 65 ? 'high-fade' : r.pct < 40 ? 'low-fade' : '';
-      return '<tr><td style="color:' + (r.verdict==='GO'?'var(--go)':r.verdict==='CAUTION'?'var(--caution)':'var(--nogo)') + '">' + r.verdict + '</td>' +
-        '<td>' + r.n + '</td><td>' + r.correct + '</td>' +
-        '<td><div class="pct-bar-wrap"><div class="pct-bar ' + barClass + '" style="width:' + (r.pct || 0) + 'px"></div>' +
-        '<span>' + (r.pct !== null ? r.pct + '%' : '—') + '</span>' + minSampleNote(r.n) + '</div></td></tr>';
-    }).join('') +
-    '</tbody></table>';
+  var el=document.getElementById('verdictTable');
+  var rev=data.filter(function(d){return d.verdict&&d.gatekeeper_correct;});
+  if (rev.length<5){el.innerHTML='<div class="analytics-note">Need 5+ reviewed entries. You have '+rev.length+'.</div>';return;}
+  var verdicts=['GO','CAUTION','NO TRADE','NO GO'];
+  var rows=verdicts.map(function(v){var g=rev.filter(function(d){return d.verdict===v;}),c=g.filter(function(d){return d.gatekeeper_correct==='YES';}).length,p=g.length>0?Math.round(c/g.length*100):null;return{verdict:v,n:g.length,correct:c,pct:p};}).filter(function(r){return r.n>0;});
+  el.innerHTML='<table class="analytics-table"><thead><tr><th>Verdict</th><th>Entries</th><th>Correct</th><th>Accuracy</th></tr></thead><tbody>'+
+    rows.map(function(r){var bc=r.pct>=65?'high-fade':r.pct<40?'low-fade':'',col=r.verdict==='GO'?'var(--go)':r.verdict==='CAUTION'?'var(--caution)':'var(--nogo)';
+      return '<tr><td style="color:'+col+'">'+r.verdict+'</td><td>'+r.n+'</td><td>'+r.correct+'</td><td><div class="pct-bar-wrap"><div class="pct-bar '+bc+'" style="width:'+(r.pct||0)+'px"></div><span>'+(r.pct!==null?r.pct+'%':'—')+'</span>'+sampleNote(r.n)+'</div></td></tr>';
+    }).join('')+'</tbody></table>';
 }
 
 function renderHODTable(data) {
-  var el = document.getElementById('hodTable');
-  var withHOD = data.filter(function(d) { return d.hod_which_higher && d.catalyst_grade; });
-
-  if (withHOD.length < 5) {
-    el.innerHTML = '<div class="analytics-note">Need 5+ entries with HOD data. You have ' + withHOD.length + '.</div>';
-    return;
-  }
-
-  var grades = ['WEAK/FLUFF','MID','STRONG'];
-  var rows = grades.map(function(g) {
-    var group = withHOD.filter(function(d) { return (d.catalyst_grade || '').toUpperCase() === g; });
-    var pm = group.filter(function(d) { return d.hod_which_higher === 'PM'; }).length;
-    var om = group.filter(function(d) { return d.hod_which_higher === 'OM'; }).length;
-    var same = group.filter(function(d) { return d.hod_which_higher === 'Same'; }).length;
-    return { grade: g, n: group.length, pm: pm, om: om, same: same };
-  }).filter(function(r) { return r.n > 0; });
-
-  el.innerHTML = '<table class="analytics-table"><thead><tr>' +
-    '<th>Catalyst Grade</th><th>Entries</th><th>PM HOD Higher</th><th>OM HOD Higher</th><th>Same</th>' +
-    '</tr></thead><tbody>' +
-    rows.map(function(r) {
-      return '<tr><td>' + r.grade + '</td><td>' + r.n + '</td>' +
-        '<td style="color:var(--accent)">' + r.pm + ' (' + (r.n>0?Math.round(r.pm/r.n*100):0) + '%)</td>' +
-        '<td style="color:var(--go)">' + r.om + ' (' + (r.n>0?Math.round(r.om/r.n*100):0) + '%)</td>' +
-        '<td>' + r.same + '</td></tr>';
-    }).join('') +
-    '</tbody></table>';
+  var el=document.getElementById('hodTable');
+  var w=data.filter(function(d){return d.hod_which_higher&&d.catalyst_grade;});
+  if (w.length<5){el.innerHTML='<div class="analytics-note">Need 5+ entries with HOD data. You have '+w.length+'.</div>';return;}
+  var grades=['WEAK/FLUFF','MID','STRONG'];
+  var rows=grades.map(function(g){var gr=w.filter(function(d){return(d.catalyst_grade||'').toUpperCase()===g;}),pm=gr.filter(function(d){return d.hod_which_higher==='PM';}).length,om=gr.filter(function(d){return d.hod_which_higher==='OM';}).length,same=gr.filter(function(d){return d.hod_which_higher==='Same';}).length;return{grade:g,n:gr.length,pm:pm,om:om,same:same};}).filter(function(r){return r.n>0;});
+  el.innerHTML='<table class="analytics-table"><thead><tr><th>Catalyst Grade</th><th>Entries</th><th>PM HOD Higher</th><th>OM HOD Higher</th><th>Same</th></tr></thead><tbody>'+
+    rows.map(function(r){return '<tr><td>'+r.grade+'</td><td>'+r.n+'</td><td style="color:var(--accent)">'+r.pm+' ('+(r.n>0?Math.round(r.pm/r.n*100):0)+'%)</td><td style="color:var(--go)">'+r.om+' ('+(r.n>0?Math.round(r.om/r.n*100):0)+'%)</td><td>'+r.same+'</td></tr>';}).join('')+'</tbody></table>';
 }
 
 function renderFadeDestTable(data) {
-  var el = document.getElementById('fadeDestTable');
-  var withDest = data.filter(function(d) { return d.fade_destination; });
-
-  if (withDest.length < 5) {
-    el.innerHTML = '<div class="analytics-note">Need 5+ entries with fade destinations. You have ' + withDest.length + '.</div>';
-    return;
-  }
-
-  var counts = {};
-  withDest.forEach(function(d) {
-    counts[d.fade_destination] = (counts[d.fade_destination] || 0) + 1;
-  });
-
-  var sorted = Object.keys(counts).sort(function(a,b) { return counts[b] - counts[a]; });
-
-  el.innerHTML = '<table class="analytics-table"><thead><tr>' +
-    '<th>Fade Destination</th><th>Count</th><th>Frequency</th>' +
-    '</tr></thead><tbody>' +
-    sorted.map(function(dest) {
-      var n = counts[dest];
-      var pct = Math.round((n / withDest.length) * 100);
-      return '<tr><td>' + dest + '</td><td>' + n + '</td>' +
-        '<td><div class="pct-bar-wrap"><div class="pct-bar" style="width:' + (pct*1.5) + 'px"></div><span>' + pct + '%</span></div></td></tr>';
-    }).join('') +
-    '</tbody></table>';
+  var el=document.getElementById('fadeDestTable');
+  var w=data.filter(function(d){return d.fade_destination;});
+  if (w.length<5){el.innerHTML='<div class="analytics-note">Need 5+ entries with fade destinations. You have '+w.length+'.</div>';return;}
+  var counts={};
+  w.forEach(function(d){counts[d.fade_destination]=(counts[d.fade_destination]||0)+1;});
+  var sorted=Object.keys(counts).sort(function(a,b){return counts[b]-counts[a];});
+  el.innerHTML='<table class="analytics-table"><thead><tr><th>Fade Destination</th><th>Count</th><th>Frequency</th></tr></thead><tbody>'+
+    sorted.map(function(dest){var n=counts[dest],p=Math.round(n/w.length*100);return '<tr><td>'+dest+'</td><td>'+n+'</td><td><div class="pct-bar-wrap"><div class="pct-bar" style="width:'+(p*1.5)+'px"></div><span>'+p+'%</span></div></td></tr>';}).join('')+'</tbody></table>';
 }
 
-// ── INIT ─────────────────────────────────────────────────────────────────────
 initDate();
 loadEntries();
 </script>
