@@ -227,13 +227,11 @@
   </header>
   <div class="gainers-strip-wrap"><div class="gainers-strip" id="gainersStrip"><span class="gainers-strip-label">Top Gainers</span><span class="gainers-strip-status" id="gainersStatus">Loading...</span></div></div>
   <div class="input-section">
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:12px;">
-      <div class="field-group"><label>Ticker Symbol</label><input type="text" id="ticker" placeholder="e.g. ARTL" maxlength="10" /></div>
+    <div style="display:grid;grid-template-columns:120px 1fr auto auto;gap:12px;align-items:end;margin-bottom:16px;">
+      <div class="field-group"><label>Ticker</label><input type="text" id="ticker" placeholder="e.g. ARTL" maxlength="10" /></div>
       <div class="field-group"><label>Price Context (optional)</label><input type="text" id="priceContext" placeholder="e.g. +45% premarket, VWAP +38%" /></div>
-    </div>
-    <div style="display:grid;grid-template-columns:1fr auto;gap:12px;margin-bottom:16px;">
-      <button class="float-analyse-btn" id="floatAnalyseBtn" onclick="analyse()"><span class="scan-line"></span>&#9650; Analyse</button>
       <button class="fetch-btn" id="fetchBtn" onclick="fetchNews()">Fetch News</button>
+      <button class="float-analyse-btn" id="floatAnalyseBtn" onclick="analyse()"><span class="scan-line"></span>&#9650; Analyse</button>
     </div>
     <div class="field-group">
       <div class="news-label"><label>Dilution Profile</label><span class="news-source" id="dilutionSource"></span></div>
