@@ -76,7 +76,7 @@
   .save-indicator.saved { display:block; color:var(--go); border:1px solid rgba(0,230,118,0.2); background:var(--go-dim); }
   .save-indicator.save-error { display:block; color:var(--caution); border:1px solid rgba(255,179,0,0.2); background:var(--caution-dim); }
 
-  .float-analyse-btn { background:var(--accent); color:#000; border:none; font-family:var(--display); font-weight:700; font-size:14px; letter-spacing:3px; text-transform:uppercase; padding:12px 16px; cursor:pointer; transition:all 0.2s; overflow:hidden; display:none; white-space:nowrap; width:100%; }
+  .float-analyse-btn { background:var(--accent); color:#000; border:none; font-family:var(--display); font-weight:700; font-size:16px; letter-spacing:3px; text-transform:uppercase; padding:14px 16px; cursor:pointer; transition:all 0.2s; overflow:hidden; display:none; white-space:nowrap; width:100%; }
   .float-analyse-btn:hover:not(:disabled) { background:#33ddff; }
   .float-analyse-btn:disabled { background:var(--border-bright); color:var(--text-dim); cursor:not-allowed; }
   .float-analyse-btn.loading { background:var(--border-bright); color:var(--accent); cursor:not-allowed; }
@@ -227,13 +227,13 @@
   </header>
   <div class="gainers-strip-wrap"><div class="gainers-strip" id="gainersStrip"><span class="gainers-strip-label">Top Gainers</span><span class="gainers-strip-status" id="gainersStatus">Loading...</span></div></div>
   <div class="input-section">
-    <div class="ticker-row">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:12px;">
       <div class="field-group"><label>Ticker Symbol</label><input type="text" id="ticker" placeholder="e.g. ARTL" maxlength="10" /></div>
       <div class="field-group"><label>Price Context (optional)</label><input type="text" id="priceContext" placeholder="e.g. +45% premarket, VWAP +38%" /></div>
-      <div style="display:flex;flex-direction:column;gap:8px;">
-        <button class="fetch-btn" id="fetchBtn" onclick="fetchNews()" style="width:100%;">Fetch News</button>
-        <button class="float-analyse-btn" id="floatAnalyseBtn" onclick="analyse()"><span class="scan-line"></span>&#9650; Analyse</button>
-      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr auto;gap:12px;margin-bottom:16px;">
+      <button class="float-analyse-btn" id="floatAnalyseBtn" onclick="analyse()"><span class="scan-line"></span>&#9650; Analyse</button>
+      <button class="fetch-btn" id="fetchBtn" onclick="fetchNews()">Fetch News</button>
     </div>
     <div class="field-group">
       <div class="news-label"><label>Dilution Profile</label><span class="news-source" id="dilutionSource"></span></div>
