@@ -75,6 +75,14 @@
   .save-indicator.saving { display:block; color:var(--accent); border:1px solid var(--accent-dim); background:var(--accent-dim); }
   .save-indicator.saved { display:block; color:var(--go); border:1px solid rgba(0,230,118,0.2); background:var(--go-dim); }
   .save-indicator.save-error { display:block; color:var(--caution); border:1px solid rgba(255,179,0,0.2); background:var(--caution-dim); }
+
+  .float-analyse-btn { position:fixed; bottom:28px; right:28px; z-index:999; background:var(--accent); color:#000; border:none; font-family:var(--display); font-weight:700; font-size:16px; letter-spacing:3px; text-transform:uppercase; padding:14px 28px; cursor:pointer; box-shadow:0 4px 24px rgba(0,212,255,0.35); transition:all 0.2s; overflow:hidden; display:none; }
+  .float-analyse-btn:hover:not(:disabled) { background:#33ddff; box-shadow:0 6px 32px rgba(0,212,255,0.5); transform:translateY(-2px); }
+  .float-analyse-btn:disabled { background:var(--border-bright); color:var(--text-dim); cursor:not-allowed; box-shadow:none; }
+  .float-analyse-btn.loading { background:var(--border-bright); color:var(--accent); cursor:not-allowed; }
+  .float-analyse-btn.visible { display:block; }
+  .float-analyse-btn .scan-line { position:absolute; top:0; left:0; width:25%; height:100%; background:linear-gradient(90deg,transparent,rgba(0,212,255,0.4),transparent); display:none; }
+  .float-analyse-btn.loading .scan-line { display:block; animation:scan 1.2s linear infinite; }
   .result-panel { margin-top:32px; border:1px solid var(--border); background:var(--surface); opacity:0; transform:translateY(12px); transition:opacity 0.4s,transform 0.4s; display:none; }
   .result-panel.visible { opacity:1; transform:translateY(0); display:block; }
   .verdict-banner { padding:20px 24px; display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap; border-bottom:1px solid var(--border); }
@@ -241,7 +249,7 @@
     </div>
     <div class="field-group">
       <div class="news-label"><label>News / PR / Filing</label><span class="news-source" id="newsSource"></span></div>
-      <textarea id="newsInput" placeholder="Paste news here &mdash; or type a ticker above and click Fetch News..."></textarea>
+      <textarea id="newsInput" oninput="toggleFloatBtn()" placeholder="Paste news here &mdash; or type a ticker above and click Fetch News..."></textarea>
     </div>
     <div class="btn-row">
       <button class="analyse-btn" id="analyseBtn" onclick="analyse()"><span class="scan-line"></span><span class="btn-text">Analyse</span></button>
@@ -549,6 +557,7 @@ function applyFetchedData(cached, ticker) {
     var title = item.title || '';
     var combined = title ? title + '\n\n' + text : text;
     document.getElementById('newsInput').value = combined.replace(/\*\*(.*?)\*\*/g, '$1').replace(/\*(.*?)\*/g, '$1').replace(/^- /gm, '\u2022 ').replace(/\n{3,}/g, '\n\n').trim();
+    toggleFloatBtn();
     var d = new Date(item.filed_at);
     newsSource.textContent = 'via Ask Edgar \u00b7 ' + d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
   } else { showError('No news found for ' + ticker); }
@@ -583,7 +592,21 @@ function applyFetchedData(cached, ticker) {
     var t = tldrData.results[0];
     if (t.tldr_text) {
       var tldrFormatted = t.tldr_text.replace(/\\n/g, '\n').replace(/:red_circle:/g, '\uD83D\uDD34').replace(/:yellow_circle:/g, '\uD83D\uDFE1').replace(/:green_circle:/g, '\uD83D\uDFE2').replace(/:orange_circle:/g, '\uD83D\uDFE0').replace(/:white_circle:/g, '\u26AA').replace(/:black_circle:/g, '\u26AB').replace(/<https?:\/\/[^>]+>/g, '').replace(/https?:\/\/\S+/g, '').replace(/\s+\./g, '.').replace(/[ \t]{2,}/g, ' ').trim();
-      grokText.textContent = tldrFormatted;
+      // Render with visual hierarchy — bearish (red circle) lines get emphasis
+      var lines = tldrFormatted.split('\n');
+      grokText.innerHTML = lines.map(function(line) {
+        var t = line.trim();
+        if (!t) return '';
+        var isBearish = t.charAt(0) === '🔴';
+        var isSummary = t.startsWith('Overall') || t.startsWith('Summary');
+        if (isBearish) {
+          return '<div style="display:flex;align-items:baseline;gap:8px;padding:5px 10px;margin:3px 0;border-left:2px solid rgba(255,61,90,0.6);background:rgba(255,61,90,0.05);font-size:13px;font-weight:500;color:var(--text-bright);">' + t + '</div>';
+        } else if (isSummary) {
+          return '<div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border);font-size:12px;color:var(--text-dim);font-style:italic;">' + t + '</div>';
+        } else {
+          return '<div style="padding:3px 0;font-size:13px;font-weight:300;color:var(--text);">' + t + '</div>';
+        }
+      }).filter(Boolean).join('');
       grokPanel.classList.add('visible');
     }
   }
@@ -648,6 +671,7 @@ async function analyse() {
   saveIndicator.className = 'save-indicator';
   if (!newsText) { showError('Paste some news first.'); return; }
   btn.disabled = true; btn.classList.add('loading'); btnText.textContent = 'Scanning...';
+  syncFloatBtn(true, true);
 
   var userMessage = 'Analyse this news for a potential short trade.\n\n';
   if (ticker) userMessage += 'TICKER: ' + ticker + '\n';
@@ -692,7 +716,8 @@ async function analyse() {
       loadHistory();
     } else { saveIndicator.className = 'save-indicator save-error'; saveIndicator.textContent = 'Analysis complete \u2014 not saved'; }
   } catch(e) { showError('Something went wrong: ' + e.message); }
-  finally { btn.disabled = false; btn.classList.remove('loading'); btnText.textContent = 'Analyse'; }
+  finally { btn.disabled = false; btn.classList.remove('loading'); btnText.textContent = 'Analyse';
+  syncFloatBtn(false, false); }
 }
 
 function renderResult(r, ticker, priceContext) {
@@ -774,6 +799,7 @@ function clearAll() {
   document.getElementById('errorMsg').classList.remove('visible');
   document.getElementById('saveIndicator').className = 'save-indicator';
   document.getElementById('saveLogBox').classList.remove('visible');
+  document.getElementById('floatAnalyseBtn').classList.remove('visible');
   var panel = document.getElementById('resultPanel'); panel.classList.remove('visible');
   setTimeout(function() { panel.style.display = 'none'; }, 400);
   window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -820,6 +846,18 @@ function updateClocks() {
 }
 updateClocks(); setInterval(updateClocks, 1000);
 
+
+function toggleFloatBtn() {
+  var hasNews = document.getElementById('newsInput').value.trim().length > 0;
+  var floatBtn = document.getElementById('floatAnalyseBtn');
+  if (hasNews) { floatBtn.classList.add('visible'); } else { floatBtn.classList.remove('visible'); }
+}
+
+function syncFloatBtn(disabled, loading) {
+  var floatBtn = document.getElementById('floatAnalyseBtn');
+  floatBtn.disabled = disabled;
+  if (loading) { floatBtn.classList.add('loading'); } else { floatBtn.classList.remove('loading'); }
+}
 var currentFadeSelection = null, currentAnalysisId = null;
 
 function selectFade(didFade) { currentFadeSelection = didFade; document.getElementById('fadeYes').className = 'fade-btn' + (didFade ? ' selected-yes' : ''); document.getElementById('fadeNo').className = 'fade-btn' + (!didFade ? ' selected-no' : ''); }
@@ -877,6 +915,7 @@ async function loadGainers() {
 
 loadGainers(); gainersInterval = setInterval(loadGainers, 60000);
 </script>
+<button class="float-analyse-btn" id="floatAnalyseBtn" onclick="analyse()"><span class="scan-line"></span>▲ Analyse</button>
 </div><!-- /page-body -->
 </body>
 </html>
