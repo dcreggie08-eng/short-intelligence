@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>News Analyst — Short Intelligence</title>
+<title>Short Intel — Short Intelligence</title>
 <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow+Condensed:wght@300;400;600;700;900&family=Barlow:wght@300;400;500&family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -110,15 +110,15 @@
   .verdict-banner.caution .catalyst-grade { color:var(--caution); }
   .verdict-banner.notrade .catalyst-grade { color:var(--nogo); }
   .ticker-display { font-family:var(--mono); font-size:13px; color:var(--text-dim); letter-spacing:1px; }
-  .save-log-box { display:none; margin:0; padding:14px 24px; background:rgba(255,255,255,0.05); border-bottom:1px solid var(--border); }
+  .save-log-box { display:none; margin:0; padding:14px 24px; background:rgba(0,212,255,0.04); border-bottom:1px solid var(--border); border-left:2px solid var(--accent); }
   .save-log-box.visible { display:block; }
   .save-log-inner { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; }
-  .save-log-label { font-family:var(--mono); font-size:10px; letter-spacing:2px; text-transform:uppercase; color:rgba(255,255,255,0.7); margin-bottom:2px; }
+  .save-log-label { font-family:var(--mono); font-size:10px; letter-spacing:2px; text-transform:uppercase; color:var(--accent); margin-bottom:2px; }
   .save-log-sub { font-family:var(--mono); font-size:12px; color:var(--text-dim); letter-spacing:0.5px; }
-  .save-log-btn { background:rgba(255,255,255,0.85); color:#0a0a0a; border:none; border-radius:6px; padding:9px 22px; font-family:var(--mono); font-size:12px; font-weight:700; cursor:pointer; transition:all 0.2s; white-space:nowrap; }
-  .save-log-btn:hover:not(:disabled) { background:#ffffff; }
+  .save-log-btn { background:transparent; color:var(--accent); border:1px solid var(--accent); padding:9px 22px; font-family:var(--mono); font-size:12px; font-weight:700; cursor:pointer; transition:all 0.2s; white-space:nowrap; letter-spacing:1px; text-transform:uppercase; }
+  .save-log-btn:hover:not(:disabled) { background:var(--accent-dim); }
   .save-log-btn:disabled { background:rgba(255,255,255,0.3); cursor:not-allowed; }
-  .save-log-btn.saved { background:rgba(0,230,118,0.85); color:#000; }
+  .save-log-btn.saved { background:var(--go-dim); color:var(--go); border-color:var(--go); }
   .save-log-status { font-family:var(--mono); font-size:12px; color:var(--text-dim); margin-top:6px; display:none; }
   .save-log-status.visible { display:block; }
   .result-body { padding:24px; display:grid; gap:24px; }
@@ -213,7 +213,7 @@
 <div class="container">
   <header>
     <div class="header-top">
-      <div class="logo-area"><h1>News <span>Analyst</span></h1><p>Short Intelligence // Pre-Market Edition</p></div>
+      <div class="logo-area"><h1>Short <span>Intel</span></h1><p>Short Intelligence // Pre-Market Intelligence</p></div>
       <div class="clocks">
         <div class="clock-item"><span class="clock-flag">&#127482;&#127480;</span><span class="clock-time" id="clockNY">--:-- --</span><span class="clock-tz" id="tzNY">ET</span></div>
         <div class="clock-item"><span class="clock-flag">&#127468;&#127463;</span><span class="clock-time" id="clockUK">--:-- --</span><span class="clock-tz" id="tzUK">GMT</span></div>
