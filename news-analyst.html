@@ -76,9 +76,9 @@
   .save-indicator.saved { display:block; color:var(--go); border:1px solid rgba(0,230,118,0.2); background:var(--go-dim); }
   .save-indicator.save-error { display:block; color:var(--caution); border:1px solid rgba(255,179,0,0.2); background:var(--caution-dim); }
 
-  .float-analyse-btn { position:fixed; bottom:28px; right:28px; z-index:999; background:var(--accent); color:#000; border:none; font-family:var(--display); font-weight:700; font-size:16px; letter-spacing:3px; text-transform:uppercase; padding:14px 28px; cursor:pointer; box-shadow:0 4px 24px rgba(0,212,255,0.35); transition:all 0.2s; overflow:hidden; display:none; }
-  .float-analyse-btn:hover:not(:disabled) { background:#33ddff; box-shadow:0 6px 32px rgba(0,212,255,0.5); transform:translateY(-2px); }
-  .float-analyse-btn:disabled { background:var(--border-bright); color:var(--text-dim); cursor:not-allowed; box-shadow:none; }
+  .float-analyse-btn { background:var(--accent); color:#000; border:none; font-family:var(--display); font-weight:700; font-size:14px; letter-spacing:3px; text-transform:uppercase; padding:12px 16px; cursor:pointer; transition:all 0.2s; overflow:hidden; display:none; white-space:nowrap; width:100%; }
+  .float-analyse-btn:hover:not(:disabled) { background:#33ddff; }
+  .float-analyse-btn:disabled { background:var(--border-bright); color:var(--text-dim); cursor:not-allowed; }
   .float-analyse-btn.loading { background:var(--border-bright); color:var(--accent); cursor:not-allowed; }
   .float-analyse-btn.visible { display:block; }
   .float-analyse-btn .scan-line { position:absolute; top:0; left:0; width:25%; height:100%; background:linear-gradient(90deg,transparent,rgba(0,212,255,0.4),transparent); display:none; }
@@ -230,7 +230,10 @@
     <div class="ticker-row">
       <div class="field-group"><label>Ticker Symbol</label><input type="text" id="ticker" placeholder="e.g. ARTL" maxlength="10" /></div>
       <div class="field-group"><label>Price Context (optional)</label><input type="text" id="priceContext" placeholder="e.g. +45% premarket, VWAP +38%" /></div>
-      <button class="fetch-btn" id="fetchBtn" onclick="fetchNews()">Fetch News</button>
+      <div style="display:flex;flex-direction:column;gap:8px;">
+        <button class="fetch-btn" id="fetchBtn" onclick="fetchNews()" style="width:100%;">Fetch News</button>
+        <button class="float-analyse-btn" id="floatAnalyseBtn" onclick="analyse()"><span class="scan-line"></span>&#9650; Analyse</button>
+      </div>
     </div>
     <div class="field-group">
       <div class="news-label"><label>Dilution Profile</label><span class="news-source" id="dilutionSource"></span></div>
@@ -915,7 +918,6 @@ async function loadGainers() {
 
 loadGainers(); gainersInterval = setInterval(loadGainers, 60000);
 </script>
-<button class="float-analyse-btn" id="floatAnalyseBtn" onclick="analyse()"><span class="scan-line"></span>▲ Analyse</button>
 </div><!-- /page-body -->
 </body>
 </html>
