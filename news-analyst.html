@@ -65,7 +65,7 @@
   .analyse-btn.loading { background:var(--border-bright); color:var(--accent); cursor:not-allowed; }
   @keyframes scan { 0% { transform:translateX(-100%); } 100% { transform:translateX(400%); } }
   .scan-line { position:absolute; top:0; left:0; width:25%; height:100%; background:linear-gradient(90deg,transparent,rgba(0,212,255,0.4),transparent); display:none; }
-  .analyse-btn.loading .scan-line { display:block; animation:scan 1.2s linear infinite; }
+  .analyse-btn.loading .btn-text { animation: pulse 1.2s ease-in-out infinite; }
   .clear-btn { background:transparent; border:1px solid var(--border-bright); color:var(--text-dim); font-family:var(--display); font-weight:700; font-size:16px; letter-spacing:2px; text-transform:uppercase; padding:16px; cursor:pointer; transition:all 0.2s; }
   .clear-btn:hover { border-color:var(--accent); color:var(--accent); }
   .fetch-btn { background:transparent; border:1px solid var(--accent); color:var(--accent); font-family:var(--display); font-weight:700; font-size:14px; letter-spacing:2px; text-transform:uppercase; padding:12px 16px; cursor:pointer; transition:all 0.2s; white-space:nowrap; height:46px; }
@@ -82,7 +82,7 @@
   .float-analyse-btn.loading { background:var(--border-bright); color:var(--accent); cursor:not-allowed; }
   .float-analyse-btn.visible { display:block; }
   .float-analyse-btn .scan-line { position:absolute; top:0; left:0; width:25%; height:100%; background:linear-gradient(90deg,transparent,rgba(0,212,255,0.4),transparent); display:none; }
-  .float-analyse-btn.loading .scan-line { display:block; animation:scan 1.2s linear infinite; }
+  .float-analyse-btn.loading .btn-text { animation: pulse 1.2s ease-in-out infinite; }
   .result-panel { margin-top:32px; border:1px solid var(--border); background:var(--surface); opacity:0; transform:translateY(12px); transition:opacity 0.4s,transform 0.4s; display:none; }
   .result-panel.visible { opacity:1; transform:translateY(0); display:block; }
   .verdict-banner { padding:20px 24px; display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap; border-bottom:1px solid var(--border); }
@@ -231,7 +231,7 @@
       <div class="field-group"><label>Ticker</label><input type="text" id="ticker" placeholder="e.g. ARTL" maxlength="10" /></div>
       <div class="field-group"><label>Price Context (optional)</label><input type="text" id="priceContext" placeholder="e.g. +45% premarket, VWAP +38%" /></div>
       <button class="fetch-btn" id="fetchBtn" onclick="fetchNews()">Fetch News</button>
-      <button class="float-analyse-btn" id="floatAnalyseBtn" onclick="analyse()"><span class="scan-line"></span>&#9650; Analyse</button>
+      <button class="float-analyse-btn" id="floatAnalyseBtn" onclick="analyse()"><span class="scan-line"></span><span class="btn-text">&#9650; Analyse</span></button>
     </div>
     <div class="field-group">
       <div class="news-label"><label>Dilution Profile</label><span class="news-source" id="dilutionSource"></span></div>
