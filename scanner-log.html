@@ -69,6 +69,7 @@
   .mini-badge.low { color:var(--go); border-color:rgba(0,230,118,0.3); }
   .mini-badge.unknown { color:var(--text-dim); border-color:var(--border-bright); }
   .entry-toggle { margin-left:auto; font-family:var(--mono); font-size:14px; color:var(--text-dim); flex-shrink:0; }
+  .entry-toggle.reviewed { color:var(--caution); }
   .entry-saved-indicator { font-family:var(--mono); font-size:10px; letter-spacing:1.5px; padding:2px 8px; border:1px solid rgba(0,230,118,0.3); color:var(--go); text-transform:uppercase; background:var(--go-dim); }
   .entry-reason { padding:0 18px 12px; font-family:var(--mono); font-size:12px; color:var(--text-dim); letter-spacing:0.5px; line-height:1.6; border-bottom:1px solid var(--border); }
   .review-form { display:none; padding:20px 18px; border-top:1px solid var(--border); background:rgba(0,212,255,0.02); }
@@ -352,7 +353,7 @@ function buildEntryCard(entry) {
       (entry.droppiness_score ? '<div class="entry-drop">Drop: <span>' + dropScore + ' ' + (entry.droppiness_rating||'') + '</span></div>' : '') +
       '<div class="entry-dilution-row">' + dilBadges + '</div>' +
       savedBadge +
-      '<div class="entry-toggle" id="toggle-' + entry.id + '">▼</div>' +
+      '<div class="entry-toggle' + (hasReview ? ' reviewed' : '') + '" id="toggle-' + entry.id + '">▼</div>' +
     '</div>' +
     (entry.verdict_reason ? '<div class="entry-reason">' + entry.verdict_reason + '</div>' : '') +
     '<div class="review-form" id="form-' + entry.id + '">' + buildReviewForm(entry) + '</div>';
@@ -605,6 +606,8 @@ async function saveReview(id) {
       var b=document.createElement('span'); b.className='entry-saved-indicator'; b.textContent='✓ Reviewed';
       h.insertBefore(b, h.querySelector('.entry-toggle'));
     }
+    var toggle = document.getElementById('toggle-'+id);
+    if (toggle) toggle.classList.add('reviewed');
 
   } catch(e) {
     btn.disabled=false; btn.textContent='Save Review';
