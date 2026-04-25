@@ -83,6 +83,9 @@
   .float-analyse-btn.visible { display:block; }
   .float-analyse-btn .scan-line { position:absolute; top:0; left:0; width:25%; height:100%; background:linear-gradient(90deg,transparent,rgba(0,212,255,0.4),transparent); display:none; }
   .float-analyse-btn.loading .btn-text { animation: pulse 1.2s ease-in-out infinite; }
+  .action-slot { display:block; min-width:110px; }
+  .float-new-btn { background:transparent; border:1px solid var(--border-bright); color:var(--text-dim); font-family:var(--display); font-weight:700; font-size:14px; letter-spacing:2px; text-transform:uppercase; padding:12px 16px; cursor:pointer; transition:all 0.2s; white-space:nowrap; height:46px; display:block; width:100%; }
+  .float-new-btn:hover { border-color:var(--accent); color:var(--accent); }
   .result-panel { margin-top:32px; border:1px solid var(--border); background:var(--surface); opacity:0; transform:translateY(12px); transition:opacity 0.4s,transform 0.4s; display:none; }
   .result-panel.visible { opacity:1; transform:translateY(0); display:block; }
   .verdict-banner { padding:20px 24px; display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap; border-bottom:1px solid var(--border); }
@@ -227,11 +230,14 @@
   </header>
   <div class="gainers-strip-wrap"><div class="gainers-strip" id="gainersStrip"><span class="gainers-strip-label">Top Gainers</span><span class="gainers-strip-status" id="gainersStatus">Loading...</span></div></div>
   <div class="input-section">
-    <div style="display:grid;grid-template-columns:120px 1fr auto auto;gap:12px;align-items:end;margin-bottom:16px;">
-      <div class="field-group"><label>Ticker</label><input type="text" id="ticker" placeholder="e.g. ARTL" maxlength="10" /></div>
+    <div style="display:grid;grid-template-columns:120px minmax(220px,1fr) auto auto;gap:12px;align-items:end;margin-bottom:16px;">
+      <div class="field-group"><label>Ticker</label><input type="text" id="ticker" placeholder="e.g. ARTL" maxlength="10" onkeydown="if(event.key==='Enter'){event.preventDefault();fetchNews();}" /></div>
       <div class="field-group"><label>Price Context (optional)</label><input type="text" id="priceContext" placeholder="e.g. +45% premarket, VWAP +38%" /></div>
       <button class="fetch-btn" id="fetchBtn" onclick="fetchNews()">Fetch News</button>
-      <button class="float-analyse-btn" id="floatAnalyseBtn" onclick="analyse()"><span class="scan-line"></span><span class="btn-text">&#9650; Analyse</span></button>
+      <div class="action-slot" id="actionSlot">
+        <button class="float-analyse-btn" id="floatAnalyseBtn" onclick="analyse()"><span class="scan-line"></span><span class="btn-text">&#9650; Analyse</span></button>
+        <button class="float-new-btn" id="floatNewBtn" onclick="clearAll()">New &#8634;</button>
+      </div>
     </div>
     <div class="field-group">
       <div class="news-label"><label>Dilution Profile</label><span class="news-source" id="dilutionSource"></span></div>
@@ -351,8 +357,8 @@ RVOL (when provided)
 
 INSTITUTIONAL OWNERSHIP RULE (when provided)
 - Below 20% = no restriction
-- 20-40% = downgrade any GO to CAUTION
-- Above 40% = NO TRADE regardless
+- 20-50% = downgrade any GO to CAUTION
+- Above 50% = NO TRADE regardless
 
 CATALYST GRADING
 - STRONG: FDA approval, major partnership, genuine revenue contract. STAY AWAY.
@@ -574,8 +580,8 @@ function applyFetchedData(cached, ticker) {
     var insiderPct = f.insider_percent ? (f.insider_percent * 100) : 0;
     window.currentInstPct = instPct; window.currentFloat = f.float || null;
     window.currentMarketCap = f.market_cap_final || null; window.currentInsiderPct = insiderPct;
-    var instColor = instPct >= 40 ? 'var(--nogo)' : instPct >= 20 ? 'var(--caution)' : 'var(--go)';
-    var instWarning = instPct >= 40 ? ' <span style="color:var(--nogo)">\u26a0 NO TRADE</span>' : instPct >= 20 ? ' <span style="color:var(--caution)">\u26a0 CAUTION</span>' : '';
+    var instColor = instPct >= 50 ? 'var(--nogo)' : instPct >= 20 ? 'var(--caution)' : 'var(--go)';
+    var instWarning = instPct >= 50 ? ' <span style="color:var(--nogo)">\u26a0 NO TRADE</span>' : instPct >= 20 ? ' <span style="color:var(--caution)">\u26a0 CAUTION</span>' : '';
     infoBar.innerHTML =
       '<span style="color:var(--text-bright);font-weight:700">Float: <span style="color:var(--accent)">' + fmt(f.float) + '</span></span>' +
       '<span style="color:var(--text-bright);font-weight:700">OS: <span style="color:var(--text-bright)">' + fmt(f.outstanding) + '</span></span>' +
@@ -626,7 +632,7 @@ function gatekeeperVerdict(catalystGrade) {
   var dropLow = droppiness !== null && droppiness < 50;
 
   if (grade === 'STRONG') return { verdict: 'NO GO', reason: 'Strong catalyst detected \u2014 short thesis is invalid. Do not trade.' };
-  if (instPct > 40) return { verdict: 'NO TRADE', reason: 'Institutional ownership above 40% \u2014 squeeze risk too high. Hard block.' };
+  if (instPct > 50) return { verdict: 'NO TRADE', reason: 'Institutional ownership above 50% \u2014 squeeze risk too high. Hard block.' };
 
   var verdict, reason;
 
@@ -647,7 +653,7 @@ function gatekeeperVerdict(catalystGrade) {
     else { verdict = 'NO TRADE'; reason = 'Mid catalyst \u2014 requires high dilution + high cash need + droppiness 67+ to qualify even for CAUTION. Conditions not met.'; }
   } else { verdict = 'CAUTION'; reason = 'Catalyst grade unclear \u2014 defaulting to caution.'; }
 
-  if (verdict === 'GO' && instPct >= 20 && instPct <= 40) {
+  if (verdict === 'GO' && instPct >= 20 && instPct <= 50) {
     verdict = 'CAUTION';
     reason += ' \u26a0 Downgraded: institutional ownership at ' + instPct.toFixed(1) + '% introduces squeeze risk.';
   }
@@ -756,7 +762,7 @@ function renderResult(r, ticker, priceContext) {
     document.getElementById('exitPrice').value = ''; document.getElementById('outcomeCalc').textContent = '\u2014'; document.getElementById('outcomeNote').value = '';
   } else { outcomePanel.className = 'outcome-panel'; }
   panel.style.display = 'block';
-  requestAnimationFrame(function() { panel.classList.add('visible'); });
+  requestAnimationFrame(function() { panel.classList.add('visible'); if (typeof updateActionSlot === 'function') updateActionSlot(); });
   panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
@@ -803,6 +809,8 @@ function clearAll() {
   document.getElementById('floatAnalyseBtn').classList.remove('visible');
   var panel = document.getElementById('resultPanel'); panel.classList.remove('visible');
   setTimeout(function() { panel.style.display = 'none'; }, 400);
+  if (typeof updateActionSlot === 'function') updateActionSlot();
+  document.getElementById('ticker').focus();
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
@@ -848,10 +856,27 @@ function updateClocks() {
 updateClocks(); setInterval(updateClocks, 1000);
 
 
-function toggleFloatBtn() {
+function toggleFloatBtn() { updateActionSlot(); }
+
+function updateActionSlot() {
   var hasNews = document.getElementById('newsInput').value.trim().length > 0;
+  var resultPanel = document.getElementById('resultPanel');
+  var resultVisible = resultPanel && resultPanel.classList.contains('visible');
   var floatBtn = document.getElementById('floatAnalyseBtn');
-  if (hasNews) { floatBtn.classList.add('visible'); } else { floatBtn.classList.remove('visible'); }
+  var newBtn = document.getElementById('floatNewBtn');
+  if (!floatBtn || !newBtn) return;
+  // Show ANALYSE only in the middle state: news fetched, awaiting analysis.
+  // Otherwise show NEW (covers empty state and post-analysis state).
+  var showAnalyse = hasNews && !resultVisible;
+  if (showAnalyse) {
+    floatBtn.classList.add('visible');
+    floatBtn.style.display = 'block';
+    newBtn.style.display = 'none';
+  } else {
+    floatBtn.classList.remove('visible');
+    floatBtn.style.display = 'none';
+    newBtn.style.display = 'block';
+  }
 }
 
 function syncFloatBtn(disabled, loading) {
@@ -885,6 +910,7 @@ async function logOutcome() {
 }
 
 loadHistory();
+if (typeof updateActionSlot === 'function') updateActionSlot();
 var gainersInterval = null;
 var rvolInterval = null;
 var rvolCurrentTicker = null;
