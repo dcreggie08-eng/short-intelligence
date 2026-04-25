@@ -53,6 +53,11 @@
   input[type="text"] { background:var(--surface); border:1px solid var(--border); color:var(--text-bright); font-family:var(--mono); font-size:13px; padding:12px 14px; outline:none; transition:border-color 0.2s; width:100%; }
   input[type="text"]:focus { border-color:var(--accent); box-shadow:0 0 0 1px var(--accent-dim); }
   input[type="text"]::placeholder { color:var(--text-dim); }
+  .ticker-input-wrap { position:relative; display:flex; align-items:stretch; }
+  .ticker-prefix { position:absolute; left:14px; top:50%; transform:translateY(-50%); font-family:var(--mono); font-size:15px; font-weight:700; color:var(--accent); pointer-events:none; line-height:1; z-index:1; }
+  input.ticker-input { background:var(--surface); border:2px solid var(--nogo); border-radius:0; color:var(--text-bright); font-family:var(--mono); font-size:15px; font-weight:700; letter-spacing:2px; text-transform:uppercase; padding:12px 14px 12px 32px; outline:none; transition:border-color 0.2s, box-shadow 0.2s; width:100%; }
+  input.ticker-input:focus { border-color:var(--nogo); box-shadow:0 0 0 1px rgba(255,61,90,0.35), 0 0 12px rgba(255,61,90,0.25); }
+  input.ticker-input::placeholder { color:var(--text-dim); letter-spacing:1px; }
   textarea { background:var(--surface); border:1px solid var(--border); color:var(--text-bright); font-family:var(--body); font-size:14px; font-weight:300; line-height:1.7; padding:16px; outline:none; resize:vertical; min-height:180px; width:100%; transition:border-color 0.2s; }
   textarea:focus { border-color:var(--accent); box-shadow:0 0 0 1px var(--accent-dim); }
   textarea::placeholder { color:var(--text-dim); }
@@ -231,7 +236,7 @@
   <div class="gainers-strip-wrap"><div class="gainers-strip" id="gainersStrip"><span class="gainers-strip-label">Top Gainers</span><span class="gainers-strip-status" id="gainersStatus">Loading...</span></div></div>
   <div class="input-section">
     <div style="display:grid;grid-template-columns:120px minmax(220px,1fr) auto auto;gap:12px;align-items:end;margin-bottom:16px;">
-      <div class="field-group"><label>Ticker</label><input type="text" id="ticker" placeholder="e.g. ARTL" maxlength="10" onkeydown="if(event.key==='Enter'){event.preventDefault();fetchNews();}" /></div>
+      <div class="field-group"><label>Ticker</label><div class="ticker-input-wrap"><span class="ticker-prefix">$</span><input type="text" id="ticker" class="ticker-input" placeholder="" maxlength="10" autocomplete="off" autocapitalize="characters" spellcheck="false" oninput="this.value=this.value.toUpperCase()" onkeydown="if(event.key==='Enter'){event.preventDefault();fetchNews();}" /></div></div>
       <div class="field-group"><label>Price Context (optional)</label><input type="text" id="priceContext" placeholder="e.g. +45% premarket, VWAP +38%" /></div>
       <button class="fetch-btn" id="fetchBtn" onclick="fetchNews()">Fetch News</button>
       <div class="action-slot" id="actionSlot">
@@ -345,12 +350,13 @@ IMPORTANT: NO GO should only come from a STRONG catalyst. Low dilution on weak n
 
 DROPPINESS SCORE (when provided)
 - Score out of 100 based on 12 months of 4hr candle data
-- Below 50 = Low, 50-66 = Medium, 67+ = High
+- Below 35 = Low, 35-66 = Medium, 67+ = High
 - HIGH droppiness + HIGH dilution + WEAK catalyst = strongest possible GO signal
 
 RVOL (when provided)
 - Relative Volume = today's volume vs 30-day average daily volume
-- 10x+ = Extreme, 5x+ = High (Ross Cameron's minimum), 3-5x = Medium, below 3x = Low
+- 10x+ = Extreme, 5x+ = High, 3-5x = Medium, below 3x = Low
+- For shorting, 3x+ is the meaningful threshold (Ross Cameron's 5x is a Long Board criterion, not a short rule)
 - High RVOL confirms genuine market interest — more participants = more reliable fade
 - Low RVOL on a big move = weak participation, move may lack follow-through
 - RVOL adds context to conviction level but does not change verdict
@@ -627,9 +633,12 @@ function gatekeeperVerdict(catalystGrade) {
   var cashNeed = currentDilution ? (currentDilution.cash_need || '').toLowerCase() : '';
   var isHighDil = dilution === 'high', isMedDil = dilution === 'medium' || dilution === 'moderate', isLowDil = dilution === 'low';
   var isHighCash = cashNeed === 'high', isMedCash = cashNeed === 'medium' || cashNeed === 'moderate', isLowCash = cashNeed === 'low';
+  // Droppiness bands align with the Pine Script "Droppiness Meter" indicator's native thresholds:
+  //   High >= 67, Medium >= 35, Low < 35.
+  // Previous 67/50 split classified mid-range scores as Low and over-blocked. Pine 25 Apr 2026.
   var dropHigh = droppiness !== null && droppiness >= 67;
-  var dropMed = droppiness !== null && droppiness >= 50 && droppiness < 67;
-  var dropLow = droppiness !== null && droppiness < 50;
+  var dropMed = droppiness !== null && droppiness >= 35 && droppiness < 67;
+  var dropLow = droppiness !== null && droppiness < 35;
 
   if (grade === 'STRONG') return { verdict: 'NO GO', reason: 'Strong catalyst detected \u2014 short thesis is invalid. Do not trade.' };
   if (instPct > 50) return { verdict: 'NO TRADE', reason: 'Institutional ownership above 50% \u2014 squeeze risk too high. Hard block.' };
