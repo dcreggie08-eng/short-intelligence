@@ -241,44 +241,44 @@
   </div>
   <div class="lazy-tab-panel" id="tabLazy">
 
-    <!-- ITT: Fee Recovery Calculator -->
+    <!-- ITT: Cobra Overnight Cost Calculator -->
     <div class="lazy-section">
-      <div class="lazy-section-title">ITT — Fee Recovery Calculator</div>
+      <div class="lazy-section-title">ITT — Cobra Overnight Cost Calculator</div>
       <p style="font-family:var(--mono);font-size:11px;color:var(--text-dim);letter-spacing:0.5px;margin-bottom:16px;line-height:1.7;">
-        Already holding a short overnight. Enter your fee and position details to calculate the minimum scalp needed to cover costs.
+        Formula: (Shares × Closing Price rounded up × Int Rate) ÷ 360. Thursday overnight = ×3.
       </p>
       <div class="lazy-input-row">
         <div class="lazy-input-group">
-          <div class="lazy-input-label">Overnight Fee Paid $</div>
-          <input type="number" class="lazy-input" id="ittFee" placeholder="0.00" step="0.01" min="0" oninput="calcITT()" />
+          <div class="lazy-input-label">Shares</div>
+          <input type="number" class="lazy-input" id="ittShares" placeholder="700" step="1" min="1" oninput="calcITT()" />
         </div>
         <div class="lazy-input-group">
-          <div class="lazy-input-label">Shares Held</div>
-          <input type="number" class="lazy-input" id="ittShares" placeholder="500" step="1" min="1" oninput="calcITT()" />
+          <div class="lazy-input-label">Closing Price $</div>
+          <input type="number" class="lazy-input" id="ittPrice" placeholder="7.00" step="0.01" min="0" oninput="calcITT()" />
         </div>
         <div class="lazy-input-group">
-          <div class="lazy-input-label">Current Price $</div>
-          <input type="number" class="lazy-input" id="ittPrice" placeholder="0.00" step="0.01" min="0" oninput="calcITT()" />
+          <div class="lazy-input-label">Int Rate %</div>
+          <input type="number" class="lazy-input" id="ittRate" placeholder="7.43" step="0.01" min="0" oninput="calcITT()" />
         </div>
       </div>
       <div class="itt-grid" id="ittResults" style="display:none;">
         <div class="itt-result">
-          <div class="itt-result-label">Min Target Profit</div>
-          <div class="itt-result-value" id="ittMinProfit">—</div>
-          <div class="itt-result-sub">covers overnight fee</div>
+          <div class="itt-result-label">Daily Borrow Cost</div>
+          <div class="itt-result-value" id="ittDaily">—</div>
+          <div class="itt-result-sub">per day</div>
         </div>
         <div class="itt-result">
-          <div class="itt-result-label">Move Needed Per Share</div>
-          <div class="itt-result-value" id="ittMovePerShare">—</div>
-          <div class="itt-result-sub">to cover fee on your size</div>
+          <div class="itt-result-label">Thursday Overnight</div>
+          <div class="itt-result-value" id="ittThursday">—</div>
+          <div class="itt-result-sub">×3 days</div>
         </div>
         <div class="itt-result">
-          <div class="itt-result-label">Break-Even Exit $</div>
-          <div class="itt-result-value" id="ittBreakEven">—</div>
-          <div class="itt-result-sub">price to cover fee exactly</div>
+          <div class="itt-result-label">Price Rounded Up</div>
+          <div class="itt-result-value" id="ittRounded">—</div>
+          <div class="itt-result-sub">used in calculation</div>
         </div>
       </div>
-      <div style="font-family:var(--mono);font-size:11px;color:var(--text-dim);letter-spacing:0.5px;margin-top:8px;">
+      <div style="font-family:var(--mono);font-size:11px;color:var(--text-dim);letter-spacing:0.5px;margin-top:12px;">
         ITT is price-action based. No stop. In and out on signals only. Treat as a new trade — not revenge.
       </div>
     </div>
@@ -871,17 +871,18 @@ function renderFadeDestTable(data) {
 // ITT CALCULATOR
 // ─────────────────────────────────────────────
 function calcITT() {
-  var fee = parseFloat(document.getElementById('ittFee').value) || 0;
   var shares = parseFloat(document.getElementById('ittShares').value) || 0;
   var price = parseFloat(document.getElementById('ittPrice').value) || 0;
+  var rate = parseFloat(document.getElementById('ittRate').value) || 0;
   var grid = document.getElementById('ittResults');
-  if (!fee || !shares || !price) { grid.style.display = 'none'; return; }
+  if (!shares || !price || !rate) { grid.style.display = 'none'; return; }
   grid.style.display = 'grid';
-  var movePerShare = fee / shares;
-  var breakEven = price - movePerShare;
-  document.getElementById('ittMinProfit').textContent = '$' + fee.toFixed(2);
-  document.getElementById('ittMovePerShare').textContent = '$' + movePerShare.toFixed(3);
-  document.getElementById('ittBreakEven').textContent = breakEven > 0 ? '$' + breakEven.toFixed(2) : '—';
+  var roundedPrice = Math.ceil(price);
+  var daily = (shares * roundedPrice * rate) / 360;
+  var thursday = daily * 3;
+  document.getElementById('ittDaily').textContent = '$' + daily.toFixed(2);
+  document.getElementById('ittThursday').textContent = '$' + thursday.toFixed(2);
+  document.getElementById('ittRounded').textContent = '$' + roundedPrice.toFixed(2);
 }
 
 // ─────────────────────────────────────────────
