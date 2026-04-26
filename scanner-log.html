@@ -1086,18 +1086,11 @@ function renderLazyVerdict(result) {
 // POLYGON 4HR RSI
 // ─────────────────────────────────────────────
 async function fetch4hrRSI(ticker) {
-  var to = new Date();
-  var from = new Date();
-  from.setDate(from.getDate() - 35);
-  var fromStr = from.toISOString().split('T')[0];
-  var toStr = to.toISOString().split('T')[0];
-  var url = 'https://api.polygon.io/v2/aggs/ticker/' + ticker + '/range/4/hour/' + fromStr + '/' + toStr + '?adjusted=true&sort=asc&limit=60&apiKey=' + POLYGON_KEY;
   try {
-    var res = await fetch(url);
+    var res = await fetch(WORKER_URL + '/rsi4hr?ticker=' + ticker);
     var data = await res.json();
-    if (!data.results || data.results.length < 23) return null;
-    var closes = data.results.map(function(c) { return c.c; });
-    return calcRSISeries(closes, 21);
+    if (data.error) return null;
+    return data;
   } catch(e) { return null; }
 }
 
