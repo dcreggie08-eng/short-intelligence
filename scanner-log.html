@@ -410,11 +410,11 @@ function buildReviewForm(entry) {
     // HOD fields + VWAP in a 3-col grid
     '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:16px;">' +
       '<div class="review-field"><div class="review-label">Pre-Market HOD $</div><input type="number" class="review-input" id="pmHod-'+id+'" placeholder="0.00" step="0.01" min="0" value="'+pmHod+'" oninput="calcVwapExt(\''+id+'\')" /></div>' +
-      '<div class="review-field"><div class="review-label">Open Market HOD $</div><input type="number" class="review-input" id="omHod-'+id+'" placeholder="0.00" step="0.01" min="0" value="'+omHod+'" /></div>' +
+      '<div class="review-field"><div class="review-label">Open Market HOD $</div><input type="number" class="review-input" id="omHod-'+id+'" placeholder="0.00" step="0.01" min="0" value="'+omHod+'" oninput="calcVwapExt(\''+id+'\')" /></div>' +
       '<div class="review-field"><div class="review-label">VWAP $ at Analysis'+savedExtDisplay+'</div><input type="number" class="review-input" id="vwap-'+id+'" placeholder="0.00" step="0.01" min="0" value="'+vwap+'" oninput="calcVwapExt(\''+id+'\')" /></div>' +
     '</div>' +
     '<div style="font-family:var(--mono);font-size:11px;color:var(--accent);margin-bottom:16px;min-height:16px;" id="vwapExtDisplay-'+id+'">'+
-      (pmHod && vwap ? '→ PM HOD was <span style="color:var(--caution);font-weight:700">'+calcExtPct(pmHod,vwap)+'% above VWAP</span>' : '') +
+      (Math.max(parseFloat(pmHod)||0, parseFloat(omHod)||0) > 0 && vwap ? '→ ' + (parseFloat(omHod) > parseFloat(pmHod) ? 'OM HOD' : 'PM HOD') + ' (true HOD) was <span style="color:var(--caution);font-weight:700">'+calcExtPct(Math.max(parseFloat(pmHod)||0, parseFloat(omHod)||0),vwap)+'% above VWAP</span>' : '') +
     '</div>' +
 
     '<div class="review-row-full"><div class="review-label">Which HOD was Higher?</div><div class="btn-group">' +
@@ -478,14 +478,17 @@ function calcExtPct(hod, vwap) {
 }
 
 function calcVwapExt(id) {
-  var pmHod = document.getElementById('pmHod-'+id) ? document.getElementById('pmHod-'+id).value : 0;
+  var pmHod = parseFloat(document.getElementById('pmHod-'+id) ? document.getElementById('pmHod-'+id).value : 0) || 0;
+  var omHod = parseFloat(document.getElementById('omHod-'+id) ? document.getElementById('omHod-'+id).value : 0) || 0;
+  var trueHod = Math.max(pmHod, omHod);
   var vwap = document.getElementById('vwap-'+id) ? document.getElementById('vwap-'+id).value : 0;
   var display = document.getElementById('vwapExtDisplay-'+id);
   if (!display) return;
-  var pct = calcExtPct(pmHod, vwap);
+  var pct = calcExtPct(trueHod, vwap);
   if (pct !== null) {
+    var hodLabel = omHod > pmHod ? 'OM HOD' : 'PM HOD';
     var color = pct >= 35 ? 'var(--nogo)' : pct >= 20 ? 'var(--caution)' : 'var(--go)';
-    display.innerHTML = '→ PM HOD was <span style="color:'+color+';font-weight:700">+'+pct+'% above VWAP</span>' + (pct >= 30 ? ' <span style="color:var(--caution)">— extended, HOD likely in</span>' : '');
+    display.innerHTML = '→ ' + hodLabel + ' (true HOD) was <span style="color:'+color+';font-weight:700">+'+pct+'% above VWAP</span>' + (pct >= 30 ? ' <span style="color:var(--caution)">— extended, HOD likely in</span>' : '');
   } else {
     display.innerHTML = '';
   }
@@ -514,7 +517,8 @@ async function saveReview(id) {
   var pmHod = parseFloat(document.getElementById('pmHod-'+id).value)||null;
   var omHod = parseFloat(document.getElementById('omHod-'+id).value)||null;
   var vwapVal = parseFloat(document.getElementById('vwap-'+id) && document.getElementById('vwap-'+id).value)||null;
-  var vwapExtPct = (pmHod && vwapVal) ? calcExtPct(pmHod, vwapVal) : null;
+  var trueHod = Math.max(pmHod || 0, omHod || 0);
+  var vwapExtPct = (trueHod && vwapVal) ? calcExtPct(trueHod, vwapVal) : null;
   var fadeDest = document.getElementById('fadeDest-'+id).value||null;
   var exitLevel = document.getElementById('exitLevel-'+id).value||null;
   var note = document.getElementById('note-'+id).value.trim()||null;
