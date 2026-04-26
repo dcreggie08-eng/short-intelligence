@@ -1000,15 +1000,16 @@ function renderDataCards(rsiData, daysDiff) {
   var rsiColor = rsiData.below70 ? 'var(--go)' : rsiData.current < 80 ? 'var(--caution)' : 'var(--nogo)';
   rsiEl.textContent = rsiData.current;
   rsiEl.style.color = rsiColor;
+  var tfLabel = rsiData.timeframe === 'daily' ? ' (daily candles — 4hr insufficient)' : ' (4hr candles)';
 
   if (rsiData.crossedBelow70) {
-    rsiStatus.textContent = '✓ Crossed back below 70 — Stage 1 trigger met';
+    rsiStatus.textContent = '✓ Crossed back below 70 — trigger met' + tfLabel;
     rsiStatus.style.color = 'var(--go)';
   } else if (rsiData.below70) {
-    rsiStatus.textContent = 'Below 70 (prev: ' + rsiData.previous + ') — already crossed';
+    rsiStatus.textContent = 'Below 70 (prev: ' + rsiData.previous + ') — already crossed' + tfLabel;
     rsiStatus.style.color = 'var(--go)';
   } else {
-    rsiStatus.textContent = 'Still above 70 — wait for completed candle below';
+    rsiStatus.textContent = 'Still above 70 — wait for completed candle below' + tfLabel;
     rsiStatus.style.color = 'var(--caution)';
   }
 
