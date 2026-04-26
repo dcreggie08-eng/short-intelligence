@@ -1011,57 +1011,36 @@ function renderDataCards(rsiData, daysDiff) {
 }
 
 async function getLazyVerdict(ticker, day1, rsiData, daysDiff) {
-  var prompt = 'You are Arlo, short-selling decision support for Reggie.
-
-' +
-    'LAZY TRADE DAY 2 ANALYSIS — ' + ticker + '
-
-' +
-    'DAY 1 SHORT INTEL DATA:
-' +
-    '- Original verdict: ' + (day1.verdict||'unknown') + '
-' +
-    '- Catalyst grade: ' + (day1.catalyst_grade||'unknown') + '
-' +
-    '- Droppiness: ' + (day1.droppiness_score||'?') + '/100 (' + (day1.droppiness_rating||'?') + ')
-' +
-    '- Overall dilution risk: ' + (day1.dilution_overall||'unknown') + '
-' +
-    '- Day 1 reason: ' + (day1.verdict_reason||'none') + '
-' +
-    '- Days since Day 1 pop: ' + daysDiff + '
-
-' +
-    '4HR RSI(21) STATUS:
-' +
-    '- Current RSI: ' + rsiData.current + '
-' +
-    '- Previous RSI: ' + rsiData.previous + '
-' +
-    '- Crossed back below 70 on completed candle: ' + (rsiData.crossedBelow70 ? 'YES' : 'NO') + '
-' +
-    '- Currently below 70: ' + (rsiData.below70 ? 'YES' : 'NO') + '
-
-' +
-    'LAZY TRADE RULES:
-' +
-    '1. RSI(21) must have crossed back below 70 on a completed 4hr candle
-' +
-    '2. At least 24 hours since Day 1 pop
-' +
-    '3. Droppiness 35+ supports the fade thesis
-' +
-    '4. Strong catalyst (NO GO) does not qualify — weak/mid only
-' +
-    '5. Price action based entry only — no hard stop, in and out on signals
-
-' +
-    'Respond in EXACTLY this format, no extra text:
-' +
-    'VERDICT: [GO or WAIT or LEAVE IT]
-' +
-    'REASON: [one sentence max, plain language]
-';
+  var prompt = [
+    'You are Arlo, short-selling decision support for Reggie.',
+    '',
+    'LAZY TRADE DAY 2 ANALYSIS — ' + ticker,
+    '',
+    'DAY 1 SHORT INTEL DATA:',
+    '- Original verdict: ' + (day1.verdict||'unknown'),
+    '- Catalyst grade: ' + (day1.catalyst_grade||'unknown'),
+    '- Droppiness: ' + (day1.droppiness_score||'?') + '/100 (' + (day1.droppiness_rating||'?') + ')',
+    '- Overall dilution risk: ' + (day1.dilution_overall||'unknown'),
+    '- Day 1 reason: ' + (day1.verdict_reason||'none'),
+    '- Days since Day 1 pop: ' + daysDiff,
+    '',
+    '4HR RSI(21) STATUS:',
+    '- Current RSI: ' + rsiData.current,
+    '- Previous RSI: ' + rsiData.previous,
+    '- Crossed back below 70 on completed candle: ' + (rsiData.crossedBelow70 ? 'YES' : 'NO'),
+    '- Currently below 70: ' + (rsiData.below70 ? 'YES' : 'NO'),
+    '',
+    'LAZY TRADE RULES:',
+    '1. RSI(21) must have crossed back below 70 on a completed 4hr candle',
+    '2. At least 24 hours since Day 1 pop',
+    '3. Droppiness 35+ supports the fade thesis',
+    '4. Strong catalyst (NO GO) does not qualify - weak/mid only',
+    '5. Price action based entry only - no hard stop, in and out on signals',
+    '',
+    'Respond in EXACTLY this format, no extra text:',
+    'VERDICT: [GO or WAIT or LEAVE IT]',
+    'REASON: [one sentence max, plain language]'
+  ].join('\n');
 
   try {
     var res = await fetch(WORKER_URL, {
