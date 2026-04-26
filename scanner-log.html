@@ -117,6 +117,48 @@
   .analytics-panel.active { display:block; }
   .log-tab-panel { display:none; }
   .log-tab-panel.active { display:block; }
+  .lazy-tab-panel { display:none; }
+  .lazy-tab-panel.active { display:block; }
+  .lazy-section { margin-bottom:28px; }
+  .lazy-section-title { font-family:var(--mono); font-size:12px; letter-spacing:2px; text-transform:uppercase; color:var(--accent); margin-bottom:16px; padding-bottom:8px; border-bottom:1px solid var(--border); }
+  .lazy-input-row { display:flex; gap:10px; align-items:flex-end; margin-bottom:20px; flex-wrap:wrap; }
+  .lazy-input-group { display:flex; flex-direction:column; gap:6px; }
+  .lazy-input-label { font-family:var(--mono); font-size:11px; letter-spacing:2px; text-transform:uppercase; color:var(--text-dim); }
+  .lazy-input { background:var(--surface); border:1px solid var(--border); color:var(--text-bright); font-family:var(--mono); font-size:14px; padding:9px 12px; outline:none; width:160px; }
+  .lazy-input:focus { border-color:var(--accent); }
+  .lazy-ticker-input { width:120px; text-transform:uppercase; letter-spacing:2px; font-size:16px; }
+  .lazy-btn { font-family:var(--display); font-weight:700; font-size:14px; letter-spacing:2px; text-transform:uppercase; padding:10px 24px; background:var(--accent); color:#000; border:none; cursor:pointer; transition:all 0.2s; white-space:nowrap; }
+  .lazy-btn:hover { background:#fff; }
+  .lazy-btn:disabled { background:rgba(0,212,255,0.2); color:var(--text-dim); cursor:not-allowed; }
+  .lazy-verdict-banner { padding:18px 24px; margin-bottom:20px; border:1px solid; display:none; }
+  .lazy-verdict-banner.visible { display:block; }
+  .lazy-verdict-banner.go { border-color:rgba(0,230,118,0.5); background:rgba(0,230,118,0.07); }
+  .lazy-verdict-banner.wait { border-color:rgba(255,179,0,0.5); background:rgba(255,179,0,0.07); }
+  .lazy-verdict-banner.leave { border-color:rgba(255,61,90,0.4); background:rgba(255,61,90,0.07); }
+  .lazy-verdict-label { font-family:var(--display); font-weight:900; font-size:28px; letter-spacing:3px; text-transform:uppercase; margin-bottom:6px; }
+  .lazy-verdict-banner.go .lazy-verdict-label { color:var(--go); }
+  .lazy-verdict-banner.wait .lazy-verdict-label { color:var(--caution); }
+  .lazy-verdict-banner.leave .lazy-verdict-label { color:var(--nogo); }
+  .lazy-verdict-reason { font-family:var(--mono); font-size:13px; color:var(--text-dim); line-height:1.6; }
+  .lazy-data-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:20px; }
+  .lazy-data-card { background:var(--surface); border:1px solid var(--border); padding:14px 16px; }
+  .lazy-data-card-label { font-family:var(--mono); font-size:10px; letter-spacing:2px; text-transform:uppercase; color:var(--text-dim); margin-bottom:6px; }
+  .lazy-data-card-value { font-family:var(--display); font-weight:700; font-size:20px; letter-spacing:1px; }
+  .lazy-data-card-sub { font-family:var(--mono); font-size:11px; color:var(--text-dim); margin-top:4px; }
+  .itt-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-bottom:16px; }
+  .itt-result { background:var(--surface); border:1px solid var(--border); padding:14px 16px; }
+  .itt-result-label { font-family:var(--mono); font-size:10px; letter-spacing:2px; text-transform:uppercase; color:var(--text-dim); margin-bottom:6px; }
+  .itt-result-value { font-family:var(--display); font-weight:900; font-size:24px; letter-spacing:1px; color:var(--accent); }
+  .itt-result-sub { font-family:var(--mono); font-size:11px; color:var(--text-dim); margin-top:4px; }
+  .lazy-day1-strip { background:var(--surface); border:1px solid var(--border); padding:14px 18px; margin-bottom:16px; display:none; }
+  .lazy-day1-strip.visible { display:block; }
+  .lazy-day1-header { display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:8px; }
+  .lazy-day1-label { font-family:var(--mono); font-size:10px; letter-spacing:2px; text-transform:uppercase; color:var(--text-dim); }
+  .lazy-status-line { font-family:var(--mono); font-size:12px; color:var(--text-dim); letter-spacing:1px; padding:12px; text-align:center; border:1px solid var(--border); }
+  @media (max-width:640px) {
+    .lazy-data-grid { grid-template-columns:1fr; }
+    .itt-grid { grid-template-columns:1fr 1fr; }
+  }
   .stat-cards { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:32px; }
   .stat-card { background:var(--surface); border:1px solid var(--border); padding:16px; }
   .stat-card-label { font-family:var(--mono); font-size:11px; letter-spacing:2px; text-transform:uppercase; color:var(--text-dim); margin-bottom:8px; }
@@ -159,6 +201,7 @@
   <div class="tabs">
     <button class="tab active" onclick="switchTab('log')">Daily Log</button>
     <button class="tab" onclick="switchTab('analytics')">Analytics</button>
+    <button class="tab" onclick="switchTab('lazy')">Lazy Trades</button>
   </div>
 
   <div class="log-tab-panel active" id="tabLog">
@@ -194,6 +237,96 @@
     <div class="analytics-section"><div class="analytics-title">Pre-Market HOD vs Open Market HOD — by Catalyst Grade</div><div id="hodTable"></div></div>
     <div class="analytics-section"><div class="analytics-title">Most Common Fade Destinations</div><div id="fadeDestTable"></div></div>
   </div>
+  <div class="lazy-tab-panel" id="tabLazy">
+
+    <!-- ITT: Fee Recovery Calculator -->
+    <div class="lazy-section">
+      <div class="lazy-section-title">ITT — Fee Recovery Calculator</div>
+      <p style="font-family:var(--mono);font-size:11px;color:var(--text-dim);letter-spacing:0.5px;margin-bottom:16px;line-height:1.7;">
+        Already holding a short overnight. Enter your fee and position details to calculate the minimum scalp needed to cover costs.
+      </p>
+      <div class="lazy-input-row">
+        <div class="lazy-input-group">
+          <div class="lazy-input-label">Overnight Fee Paid $</div>
+          <input type="number" class="lazy-input" id="ittFee" placeholder="0.00" step="0.01" min="0" oninput="calcITT()" />
+        </div>
+        <div class="lazy-input-group">
+          <div class="lazy-input-label">Shares Held</div>
+          <input type="number" class="lazy-input" id="ittShares" placeholder="500" step="1" min="1" oninput="calcITT()" />
+        </div>
+        <div class="lazy-input-group">
+          <div class="lazy-input-label">Current Price $</div>
+          <input type="number" class="lazy-input" id="ittPrice" placeholder="0.00" step="0.01" min="0" oninput="calcITT()" />
+        </div>
+      </div>
+      <div class="itt-grid" id="ittResults" style="display:none;">
+        <div class="itt-result">
+          <div class="itt-result-label">Min Target Profit</div>
+          <div class="itt-result-value" id="ittMinProfit">—</div>
+          <div class="itt-result-sub">covers overnight fee</div>
+        </div>
+        <div class="itt-result">
+          <div class="itt-result-label">Move Needed Per Share</div>
+          <div class="itt-result-value" id="ittMovePerShare">—</div>
+          <div class="itt-result-sub">to cover fee on your size</div>
+        </div>
+        <div class="itt-result">
+          <div class="itt-result-label">Break-Even Exit $</div>
+          <div class="itt-result-value" id="ittBreakEven">—</div>
+          <div class="itt-result-sub">price to cover fee exactly</div>
+        </div>
+      </div>
+      <div style="font-family:var(--mono);font-size:11px;color:var(--text-dim);letter-spacing:0.5px;margin-top:8px;">
+        ITT is price-action based. No stop. In and out on signals only. Treat as a new trade — not revenge.
+      </div>
+    </div>
+
+    <!-- Lazy Trade: Day 2 Analyser -->
+    <div class="lazy-section">
+      <div class="lazy-section-title">Lazy Trade — Day 2/3 Setup Analyser</div>
+      <p style="font-family:var(--mono);font-size:11px;color:var(--text-dim);letter-spacing:0.5px;margin-bottom:16px;line-height:1.7;">
+        Fresh opportunity. Stock already had its Day 1 pop. Enter ticker to pull yesterday's Short Intel data and check the 4hr RSI setup.
+      </p>
+      <div class="lazy-input-row">
+        <div class="lazy-input-group">
+          <div class="lazy-input-label">Ticker</div>
+          <input type="text" class="lazy-input lazy-ticker-input" id="lazyTicker" placeholder="ATOM" maxlength="6" oninput="this.value=this.value.toUpperCase()" onkeydown="if(event.key==='Enter')runLazyAnalysis()" />
+        </div>
+        <button class="lazy-btn" id="lazyBtn" onclick="runLazyAnalysis()">Analyse</button>
+      </div>
+
+      <div class="lazy-status-line" id="lazyStatus" style="display:none;"></div>
+
+      <!-- Day 1 data strip -->
+      <div class="lazy-day1-strip" id="lazyDay1Strip">
+        <div class="lazy-day1-label" style="margin-bottom:10px;">Day 1 — Short Intel Data</div>
+        <div class="lazy-day1-header" id="lazyDay1Header"></div>
+        <div style="font-family:var(--mono);font-size:11px;color:var(--text-dim);margin-top:6px;" id="lazyDay1Reason"></div>
+      </div>
+
+      <!-- Data cards: RSI + Days since pop -->
+      <div class="lazy-data-grid" id="lazyDataGrid" style="display:none;">
+        <div class="lazy-data-card">
+          <div class="lazy-data-card-label">4hr RSI (21) — Current</div>
+          <div class="lazy-data-card-value" id="lazyRsiCurrent">—</div>
+          <div class="lazy-data-card-sub" id="lazyRsiStatus">—</div>
+        </div>
+        <div class="lazy-data-card">
+          <div class="lazy-data-card-label">Days Since Day 1 Pop</div>
+          <div class="lazy-data-card-value" id="lazyDaysSince">—</div>
+          <div class="lazy-data-card-sub" id="lazyDaysNote">—</div>
+        </div>
+      </div>
+
+      <!-- Verdict banner -->
+      <div class="lazy-verdict-banner" id="lazyVerdictBanner">
+        <div class="lazy-verdict-label" id="lazyVerdictLabel">—</div>
+        <div class="lazy-verdict-reason" id="lazyVerdictReason">—</div>
+      </div>
+    </div>
+
+  </div>
+
 </div>
 
 <script>
@@ -208,9 +341,12 @@ async function sbFetch(path, method, body) {
 }
 
 function switchTab(tab) {
-  document.querySelectorAll('.tab').forEach(function(t, i) { t.classList.toggle('active', (i===0&&tab==='log')||(i===1&&tab==='analytics')); });
+  document.querySelectorAll('.tab').forEach(function(t, i) {
+    t.classList.toggle('active', (i===0&&tab==='log')||(i===1&&tab==='analytics')||(i===2&&tab==='lazy'));
+  });
   document.getElementById('tabLog').classList.toggle('active', tab === 'log');
   document.getElementById('tabAnalytics').classList.toggle('active', tab === 'analytics');
+  document.getElementById('tabLazy').classList.toggle('active', tab === 'lazy');
   if (tab === 'analytics') loadAnalytics();
 }
 
@@ -411,7 +547,7 @@ function buildReviewForm(entry) {
     '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:16px;">' +
       '<div class="review-field"><div class="review-label">Pre-Market HOD $</div><input type="number" class="review-input" id="pmHod-'+id+'" placeholder="0.00" step="0.01" min="0" value="'+pmHod+'" oninput="calcVwapExt(\''+id+'\')" /></div>' +
       '<div class="review-field"><div class="review-label">Open Market HOD $</div><input type="number" class="review-input" id="omHod-'+id+'" placeholder="0.00" step="0.01" min="0" value="'+omHod+'" oninput="calcVwapExt(\''+id+'\')" /></div>' +
-      '<div class="review-field"><div class="review-label">VWAP $ at Analysis'+savedExtDisplay+'</div><input type="number" class="review-input" id="vwap-'+id+'" placeholder="0.00" step="0.01" min="0" value="'+vwap+'" oninput="calcVwapExt(\''+id+'\')" /></div>' +
+      '<div class="review-field"><div class="review-label">VWAP $ at Analysis</div><input type="number" class="review-input" id="vwap-'+id+'" placeholder="0.00" step="0.01" min="0" value="'+vwap+'" oninput="calcVwapExt(\''+id+'\')" /></div>' +
     '</div>' +
     '<div style="font-family:var(--mono);font-size:11px;color:var(--accent);margin-bottom:16px;min-height:16px;" id="vwapExtDisplay-'+id+'">'+
       (Math.max(parseFloat(pmHod)||0, parseFloat(omHod)||0) > 0 && vwap ? '→ ' + (parseFloat(omHod) > parseFloat(pmHod) ? 'OM HOD' : 'PM HOD') + ' (true HOD) was <span style="color:var(--caution);font-weight:700">'+calcExtPct(Math.max(parseFloat(pmHod)||0, parseFloat(omHod)||0),vwap)+'% above VWAP</span>' : '') +
@@ -726,6 +862,292 @@ function renderFadeDestTable(data) {
   var sorted=Object.keys(counts).sort(function(a,b){return counts[b]-counts[a];});
   el.innerHTML='<table class="analytics-table"><thead><tr><th>Fade Destination</th><th>Count</th><th>Frequency</th></tr></thead><tbody>'+
     sorted.map(function(dest){var n=counts[dest],p=Math.round(n/w.length*100);return '<tr><td>'+dest+'</td><td>'+n+'</td><td><div class="pct-bar-wrap"><div class="pct-bar" style="width:'+(p*1.5)+'px"></div><span>'+p+'%</span></div></td></tr>';}).join('')+'</tbody></table>';
+}
+
+
+// ─────────────────────────────────────────────
+// ITT CALCULATOR
+// ─────────────────────────────────────────────
+function calcITT() {
+  var fee = parseFloat(document.getElementById('ittFee').value) || 0;
+  var shares = parseFloat(document.getElementById('ittShares').value) || 0;
+  var price = parseFloat(document.getElementById('ittPrice').value) || 0;
+  var grid = document.getElementById('ittResults');
+  if (!fee || !shares || !price) { grid.style.display = 'none'; return; }
+  grid.style.display = 'grid';
+  var movePerShare = fee / shares;
+  var breakEven = price - movePerShare;
+  document.getElementById('ittMinProfit').textContent = '$' + fee.toFixed(2);
+  document.getElementById('ittMovePerShare').textContent = '$' + movePerShare.toFixed(3);
+  document.getElementById('ittBreakEven').textContent = breakEven > 0 ? '$' + breakEven.toFixed(2) : '—';
+}
+
+// ─────────────────────────────────────────────
+// LAZY TRADE ANALYSER
+// ─────────────────────────────────────────────
+var POLYGON_KEY = 'iz170hZwJjkiLavb9YM1f3zhDKTYkxHi';
+var WORKER_URL = 'https://anthropic-proxy.dcreggie08.workers.dev';
+
+function setLazyStatus(msg, color) {
+  var el = document.getElementById('lazyStatus');
+  el.style.display = 'block';
+  el.style.color = color || 'var(--text-dim)';
+  el.textContent = msg;
+}
+
+function hideLazyStatus() {
+  document.getElementById('lazyStatus').style.display = 'none';
+}
+
+async function runLazyAnalysis() {
+  var ticker = document.getElementById('lazyTicker').value.trim().toUpperCase();
+  if (!ticker) return;
+
+  var btn = document.getElementById('lazyBtn');
+  btn.disabled = true; btn.textContent = 'Fetching...';
+  document.getElementById('lazyVerdictBanner').className = 'lazy-verdict-banner';
+  document.getElementById('lazyDay1Strip').className = 'lazy-day1-strip';
+  document.getElementById('lazyDataGrid').style.display = 'none';
+
+  try {
+    // ── STEP 1: Pull Day 1 data from Supabase ──
+    setLazyStatus('Pulling Short Intel history for ' + ticker + '...', 'var(--accent)');
+    var day1 = await fetchDay1Data(ticker);
+
+    if (!day1) {
+      setLazyStatus('No Short Intel entry found for ' + ticker + ' in the last 7 days. Run a fresh analysis on the main page first.', 'var(--caution)');
+      btn.disabled = false; btn.textContent = 'Analyse'; return;
+    }
+
+    // Show Day 1 strip
+    renderDay1Strip(day1);
+
+    // Days since pop
+    var today = new Date(todayNY());
+    var popDate = new Date(day1.trading_date);
+    var daysDiff = Math.round((today - popDate) / (1000 * 60 * 60 * 24));
+
+    // ── STEP 2: Fetch 4hr RSI from Polygon ──
+    setLazyStatus('Fetching 4hr RSI data from Polygon...', 'var(--accent)');
+    btn.textContent = 'Fetching RSI...';
+    var rsiData = await fetch4hrRSI(ticker);
+
+    if (!rsiData) {
+      setLazyStatus('Could not fetch 4hr candle data from Polygon for ' + ticker + '. Check ticker is valid.', 'var(--caution)');
+      btn.disabled = false; btn.textContent = 'Analyse'; return;
+    }
+
+    // Render data cards
+    renderDataCards(rsiData, daysDiff);
+    document.getElementById('lazyDataGrid').style.display = 'grid';
+
+    // ── STEP 3: AI verdict ──
+    setLazyStatus('Running Day 2 analysis...', 'var(--accent)');
+    btn.textContent = 'Analysing...';
+    var verdict = await getLazyVerdict(ticker, day1, rsiData, daysDiff);
+    renderLazyVerdict(verdict);
+    hideLazyStatus();
+
+  } catch(e) {
+    setLazyStatus('Error: ' + e.message, 'var(--nogo)');
+    console.error('Lazy analysis error:', e);
+  }
+
+  btn.disabled = false; btn.textContent = 'Analyse';
+}
+
+async function fetchDay1Data(ticker) {
+  // Look back up to 7 days for most recent entry
+  var res = await sbFetch('scanner_log?ticker=eq.' + ticker + '&order=trading_date.desc&limit=5&select=*');
+  var data = await res.json();
+  if (!Array.isArray(data) || data.length === 0) return null;
+  // Return most recent entry
+  return data[0];
+}
+
+function renderDay1Strip(day1) {
+  var strip = document.getElementById('lazyDay1Strip');
+  var header = document.getElementById('lazyDay1Header');
+  var reason = document.getElementById('lazyDay1Reason');
+  strip.className = 'lazy-day1-strip visible';
+
+  var verdictColor = day1.verdict === 'GO' ? 'var(--go)' : day1.verdict === 'CAUTION' ? 'var(--caution)' : 'var(--nogo)';
+  var dropColor = day1.droppiness_score >= 67 ? 'var(--go)' : day1.droppiness_score >= 35 ? 'var(--caution)' : 'var(--nogo)';
+
+  header.innerHTML =
+    '<span style="font-family:var(--display);font-weight:700;font-size:16px;letter-spacing:2px;color:' + verdictColor + '">' + (day1.verdict||'—') + '</span>' +
+    '<span style="font-family:var(--mono);font-size:13px;color:var(--accent)">' + day1.ticker + '</span>' +
+    (day1.catalyst_grade ? '<span style="font-family:var(--mono);font-size:11px;padding:2px 8px;border:1px solid var(--border-bright);color:var(--text-dim)">' + day1.catalyst_grade + '</span>' : '') +
+    (day1.droppiness_score ? '<span style="font-family:var(--mono);font-size:12px;color:' + dropColor + '">Drop: ' + day1.droppiness_score + '/100</span>' : '') +
+    '<span style="font-family:var(--mono);font-size:11px;color:var(--text-dim)">' + formatDate(day1.trading_date) + '</span>';
+
+  reason.textContent = day1.verdict_reason || '';
+}
+
+function renderDataCards(rsiData, daysDiff) {
+  var rsiEl = document.getElementById('lazyRsiCurrent');
+  var rsiStatus = document.getElementById('lazyRsiStatus');
+  var daysEl = document.getElementById('lazyDaysSince');
+  var daysNote = document.getElementById('lazyDaysNote');
+
+  var rsiColor = rsiData.below70 ? 'var(--go)' : rsiData.current < 80 ? 'var(--caution)' : 'var(--nogo)';
+  rsiEl.textContent = rsiData.current;
+  rsiEl.style.color = rsiColor;
+
+  if (rsiData.crossedBelow70) {
+    rsiStatus.textContent = '✓ Crossed back below 70 — Stage 1 trigger met';
+    rsiStatus.style.color = 'var(--go)';
+  } else if (rsiData.below70) {
+    rsiStatus.textContent = 'Below 70 (prev: ' + rsiData.previous + ') — already crossed';
+    rsiStatus.style.color = 'var(--go)';
+  } else {
+    rsiStatus.textContent = 'Still above 70 — wait for completed candle below';
+    rsiStatus.style.color = 'var(--caution)';
+  }
+
+  daysEl.textContent = daysDiff + 'd';
+  daysEl.style.color = daysDiff >= 1 ? 'var(--go)' : 'var(--caution)';
+  daysNote.textContent = daysDiff >= 1 ? '24hr+ since Day 1 pop — condition met' : 'Less than 24hrs — too early';
+}
+
+async function getLazyVerdict(ticker, day1, rsiData, daysDiff) {
+  var prompt = 'You are Arlo, short-selling decision support for Reggie.
+
+' +
+    'LAZY TRADE DAY 2 ANALYSIS — ' + ticker + '
+
+' +
+    'DAY 1 SHORT INTEL DATA:
+' +
+    '- Original verdict: ' + (day1.verdict||'unknown') + '
+' +
+    '- Catalyst grade: ' + (day1.catalyst_grade||'unknown') + '
+' +
+    '- Droppiness: ' + (day1.droppiness_score||'?') + '/100 (' + (day1.droppiness_rating||'?') + ')
+' +
+    '- Overall dilution risk: ' + (day1.dilution_overall||'unknown') + '
+' +
+    '- Day 1 reason: ' + (day1.verdict_reason||'none') + '
+' +
+    '- Days since Day 1 pop: ' + daysDiff + '
+
+' +
+    '4HR RSI(21) STATUS:
+' +
+    '- Current RSI: ' + rsiData.current + '
+' +
+    '- Previous RSI: ' + rsiData.previous + '
+' +
+    '- Crossed back below 70 on completed candle: ' + (rsiData.crossedBelow70 ? 'YES' : 'NO') + '
+' +
+    '- Currently below 70: ' + (rsiData.below70 ? 'YES' : 'NO') + '
+
+' +
+    'LAZY TRADE RULES:
+' +
+    '1. RSI(21) must have crossed back below 70 on a completed 4hr candle
+' +
+    '2. At least 24 hours since Day 1 pop
+' +
+    '3. Droppiness 35+ supports the fade thesis
+' +
+    '4. Strong catalyst (NO GO) does not qualify — weak/mid only
+' +
+    '5. Price action based entry only — no hard stop, in and out on signals
+
+' +
+    'Respond in EXACTLY this format, no extra text:
+' +
+    'VERDICT: [GO or WAIT or LEAVE IT]
+' +
+    'REASON: [one sentence max, plain language]
+';
+
+  try {
+    var res = await fetch(WORKER_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-5',
+        max_tokens: 150,
+        messages: [{ role: 'user', content: prompt }]
+      })
+    });
+    var data = await res.json();
+    var text = (data.content && data.content[0] && data.content[0].text) || '';
+    return parseVerdictResponse(text);
+  } catch(e) {
+    return { verdict: 'WAIT', reason: 'Could not reach AI — check signals manually.' };
+  }
+}
+
+function parseVerdictResponse(text) {
+  var verdictMatch = text.match(/VERDICT:\s*(GO|WAIT|LEAVE IT)/i);
+  var reasonMatch = text.match(/REASON:\s*(.+)/i);
+  return {
+    verdict: verdictMatch ? verdictMatch[1].toUpperCase() : 'WAIT',
+    reason: reasonMatch ? reasonMatch[1].trim() : text.trim()
+  };
+}
+
+function renderLazyVerdict(result) {
+  var banner = document.getElementById('lazyVerdictBanner');
+  var label = document.getElementById('lazyVerdictLabel');
+  var reason = document.getElementById('lazyVerdictReason');
+  var cls = result.verdict === 'GO' ? 'go' : result.verdict === 'LEAVE IT' ? 'leave' : 'wait';
+  banner.className = 'lazy-verdict-banner visible ' + cls;
+  label.textContent = result.verdict;
+  reason.textContent = result.reason;
+}
+
+// ─────────────────────────────────────────────
+// POLYGON 4HR RSI
+// ─────────────────────────────────────────────
+async function fetch4hrRSI(ticker) {
+  var to = new Date();
+  var from = new Date();
+  from.setDate(from.getDate() - 35);
+  var fromStr = from.toISOString().split('T')[0];
+  var toStr = to.toISOString().split('T')[0];
+  var url = 'https://api.polygon.io/v2/aggs/ticker/' + ticker + '/range/4/hour/' + fromStr + '/' + toStr + '?adjusted=true&sort=asc&limit=60&apiKey=' + POLYGON_KEY;
+  try {
+    var res = await fetch(url);
+    var data = await res.json();
+    if (!data.results || data.results.length < 23) return null;
+    var closes = data.results.map(function(c) { return c.c; });
+    return calcRSISeries(closes, 21);
+  } catch(e) { return null; }
+}
+
+function calcRSISeries(closes, period) {
+  if (closes.length < period + 2) return null;
+  var changes = [];
+  for (var i = 1; i < closes.length; i++) changes.push(closes[i] - closes[i-1]);
+  var avgGain = 0, avgLoss = 0;
+  for (var j = 0; j < period; j++) {
+    if (changes[j] > 0) avgGain += changes[j];
+    else avgLoss += Math.abs(changes[j]);
+  }
+  avgGain /= period; avgLoss /= period;
+  var rsiVals = [];
+  var rs0 = avgLoss === 0 ? Infinity : avgGain / avgLoss;
+  rsiVals.push(avgLoss === 0 ? 100 : 100 - (100 / (1 + rs0)));
+  for (var k = period; k < changes.length; k++) {
+    var gain = changes[k] > 0 ? changes[k] : 0;
+    var loss = changes[k] < 0 ? Math.abs(changes[k]) : 0;
+    avgGain = (avgGain * (period - 1) + gain) / period;
+    avgLoss = (avgLoss * (period - 1) + loss) / period;
+    var rs = avgLoss === 0 ? Infinity : avgGain / avgLoss;
+    rsiVals.push(avgLoss === 0 ? 100 : 100 - (100 / (1 + rs)));
+  }
+  var cur = rsiVals[rsiVals.length - 1];
+  var prev = rsiVals[rsiVals.length - 2];
+  return {
+    current: Math.round(cur * 10) / 10,
+    previous: Math.round(prev * 10) / 10,
+    crossedBelow70: prev >= 70 && cur < 70,
+    below70: cur < 70
+  };
 }
 
 initDate();
