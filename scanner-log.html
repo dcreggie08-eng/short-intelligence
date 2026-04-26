@@ -936,7 +936,11 @@ async function runLazyAnalysis() {
     var rsiData = await fetch4hrRSI(ticker);
 
     if (!rsiData) {
-      setLazyStatus('Could not fetch 4hr candle data from Polygon for ' + ticker + '. Check ticker is valid.', 'var(--caution)');
+      setLazyStatus('RSI fetch failed for ' + ticker + ' — check console for details.', 'var(--caution)');
+      btn.disabled = false; btn.textContent = 'Analyse'; return;
+    }
+    if (rsiData.workerError) {
+      setLazyStatus(ticker + ': ' + rsiData.workerError, 'var(--caution)');
       btn.disabled = false; btn.textContent = 'Analyse'; return;
     }
 
@@ -1089,9 +1093,9 @@ async function fetch4hrRSI(ticker) {
   try {
     var res = await fetch(WORKER_URL + '/rsi4hr?ticker=' + ticker);
     var data = await res.json();
-    if (data.error) return null;
+    if (data.error) { console.warn('RSI4hr error:', data.error); return { workerError: data.error }; }
     return data;
-  } catch(e) { return null; }
+  } catch(e) { console.warn('RSI4hr fetch failed:', e); return null; }
 }
 
 function calcRSISeries(closes, period) {
