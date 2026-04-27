@@ -142,7 +142,7 @@
   .lazy-verdict-banner.wait .lazy-verdict-label { color:var(--caution); }
   .lazy-verdict-banner.leave .lazy-verdict-label { color:var(--nogo); }
   .lazy-verdict-reason { font-family:var(--mono); font-size:13px; color:var(--text-dim); line-height:1.6; }
-  .lazy-data-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:20px; }
+  .lazy-data-grid { display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; margin-bottom:20px; }
   .lazy-data-card { background:var(--surface); border:1px solid var(--border); padding:14px 16px; }
   .lazy-data-card-label { font-family:var(--mono); font-size:10px; letter-spacing:2px; text-transform:uppercase; color:var(--text-dim); margin-bottom:6px; }
   .lazy-data-card-value { font-family:var(--display); font-weight:700; font-size:20px; letter-spacing:1px; }
@@ -317,6 +317,11 @@
           <div class="lazy-data-card-label">Days Since Day 1 Pop</div>
           <div class="lazy-data-card-value" id="lazyDaysSince">—</div>
           <div class="lazy-data-card-sub" id="lazyDaysNote">—</div>
+        </div>
+        <div class="lazy-data-card">
+          <div class="lazy-data-card-label">30m Momentum (RSI vs MA)</div>
+          <div class="lazy-data-card-value" id="lazy30mValue">—</div>
+          <div class="lazy-data-card-sub" id="lazy30mStatus">—</div>
         </div>
       </div>
 
@@ -944,14 +949,18 @@ async function runLazyAnalysis() {
       btn.disabled = false; btn.textContent = 'Analyse'; return;
     }
 
-    // Render data cards
-    renderDataCards(rsiData, daysDiff);
+    // ── STEP 2b: Fetch 30m momentum ──
+    setLazyStatus('Fetching 30m momentum...', 'var(--accent)');
+    var rsi30mData = await fetch30mRSI(ticker);
+
+    // Render data cards (30m graceful if null)
+    renderDataCards(rsiData, daysDiff, rsi30mData);
     document.getElementById('lazyDataGrid').style.display = 'grid';
 
     // ── STEP 3: AI verdict ──
     setLazyStatus('Running Day 2 analysis...', 'var(--accent)');
     btn.textContent = 'Analysing...';
-    var verdict = await getLazyVerdict(ticker, day1, rsiData, daysDiff);
+    var verdict = await getLazyVerdict(ticker, day1, rsiData, daysDiff, rsi30mData);
     renderLazyVerdict(verdict);
     hideLazyStatus();
 
@@ -991,34 +1000,58 @@ function renderDay1Strip(day1) {
   reason.textContent = day1.verdict_reason || '';
 }
 
-function renderDataCards(rsiData, daysDiff) {
+function renderDataCards(rsiData, daysDiff, rsi30m) {
   var rsiEl = document.getElementById('lazyRsiCurrent');
   var rsiStatus = document.getElementById('lazyRsiStatus');
   var daysEl = document.getElementById('lazyDaysSince');
   var daysNote = document.getElementById('lazyDaysNote');
+  var momVal = document.getElementById('lazy30mValue');
+  var momStatus = document.getElementById('lazy30mStatus');
 
   var rsiColor = rsiData.below70 ? 'var(--go)' : rsiData.current < 80 ? 'var(--caution)' : 'var(--nogo)';
   rsiEl.textContent = rsiData.current;
   rsiEl.style.color = rsiColor;
-  var tfLabel = rsiData.timeframe === 'daily' ? ' (daily candles — 4hr insufficient)' : ' (4hr candles)';
+  var tfLabel = rsiData.timeframe === 'daily' ? ' (daily)' : ' (4hr)';
 
   if (rsiData.crossedBelow70) {
-    rsiStatus.textContent = '✓ Crossed back below 70 — trigger met' + tfLabel;
+    rsiStatus.textContent = '✓ Crossed below 70 — trigger met' + tfLabel;
     rsiStatus.style.color = 'var(--go)';
   } else if (rsiData.below70) {
-    rsiStatus.textContent = 'Below 70 (prev: ' + rsiData.previous + ') — already crossed' + tfLabel;
+    rsiStatus.textContent = 'Below 70 (prev: ' + rsiData.previous + ') — crossed' + tfLabel;
     rsiStatus.style.color = 'var(--go)';
   } else {
-    rsiStatus.textContent = 'Still above 70 — wait for completed candle below' + tfLabel;
+    rsiStatus.textContent = 'Still above 70 — wait' + tfLabel;
     rsiStatus.style.color = 'var(--caution)';
   }
 
   daysEl.textContent = daysDiff + 'd';
   daysEl.style.color = daysDiff >= 1 ? 'var(--go)' : 'var(--caution)';
   daysNote.textContent = daysDiff >= 1 ? '24hr+ since Day 1 pop — condition met' : 'Less than 24hrs — too early';
+
+  // 30m momentum card
+  if (rsi30m && !rsi30m.error) {
+    var momColor = rsi30m.momentum_confirmed ? 'var(--go)' : rsi30m.below_ma ? 'var(--caution)' : 'var(--nogo)';
+    momVal.textContent = rsi30m.rsi_current + ' / MA ' + rsi30m.rsi_ma;
+    momVal.style.color = momColor;
+    if (rsi30m.momentum_confirmed) {
+      momStatus.textContent = '✓ RSI below MA + below 70 — confirmed';
+      momStatus.style.color = 'var(--go)';
+    } else if (rsi30m.below_ma) {
+      momStatus.textContent = 'RSI below its MA — rolling over';
+      momStatus.style.color = 'var(--caution)';
+    } else {
+      momStatus.textContent = 'RSI above its MA — momentum not confirmed';
+      momStatus.style.color = 'var(--nogo)';
+    }
+  } else {
+    momVal.textContent = 'N/A';
+    momVal.style.color = 'var(--text-dim)';
+    momStatus.textContent = rsi30m && rsi30m.error ? 'Insufficient 30m data' : 'Could not fetch';
+    momStatus.style.color = 'var(--text-dim)';
+  }
 }
 
-async function getLazyVerdict(ticker, day1, rsiData, daysDiff) {
+async function getLazyVerdict(ticker, day1, rsiData, daysDiff, rsi30m) {
   var prompt = [
     'You are Arlo, short-selling decision support for Reggie.',
     '',
@@ -1038,12 +1071,19 @@ async function getLazyVerdict(ticker, day1, rsiData, daysDiff) {
     '- Crossed back below 70 on completed candle: ' + (rsiData.crossedBelow70 ? 'YES' : 'NO'),
     '- Currently below 70: ' + (rsiData.below70 ? 'YES' : 'NO'),
     '',
+    '30M MOMENTUM FILTER:',
+    '- RSI(14) current: ' + (rsi30m && !rsi30m.error ? rsi30m.rsi_current : 'unavailable'),
+    '- RSI MA(9): ' + (rsi30m && !rsi30m.error ? rsi30m.rsi_ma : 'unavailable'),
+    '- RSI below its MA: ' + (rsi30m && !rsi30m.error ? (rsi30m.below_ma ? 'YES' : 'NO') : 'unavailable'),
+    '- Momentum confirmed (RSI < MA and < 70): ' + (rsi30m && !rsi30m.error ? (rsi30m.momentum_confirmed ? 'YES' : 'NO') : 'unavailable'),
+    '',
     'LAZY TRADE RULES:',
     '1. RSI(21) must have crossed back below 70 on a completed 4hr candle',
     '2. At least 24 hours since Day 1 pop',
     '3. Droppiness 35+ supports the fade thesis',
     '4. Strong catalyst (NO GO) does not qualify - weak/mid only',
     '5. Price action based entry only - no hard stop, in and out on signals',
+    '6. 30m momentum filter: RSI below its MA is a confidence booster — not a hard block, but weight it in your verdict',
     '',
     'Respond in EXACTLY this format, no extra text:',
     'VERDICT: [GO or WAIT or LEAVE IT]',
@@ -1090,6 +1130,15 @@ function renderLazyVerdict(result) {
 // ─────────────────────────────────────────────
 // POLYGON 4HR RSI
 // ─────────────────────────────────────────────
+async function fetch30mRSI(ticker) {
+  try {
+    var res = await fetch(WORKER_URL + '/rsi30m?ticker=' + ticker);
+    var data = await res.json();
+    if (data.error) return { error: data.error };
+    return data;
+  } catch(e) { return null; }
+}
+
 async function fetch4hrRSI(ticker) {
   try {
     var res = await fetch(WORKER_URL + '/rsi4hr?ticker=' + ticker);
