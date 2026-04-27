@@ -451,42 +451,6 @@ function renderDilutionBadges(data) {
   panel.classList.add('visible');
 }
 
-// ── RVOL ──────────────────────────────────────────────────────────────────────
-async function fetchRvol(ticker, isRefresh) {
-  try {
-    var res = await fetch(PROXY + '/rvol?ticker=' + ticker);
-    var data = await res.json();
-    if (data.error || data.rvol === null || data.rvol === undefined) { window.currentRvol = null; return; }
-    window.currentRvol = data;
-    updateInfoBarWithRvol(data);
-    // Start live refresh interval on first fetch (not on refresh ticks)
-    if (!isRefresh) {
-      rvolCurrentTicker = ticker;
-      if (rvolInterval) clearInterval(rvolInterval);
-      rvolInterval = setInterval(function() {
-        if (rvolCurrentTicker && getMarketSession() !== 'closed') {
-          fetchRvol(rvolCurrentTicker, true);
-        }
-      }, 2 * 60 * 1000); // every 2 minutes during market hours
-    }
-  } catch(e) { window.currentRvol = null; }
-}
-
-function updateInfoBarWithRvol(rvol) {
-  var infoBar = document.getElementById('stockInfoBar');
-  // No visibility guard — info bar is always built before fetchRvol resolves
-  var existing = infoBar.querySelector('.rvol-display');
-  if (existing) existing.remove();
-  var rvolSpan = document.createElement('span');
-  rvolSpan.className = 'rvol-display';
-  var rvolColor = rvol.rvol >= 10 ? '#ff9900' : rvol.rvol >= 5 ? 'var(--go)' : rvol.rvol >= 3 ? 'var(--caution)' : 'var(--nogo)';
-  var rvolIcon = rvol.rvol >= 10 ? ' \uD83D\uDD25' : rvol.rvol >= 5 ? ' \u2705' : rvol.rvol < 3 ? ' \u26A0' : '';
-  var rossFlag = rvol.meets_ross_threshold ? '' : ' <span style="color:var(--caution);font-size:9px;">(below 5x)</span>';
-  var liveTag = rvol.is_live ? ' <span style="color:var(--text-dim);font-size:10px;font-weight:400;">live</span>' : ' <span style="color:var(--text-dim);font-size:10px;font-weight:400;">prev close</span>';
-  rvolSpan.innerHTML = '<span style="color:var(--text-bright);font-weight:700">RVOL: <span style="color:' + rvolColor + '">' + rvol.rvol + 'x' + rvolIcon + '</span>' + rossFlag + liveTag + '</span>';
-  infoBar.appendChild(rvolSpan);
-}
-
 async function fetchNews() {
   var ticker = document.getElementById('ticker').value.trim().toUpperCase();
   var btn = document.getElementById('fetchBtn');
@@ -505,7 +469,6 @@ async function fetchNews() {
     applyFetchedData(cached, ticker);
     document.getElementById('dilutionSource').textContent = 'via Ask Edgar (cached)';
     fetchDroppiness(ticker);
-    fetchRvol(ticker);
     return;
   }
 
@@ -522,7 +485,6 @@ async function fetchNews() {
     fetchCache[ticker] = { newsData, dilutionData, floatData, tldrData };
     applyFetchedData(fetchCache[ticker], ticker);
     fetchDroppiness(ticker);
-    fetchRvol(ticker);
   } catch(e) {
     showError('Could not fetch data: ' + e.message);
   } finally {
@@ -661,11 +623,6 @@ function gatekeeperVerdict(catalystGrade) {
     reason += ' \u26a0 Downgraded: institutional ownership at ' + instPct.toFixed(1) + '% introduces squeeze risk.';
   }
 
-  // RVOL note — informational only, not a hard block
-  if (window.currentRvol && window.currentRvol.rvol !== null && window.currentRvol.rvol < 3) {
-    reason += ' \u26a0 Low RVOL (' + window.currentRvol.rvol + 'x) \u2014 move lacks volume participation, fade conviction reduced.';
-  }
-
   return { verdict: verdict, reason: reason };
 }
 
@@ -698,10 +655,6 @@ async function analyse() {
     userMessage += '- Events (12M): ' + window.currentDroppiness.total_events + '\n- Avg Giveback: ' + window.currentDroppiness.avg_giveback + '%\n';
     userMessage += '- Trend: ' + window.currentDroppiness.trend + '\n';
   }
-  // RVOL deliberately NOT included in AI input — was causing AI to invoke Ross's 5x as
-  // a "fundamental requirement" for short setups (incorrect — 5x is a Long Board / Winston
-  // Longbow criterion, not a short rule). RVOL stays visible on info bar; will live properly
-  // in Winston Longbow's reasoning when that ships. v14 — 27 Apr 2026.
   userMessage += '\nNEWS:\n' + newsText;
 
   try {
@@ -796,9 +749,7 @@ function clearAll() {
   currentDilution = null;
   window.currentInstPct = undefined; window.currentInsiderPct = undefined;
   window.currentFloat = null; window.currentMarketCap = null;
-  window.currentDroppiness = null; window.currentRvol = null;
-  rvolCurrentTicker = null;
-  if (rvolInterval) { clearInterval(rvolInterval); rvolInterval = null; }
+  window.currentDroppiness = null;
   window.currentResultTicker = null; window.currentResultVerdict = null;
   window.currentResultGrade = null; window.currentResultReason = null; window.currentResultReasoning = null;
   var dp = document.getElementById('droppinessPanel'); dp.className = 'droppiness-panel';
@@ -826,7 +777,7 @@ async function loadFromHistory(id) {
       renderResult({ verdict: item.verdict, catalystGrade: item.catalyst_grade, reasoning: item.reasoning, setupNotes: JSON.parse(item.setup_notes || '[]'), redFlags: JSON.parse(item.red_flags || '[]'), tradeKillers: JSON.parse(item.trade_killers || '[]') }, item.ticker, item.price_context);
       if (item.ticker) {
         var ticker = item.ticker.toUpperCase();
-        window.currentDroppiness = null; window.currentRvol = null;
+        window.currentDroppiness = null;
         document.getElementById('droppinessPanel').className = 'droppiness-panel';
         document.getElementById('droppinessScore').textContent = '\u2014'; document.getElementById('droppinessStats').innerHTML = '';
         if (fetchCache[ticker]) { applyFetchedData(fetchCache[ticker], ticker); document.getElementById('dilutionSource').textContent = 'via Ask Edgar (cached)'; }
@@ -836,7 +787,6 @@ async function loadFromHistory(id) {
           .catch(function(e) { console.error('Could not reload ticker data', e); });
         }
         fetchDroppiness(ticker);
-        fetchRvol(ticker);
       }
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
@@ -912,8 +862,6 @@ async function logOutcome() {
 loadHistory();
 if (typeof updateActionSlot === 'function') updateActionSlot();
 var gainersInterval = null;
-var rvolInterval = null;
-var rvolCurrentTicker = null;
 
 function getETOffset() { var now = new Date(); var etTime = new Date(now.toLocaleString('en-US', { timeZone: 'America/New_York' })); var utcTime = new Date(now.toLocaleString('en-US', { timeZone: 'UTC' })); return (etTime - utcTime) / (1000 * 60 * 60); }
 function getMarketSession() { var now = new Date(); var etOffset = getETOffset(); var etHour = (now.getUTCHours() + etOffset + 24) % 24; var etMin = now.getUTCMinutes(); var etTime = etHour + etMin / 60; if (etTime >= 4 && etTime < 9.5) return 'premarket'; if (etTime >= 9.5 && etTime < 16) return 'market'; if (etTime >= 16 && etTime < 20) return 'afterhours'; return 'closed'; }
