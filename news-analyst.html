@@ -356,14 +356,6 @@ DROPPINESS SCORE (when provided)
 - Below 35 = Low, 35-66 = Medium, 67+ = High
 - HIGH droppiness + HIGH dilution + WEAK catalyst = strongest possible GO signal
 
-RVOL (when provided)
-- Relative Volume = today's volume vs 30-day average daily volume
-- 10x+ = Extreme, 5x+ = High, 3-5x = Medium, below 3x = Low
-- For shorting, 3x+ is the meaningful threshold (Ross Cameron's 5x is a Long Board criterion, not a short rule)
-- High RVOL confirms genuine market interest — more participants = more reliable fade
-- Low RVOL on a big move = weak participation, move may lack follow-through
-- RVOL adds context to conviction level but does not change verdict
-
 INSTITUTIONAL OWNERSHIP RULE (when provided)
 - Below 20% = no restriction
 - 20-50% = downgrade any GO to CAUTION
@@ -706,13 +698,10 @@ async function analyse() {
     userMessage += '- Events (12M): ' + window.currentDroppiness.total_events + '\n- Avg Giveback: ' + window.currentDroppiness.avg_giveback + '%\n';
     userMessage += '- Trend: ' + window.currentDroppiness.trend + '\n';
   }
-  if (window.currentRvol && window.currentRvol.rvol !== null) {
-    userMessage += '\nRVOL (Relative Volume vs 30-day average):\n';
-    userMessage += '- RVOL: ' + window.currentRvol.rvol + 'x\n- Rating: ' + window.currentRvol.rating + '\n';
-    userMessage += '- Today Volume: ' + window.currentRvol.today_volume.toLocaleString() + '\n';
-    userMessage += '- 30-Day Avg Volume: ' + window.currentRvol.avg_volume_30d.toLocaleString() + '\n';
-    userMessage += '- Meets Ross 5x Threshold: ' + (window.currentRvol.meets_ross_threshold ? 'YES' : 'NO') + '\n';
-  }
+  // RVOL deliberately NOT included in AI input — was causing AI to invoke Ross's 5x as
+  // a "fundamental requirement" for short setups (incorrect — 5x is a Long Board / Winston
+  // Longbow criterion, not a short rule). RVOL stays visible on info bar; will live properly
+  // in Winston Longbow's reasoning when that ships. v14 — 27 Apr 2026.
   userMessage += '\nNEWS:\n' + newsText;
 
   try {
