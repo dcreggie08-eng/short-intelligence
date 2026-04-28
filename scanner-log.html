@@ -508,6 +508,8 @@ function toggleCard(id) {
   var toggle = document.getElementById('toggle-' + id);
   var isOpen = form.classList.contains('open');
   form.classList.toggle('open', !isOpen);
+  // When opening, refresh the VWAP extension line from current input values
+  if (!isOpen) { try { calcVwapExt(id); } catch(e) {} }
   toggle.textContent = isOpen ? '▼' : '▲';
 }
 
@@ -515,13 +517,17 @@ function buildReviewForm(entry) {
   var id = entry.id;
   var pmHod = entry.premarket_hod || '';
   var omHod = entry.open_market_hod || '';
+  var pmVwap = entry.pm_vwap || '';
+  var omVwap = entry.om_vwap || '';
+  // Legacy entries (pre v15) saved to vwap_at_analysis only — keep for read-only display
+  // but new entries write to pm_vwap / om_vwap going forward.
+  var legacyVwap = entry.vwap_at_analysis || '';
   var hodHigher = entry.hod_which_higher || '';
   var fadeDest = entry.fade_destination || '';
   var gkCorrect = entry.gatekeeper_correct || '';
   var didTrade = entry.did_trade;
   var actualExit = entry.actual_exit_level || '';
   var note = entry.note || '';
-  var vwap = entry.vwap_at_analysis || '';
   var vwapExt = entry.vwap_extension_pct || '';
 
   // Pre-populate button state tracking from saved data
@@ -550,15 +556,16 @@ function buildReviewForm(entry) {
 
   return '<div class="review-title">Evening Review</div>' +
 
-    // HOD fields + VWAP in a 3-col grid
-    '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:16px;">' +
+    // Paired HOD + VWAP rows: PM on row 1, OM on row 2.
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:8px;">' +
       '<div class="review-field"><div class="review-label">Pre-Market HOD $</div><input type="number" class="review-input" id="pmHod-'+id+'" placeholder="0.00" step="0.01" min="0" value="'+pmHod+'" oninput="calcVwapExt(\''+id+'\')" /></div>' +
+      '<div class="review-field"><div class="review-label">PM VWAP $</div><input type="number" class="review-input" id="pmVwap-'+id+'" placeholder="0.00" step="0.01" min="0" value="'+pmVwap+'" oninput="calcVwapExt(\''+id+'\')" /></div>' +
+    '</div>' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">' +
       '<div class="review-field"><div class="review-label">Open Market HOD $</div><input type="number" class="review-input" id="omHod-'+id+'" placeholder="0.00" step="0.01" min="0" value="'+omHod+'" oninput="calcVwapExt(\''+id+'\')" /></div>' +
-      '<div class="review-field"><div class="review-label">VWAP $ at Analysis</div><input type="number" class="review-input" id="vwap-'+id+'" placeholder="0.00" step="0.01" min="0" value="'+vwap+'" oninput="calcVwapExt(\''+id+'\')" /></div>' +
+      '<div class="review-field"><div class="review-label">OM VWAP $</div><input type="number" class="review-input" id="omVwap-'+id+'" placeholder="0.00" step="0.01" min="0" value="'+omVwap+'" oninput="calcVwapExt(\''+id+'\')" /></div>' +
     '</div>' +
-    '<div style="font-family:var(--mono);font-size:11px;color:var(--accent);margin-bottom:16px;min-height:16px;" id="vwapExtDisplay-'+id+'">'+
-      (Math.max(parseFloat(pmHod)||0, parseFloat(omHod)||0) > 0 && vwap ? '→ ' + (parseFloat(omHod) > parseFloat(pmHod) ? 'OM HOD' : 'PM HOD') + ' (true HOD) was <span style="color:var(--caution);font-weight:700">'+calcExtPct(Math.max(parseFloat(pmHod)||0, parseFloat(omHod)||0),vwap)+'% above VWAP</span>' : '') +
-    '</div>' +
+    '<div style="font-family:var(--mono);font-size:11px;color:var(--accent);margin-bottom:16px;min-height:16px;" id="vwapExtDisplay-'+id+'"></div>' +
 
     '<div class="review-row-full"><div class="review-label">Which HOD was Higher?</div><div class="btn-group">' +
       '<button class="btn-option '+hodSl('PM')+'" onclick="selectHOD(\''+id+'\',\'PM\')">Pre-Market</button>' +
@@ -623,15 +630,28 @@ function calcExtPct(hod, vwap) {
 function calcVwapExt(id) {
   var pmHod = parseFloat(document.getElementById('pmHod-'+id) ? document.getElementById('pmHod-'+id).value : 0) || 0;
   var omHod = parseFloat(document.getElementById('omHod-'+id) ? document.getElementById('omHod-'+id).value : 0) || 0;
-  var trueHod = Math.max(pmHod, omHod);
-  var vwap = document.getElementById('vwap-'+id) ? document.getElementById('vwap-'+id).value : 0;
+  var pmVwap = parseFloat(document.getElementById('pmVwap-'+id) ? document.getElementById('pmVwap-'+id).value : 0) || 0;
+  var omVwap = parseFloat(document.getElementById('omVwap-'+id) ? document.getElementById('omVwap-'+id).value : 0) || 0;
   var display = document.getElementById('vwapExtDisplay-'+id);
   if (!display) return;
-  var pct = calcExtPct(trueHod, vwap);
+
+  // Winning HOD uses ITS OWN matching VWAP (not the other one).
+  var trueHod, matchedVwap, hodLabel;
+  if (omHod > pmHod && omHod > 0) {
+    trueHod = omHod; matchedVwap = omVwap; hodLabel = 'OM HOD';
+  } else if (pmHod > 0) {
+    trueHod = pmHod; matchedVwap = pmVwap; hodLabel = 'PM HOD';
+  } else {
+    display.innerHTML = ''; return;
+  }
+
+  var pct = calcExtPct(trueHod, matchedVwap);
   if (pct !== null) {
-    var hodLabel = omHod > pmHod ? 'OM HOD' : 'PM HOD';
     var color = pct >= 35 ? 'var(--nogo)' : pct >= 20 ? 'var(--caution)' : 'var(--go)';
-    display.innerHTML = '→ ' + hodLabel + ' (true HOD) was <span style="color:'+color+';font-weight:700">+'+pct+'% above VWAP</span>' + (pct >= 30 ? ' <span style="color:var(--caution)">— extended, HOD likely in</span>' : '');
+    display.innerHTML = '→ ' + hodLabel + ' (true HOD) was <span style="color:'+color+';font-weight:700">+'+pct+'% above ' + hodLabel.split(' ')[0] + ' VWAP</span>' + (pct >= 30 ? ' <span style="color:var(--caution)">— extended, HOD likely in</span>' : '');
+  } else if (trueHod > 0 && matchedVwap === 0) {
+    // HOD entered but matching VWAP missing — gentle prompt
+    display.innerHTML = '<span style="color:var(--text-dim)">Enter ' + hodLabel.split(' ')[0] + ' VWAP to calculate extension</span>';
   } else {
     display.innerHTML = '';
   }
@@ -659,9 +679,18 @@ async function saveReview(id) {
 
   var pmHod = parseFloat(document.getElementById('pmHod-'+id).value)||null;
   var omHod = parseFloat(document.getElementById('omHod-'+id).value)||null;
-  var vwapVal = parseFloat(document.getElementById('vwap-'+id) && document.getElementById('vwap-'+id).value)||null;
-  var trueHod = Math.max(pmHod || 0, omHod || 0);
-  var vwapExtPct = (trueHod && vwapVal) ? calcExtPct(trueHod, vwapVal) : null;
+  var pmVwap = parseFloat(document.getElementById('pmVwap-'+id) && document.getElementById('pmVwap-'+id).value)||null;
+  var omVwap = parseFloat(document.getElementById('omVwap-'+id) && document.getElementById('omVwap-'+id).value)||null;
+
+  // Determine winning HOD and use its matching VWAP for the extension calculation.
+  var trueHod = null, matchedVwap = null;
+  if ((omHod || 0) > (pmHod || 0) && omHod) {
+    trueHod = omHod; matchedVwap = omVwap;
+  } else if (pmHod) {
+    trueHod = pmHod; matchedVwap = pmVwap;
+  }
+  var vwapExtPct = (trueHod && matchedVwap) ? calcExtPct(trueHod, matchedVwap) : null;
+
   var fadeDest = document.getElementById('fadeDest-'+id).value||null;
   var exitLevel = document.getElementById('exitLevel-'+id).value||null;
   var note = document.getElementById('note-'+id).value.trim()||null;
@@ -674,7 +703,8 @@ async function saveReview(id) {
   var payload = {
     premarket_hod: pmHod,
     open_market_hod: omHod,
-    vwap_at_analysis: vwapVal,
+    pm_vwap: pmVwap,
+    om_vwap: omVwap,
     vwap_extension_pct: vwapExtPct,
     hod_which_higher: hodHigher,
     fade_destination: fadeDest,
@@ -941,7 +971,7 @@ async function runLazyAnalysis() {
     var rsiData = await fetch4hrRSI(ticker);
 
     if (!rsiData) {
-      setLazyStatus('RSI fetch failed for ' + ticker + ' — check console for details.', 'var(--caution)');
+      setLazyStatus('RSI data unavailable for ' + ticker + ' — likely too new or insufficient Polygon coverage. Check the chart manually.', 'var(--caution)');
       btn.disabled = false; btn.textContent = 'Analyse'; return;
     }
     if (rsiData.workerError) {
