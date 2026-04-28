@@ -556,14 +556,14 @@ function buildReviewForm(entry) {
 
   return '<div class="review-title">Evening Review</div>' +
 
-    // Paired HOD + VWAP rows: PM on row 1, OM on row 2.
+    // Paired HOD + VWAP rows: PM on row 1 (green labels), OM on row 2 (default labels).
     '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:8px;">' +
-      '<div class="review-field"><div class="review-label">Pre-Market HOD $</div><input type="number" class="review-input" id="pmHod-'+id+'" placeholder="0.00" step="0.01" min="0" value="'+pmHod+'" oninput="calcVwapExt(\''+id+'\')" /></div>' +
-      '<div class="review-field"><div class="review-label">PM VWAP $</div><input type="number" class="review-input" id="pmVwap-'+id+'" placeholder="0.00" step="0.01" min="0" value="'+pmVwap+'" oninput="calcVwapExt(\''+id+'\')" /></div>' +
+      '<div class="review-field"><div class="review-label" style="color:var(--go)">Pre-Market HOD $</div><input type="number" class="review-input" id="pmHod-'+id+'" placeholder="0.00" step="0.01" min="0" value="'+pmHod+'" oninput="calcVwapExt(\''+id+'\')" /></div>' +
+      '<div class="review-field"><div class="review-label" style="color:var(--go)">Pre-Market VWAP $</div><input type="number" class="review-input" id="pmVwap-'+id+'" placeholder="0.00" step="0.01" min="0" value="'+pmVwap+'" oninput="calcVwapExt(\''+id+'\')" /></div>' +
     '</div>' +
     '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">' +
       '<div class="review-field"><div class="review-label">Open Market HOD $</div><input type="number" class="review-input" id="omHod-'+id+'" placeholder="0.00" step="0.01" min="0" value="'+omHod+'" oninput="calcVwapExt(\''+id+'\')" /></div>' +
-      '<div class="review-field"><div class="review-label">OM VWAP $</div><input type="number" class="review-input" id="omVwap-'+id+'" placeholder="0.00" step="0.01" min="0" value="'+omVwap+'" oninput="calcVwapExt(\''+id+'\')" /></div>' +
+      '<div class="review-field"><div class="review-label">Open Market VWAP $</div><input type="number" class="review-input" id="omVwap-'+id+'" placeholder="0.00" step="0.01" min="0" value="'+omVwap+'" oninput="calcVwapExt(\''+id+'\')" /></div>' +
     '</div>' +
     '<div style="font-family:var(--mono);font-size:11px;color:var(--accent);margin-bottom:16px;min-height:16px;" id="vwapExtDisplay-'+id+'"></div>' +
 
