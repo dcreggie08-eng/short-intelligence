@@ -183,14 +183,34 @@
   .pct-bar.high-fade { background:var(--go); }
   .pct-bar.low-fade { background:var(--nogo); }
   .analytics-note { font-family:var(--mono); font-size:12px; color:var(--text-dim); letter-spacing:1px; padding:20px; text-align:center; border:1px solid var(--border); }
-  .best-setup-box { background:rgba(0,212,255,0.04); border:1px solid rgba(0,212,255,0.3); padding:20px 24px; margin-bottom:32px; position:relative; }
-  .best-setup-box::before { content:'BEST SETUP'; font-family:var(--mono); font-size:10px; letter-spacing:3px; color:var(--accent); position:absolute; top:-1px; left:16px; background:var(--bg); padding:0 8px; transform:translateY(-50%); }
-  .best-setup-loading { font-family:var(--mono); font-size:12px; color:var(--text-dim); letter-spacing:1px; text-align:center; padding:10px 0; }
-  .best-setup-combo { font-family:var(--display); font-weight:700; font-size:22px; letter-spacing:2px; color:var(--text-bright); text-transform:uppercase; margin-bottom:8px; line-height:1.3; }
-  .best-setup-rate { font-family:var(--display); font-weight:900; font-size:42px; letter-spacing:2px; color:var(--go); line-height:1; margin-bottom:6px; }
-  .best-setup-meta { font-family:var(--mono); font-size:11px; color:var(--text-dim); letter-spacing:1px; }
+  .best-setup-grid { display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; margin-bottom:20px; }
+  .best-setup-box { border:1px solid; padding:18px 20px; position:relative; }
+  .best-setup-box.rank-1 { border-color:rgba(0,230,118,0.4); background:rgba(0,230,118,0.04); }
+  .best-setup-box.rank-2 { border-color:rgba(0,212,255,0.3); background:rgba(0,212,255,0.03); }
+  .best-setup-box.rank-3 { border-color:rgba(255,179,0,0.25); background:rgba(255,179,0,0.03); }
+  .best-setup-rank { font-family:var(--mono); font-size:10px; letter-spacing:3px; text-transform:uppercase; margin-bottom:8px; }
+  .rank-1 .best-setup-rank { color:var(--go); }
+  .rank-2 .best-setup-rank { color:var(--accent); }
+  .rank-3 .best-setup-rank { color:var(--caution); }
+  .best-setup-rate { font-family:var(--display); font-weight:900; font-size:38px; letter-spacing:2px; line-height:1; margin-bottom:6px; }
+  .rank-1 .best-setup-rate { color:var(--go); }
+  .rank-2 .best-setup-rate { color:var(--accent); }
+  .rank-3 .best-setup-rate { color:var(--caution); }
+  .best-setup-combo { font-family:var(--display); font-weight:700; font-size:14px; letter-spacing:1px; color:var(--text-bright); text-transform:uppercase; margin-bottom:6px; line-height:1.3; }
+  .best-setup-meta { font-family:var(--mono); font-size:11px; color:var(--text-dim); letter-spacing:0.5px; }
   .best-setup-meta span { color:var(--accent); }
+  .best-setup-loading { font-family:var(--mono); font-size:12px; color:var(--text-dim); letter-spacing:1px; text-align:center; padding:20px; border:1px solid var(--border); margin-bottom:20px; }
+  @media(max-width:640px) { .best-setup-grid { grid-template-columns:1fr; } }
   .perm-table-combo { font-family:var(--mono); font-size:11px; color:var(--text-dim); letter-spacing:0.5px; font-style:italic; }
+  .key-findings { background:var(--surface); border:1px solid var(--border); margin-bottom:20px; }
+  .key-findings-header { font-family:var(--mono); font-size:11px; letter-spacing:3px; text-transform:uppercase; color:var(--accent); padding:12px 16px; border-bottom:1px solid var(--border); }
+  .key-finding-row { display:flex; align-items:baseline; gap:12px; padding:10px 16px; border-bottom:1px solid rgba(30,37,48,0.5); }
+  .key-finding-row:last-child { border-bottom:none; }
+  .key-finding-label { font-family:var(--mono); font-size:10px; letter-spacing:1.5px; text-transform:uppercase; color:var(--text-dim); min-width:180px; flex-shrink:0; }
+  .key-finding-text { font-family:var(--mono); font-size:12px; color:var(--text); line-height:1.5; }
+  .key-finding-text.positive { color:var(--go); }
+  .key-finding-text.warning { color:var(--caution); }
+  .key-finding-text.dim { color:var(--text-dim); font-style:italic; }
   @media (max-width:640px) {
     .stat-cards { grid-template-columns:1fr 1fr; }
     .review-grid { grid-template-columns:1fr; }
@@ -247,13 +267,11 @@
       <div class="stat-card"><div class="stat-card-label">Fade Rate</div><div class="stat-card-value" id="statFadeRate">—</div><div class="stat-card-sub">gatekeeper was right</div></div>
       <div class="stat-card"><div class="stat-card-label">GO Accuracy</div><div class="stat-card-value" id="statGoAccuracy">—</div><div class="stat-card-sub">GO calls that faded</div></div>
     </div>
-    <div class="best-setup-box">
-      <div id="bestSetupLoading" class="best-setup-loading">Scanning combinations...</div>
-      <div id="bestSetupContent" style="display:none;">
-        <div class="best-setup-rate" id="bestSetupRate">—</div>
-        <div class="best-setup-combo" id="bestSetupCombo">—</div>
-        <div class="best-setup-meta" id="bestSetupMeta">—</div>
-      </div>
+    <div id="bestSetupLoading" class="best-setup-loading" style="display:none;">Scanning combinations...</div>
+    <div class="best-setup-grid" id="bestSetupGrid"></div>
+    <div class="key-findings" id="keyFindings" style="display:none;">
+      <div class="key-findings-header">Key Findings — what the data is saying</div>
+      <div id="keyFindingsBody"></div>
     </div>
     <div class="analytics-section"><div class="analytics-title" onclick="toggleSection(this)">Fade Rate by Droppiness Band <span class="analytics-toggle">▼</span></div><div class="analytics-body"><div id="dropTable"></div></div></div>
     <div class="analytics-section"><div class="analytics-title" onclick="toggleSection(this)">Fade Rate by Verdict <span class="analytics-toggle">▼</span></div><div class="analytics-body"><div id="verdictTable"></div></div></div>
@@ -853,6 +871,7 @@ async function loadAnalytics() {
     renderPermInstCat(data); renderPermFloatCatCash(data); renderPermSerialDiluter(data);
     renderPermDesperate(data); renderPermPriceBand(data);
     renderBestSetup(data);
+    renderKeySummary(data);
   } catch(e) { console.error('Analytics error:',e); }
 }
 
@@ -1125,88 +1144,177 @@ function renderPermPriceBand(data) {
 }
 
 // ─────────────────────────────────────────────
-// BEST SETUP BOX
+// KEY FINDINGS SUMMARY
+// ─────────────────────────────────────────────
+function renderKeySummary(data) {
+  var panel = document.getElementById('keyFindings');
+  var body = document.getElementById('keyFindingsBody');
+  var MIN = 5;
+
+  function topCombo(keyFn) {
+    var reviewed = data.filter(function(d) { return d.gatekeeper_correct && keyFn(d) !== null; });
+    var groups = {};
+    reviewed.forEach(function(d) { var k = keyFn(d); if (!k) return; if (!groups[k]) groups[k] = []; groups[k].push(d); });
+    var best = null;
+    Object.keys(groups).forEach(function(k) {
+      var g = groups[k]; if (g.length < MIN) return;
+      var faded = g.filter(function(d) { return derivedDidFade(d) === true; }).length;
+      var pct = Math.round(faded / g.length * 100);
+      if (!best || pct > best.pct) best = { label: k, pct: pct, n: g.length, faded: faded };
+    });
+    return best;
+  }
+
+  function topSingle(keyFn) {
+    var reviewed = data.filter(function(d) { return d.gatekeeper_correct && keyFn(d) !== null; });
+    var groups = {};
+    reviewed.forEach(function(d) { var k = keyFn(d); if (!k) return; if (!groups[k]) groups[k] = []; groups[k].push(d); });
+    var best = null;
+    Object.keys(groups).forEach(function(k) {
+      var g = groups[k]; if (g.length < MIN) return;
+      var faded = g.filter(function(d) { return d.gatekeeper_correct === 'YES'; }).length;
+      var pct = Math.round(faded / g.length * 100);
+      if (!best || pct > best.pct) best = { label: k, pct: pct, n: g.length };
+    });
+    return best;
+  }
+
+  function strength(pct) { return pct >= 70 ? 'positive' : pct >= 50 ? '' : 'warning'; }
+
+  function findingRow(label, text, cls) {
+    return '<div class="key-finding-row"><div class="key-finding-label">' + label + '</div><div class="key-finding-text ' + (cls||'') + '">' + text + '</div></div>';
+  }
+
+  var rows = [];
+
+  // Droppiness
+  var dropBands = [{label:'High (67+)', f:function(d){return d.droppiness_score>=67;}},{label:'Medium (35-66)',f:function(d){return d.droppiness_score>=35&&d.droppiness_score<67;}},{label:'Low (<35)',f:function(d){return d.droppiness_score!==null&&d.droppiness_score<35;}}];
+  var revDrop = data.filter(function(d){return d.droppiness_score!==null&&d.gatekeeper_correct;});
+  var bestDrop = null;
+  dropBands.forEach(function(b){var g=revDrop.filter(b.f);if(g.length<MIN)return;var c=g.filter(function(d){return d.gatekeeper_correct==='YES';}).length;var p=Math.round(c/g.length*100);if(!bestDrop||p>bestDrop.pct)bestDrop={label:b.label,pct:p,n:g.length};});
+  rows.push(findingRow('Droppiness', bestDrop ? bestDrop.label + ' stocks fade ' + bestDrop.pct + '% of the time — ' + (bestDrop.pct>=70?'your strongest droppiness signal':'building signal') : 'Need 5+ entries per band — keep logging.', bestDrop?strength(bestDrop.pct):'dim'));
+
+  // Verdict
+  var verdicts = ['GO','CAUTION','NO TRADE','NO GO'];
+  var revVerd = data.filter(function(d){return d.verdict&&d.gatekeeper_correct;});
+  var bestVerd = null;
+  verdicts.forEach(function(v){var g=revVerd.filter(function(d){return d.verdict===v;});if(g.length<MIN)return;var c=g.filter(function(d){return d.gatekeeper_correct==='YES';}).length;var p=Math.round(c/g.length*100);if(!bestVerd||p>bestVerd.pct)bestVerd={label:v,pct:p,n:g.length};});
+  rows.push(findingRow('Verdict', bestVerd ? bestVerd.label + ' is your most reliable verdict at ' + bestVerd.pct + '% correct from ' + bestVerd.n + ' entries' : 'Need 5+ entries per verdict type.', bestVerd?strength(bestVerd.pct):'dim'));
+
+  // VWAP
+  var vwapBands2 = [{label:'50%+ above VWAP',f:function(d){return d.vwap_extension_pct>=50;}},{label:'30-50% above VWAP',f:function(d){return d.vwap_extension_pct>=30&&d.vwap_extension_pct<50;}},{label:'20-30% above VWAP',f:function(d){return d.vwap_extension_pct>=20&&d.vwap_extension_pct<30;}},{label:'Below 20%',f:function(d){return d.vwap_extension_pct!==null&&d.vwap_extension_pct<20;}}];
+  var revVwap = data.filter(function(d){return d.vwap_extension_pct!==null&&d.gatekeeper_correct;});
+  var bestVwap = null, worstVwap = null;
+  vwapBands2.forEach(function(b){var g=revVwap.filter(b.f);if(g.length<MIN)return;var c=g.filter(function(d){return d.gatekeeper_correct==='YES';}).length;var p=Math.round(c/g.length*100);if(!bestVwap||p>bestVwap.pct)bestVwap={label:b.label,pct:p,n:g.length};if(!worstVwap||p<worstVwap.pct)worstVwap={label:b.label,pct:p,n:g.length};});
+  var vwapText = bestVwap ? bestVwap.label + ' fades ' + bestVwap.pct + '% of the time' + (worstVwap&&worstVwap.label!==bestVwap.label?' — avoid the ' + worstVwap.label + ' zone (' + worstVwap.pct + '%)':'') : 'Need VWAP data in evening reviews.';
+  rows.push(findingRow('VWAP Extension', vwapText, bestVwap?strength(bestVwap.pct):'dim'));
+
+  // HOD
+  var revHod = data.filter(function(d){return d.hod_which_higher&&d.catalyst_grade;});
+  var omWins = revHod.filter(function(d){return d.hod_which_higher==='OM';}).length;
+  var omPct = revHod.length>=MIN ? Math.round(omWins/revHod.length*100) : null;
+  rows.push(findingRow('HOD Timing', omPct!==null ? 'Open market sets the HOD ' + omPct + '% of the time — pre-market HOD alone is misleading' : 'Need 5+ entries with HOD data.', omPct!==null?(omPct>=55?'warning':''):'dim'));
+
+  // Fade destinations
+  var revDest = data.filter(function(d){return d.fade_destination;});
+  var destCounts = {};
+  revDest.forEach(function(d){destCounts[d.fade_destination]=(destCounts[d.fade_destination]||0)+1;});
+  var topDest = Object.keys(destCounts).sort(function(a,b){return destCounts[b]-destCounts[a];})[0];
+  var topDestPct = topDest&&revDest.length>=MIN ? Math.round(destCounts[topDest]/revDest.length*100) : null;
+  rows.push(findingRow('Fade Destination', topDest&&topDestPct!==null ? topDest + ' is the most common exit at ' + topDestPct + '% — focus exits there first' : 'Need 5+ entries with fade destinations.', topDest?'positive':'dim'));
+
+  // Perm: Cat + Dil + Cash
+  var b1 = topCombo(function(d){var cat=d.catalyst_grade,dil=normaliseVal(d.dilution_overall),cash=normaliseVal(d.dilution_cash_need);return(cat&&dil&&cash)?cat+' + '+dil+' DIL + '+cash+' CASH':null;});
+  rows.push(findingRow('Cat + Dil + Cash', b1 ? b1.label + ' fades ' + b1.pct + '% (' + b1.faded + '/' + b1.n + ') — ' + (b1.pct>=80?'high conviction setup':'watch this combination') : 'Building data — need 5+ per combination.', b1?strength(b1.pct):'dim'));
+
+  // Perm: Cat + Dil + Drop
+  var b2 = topCombo(function(d){var cat=d.catalyst_grade,dil=normaliseVal(d.dilution_overall),drop=dropBand(d.droppiness_score);return(cat&&dil&&drop)?cat+' + '+dil+' DIL + DROP '+drop:null;});
+  rows.push(findingRow('Cat + Dil + Drop', b2 ? b2.label + ' fades ' + b2.pct + '% (' + b2.faded + '/' + b2.n + ')' : 'Building data — need 5+ per combination.', b2?strength(b2.pct):'dim'));
+
+  // Perm: Verdict + VWAP + Drop
+  var b3 = topCombo(function(d){var v=d.verdict,vw=vwapBand(d.vwap_extension_pct),dr=dropBand(d.droppiness_score);return(v&&vw&&dr)?v+' + VWAP '+vw+' + DROP '+dr:null;});
+  rows.push(findingRow('Verdict + VWAP + Drop', b3 ? b3.label + ' fades ' + b3.pct + '% (' + b3.faded + '/' + b3.n + ')' : 'Building data — need 5+ per combination.', b3?strength(b3.pct):'dim'));
+
+  // Perm: Inst + Cat
+  var b4 = topCombo(function(d){var inst=instBand(d.inst_percent),cat=d.catalyst_grade;return(inst&&cat)?'INST '+inst+' + '+cat:null;});
+  rows.push(findingRow('Inst% + Catalyst', b4 ? b4.label + ' fades ' + b4.pct + '% (' + b4.faded + '/' + b4.n + ')' + (b4.label.includes('50%+')?' — block threshold confirmed':'') : 'Building data — need 5+ per combination.', b4?strength(b4.pct):'dim'));
+
+  // Perm: Float + Cat + Cash
+  var b5 = topCombo(function(d){var fl=floatBand(d.float_shares),cat=d.catalyst_grade,cash=normaliseVal(d.dilution_cash_need);return(fl&&cat&&cash)?'FLOAT '+fl+' + '+cat+' + '+cash+' CASH':null;});
+  rows.push(findingRow('Float + Cat + Cash', b5 ? b5.label + ' fades ' + b5.pct + '% (' + b5.faded + '/' + b5.n + ')' : 'Building data — need 5+ per combination.', b5?strength(b5.pct):'dim'));
+
+  // Perm: Serial Diluter
+  var b6 = topCombo(function(d){var freq=normaliseVal(d.dilution_offering_frequency),risk=normaliseVal(d.dilution_offering_risk);return(freq&&risk)?freq+' FREQ + '+risk+' RISK':null;});
+  rows.push(findingRow('Serial Diluter', b6 ? b6.label + ' fades ' + b6.pct + '% (' + b6.faded + '/' + b6.n + ')' + (b6.pct>=70?' — repeat diluters are reliable shorts':'') : 'Building data — need 5+ per combination.', b6?strength(b6.pct):'dim'));
+
+  // Perm: Desperate Company
+  var b7 = topCombo(function(d){var cash=normaliseVal(d.dilution_cash_need),nasd=normaliseVal(d.dilution_nasdaq_compliance);return(cash&&nasd)?cash+' CASH + '+nasd+' NASDAQ':null;});
+  rows.push(findingRow('Desperate Company', b7 ? b7.label + ' fades ' + b7.pct + '% (' + b7.faded + '/' + b7.n + ')' + (b7.pct>=70?' — structural pressure confirmed':'') : 'Building data — need 5+ per combination.', b7?strength(b7.pct):'dim'));
+
+  // Perm: Price Band
+  var b8 = topCombo(function(d){var p=priceBand(d.price_at_analysis);return p?'PRICE '+p:null;});
+  rows.push(findingRow('Price Band', b8 ? b8.label + ' stocks fade ' + b8.pct + '% of the time from ' + b8.n + ' entries' : 'Building data — need 5+ per price band.', b8?strength(b8.pct):'dim'));
+
+  body.innerHTML = rows.join('');
+  panel.style.display = 'block';
+}
+
+// ─────────────────────────────────────────────
+// BEST SETUP BOX — TOP 3 PODIUM
 // ─────────────────────────────────────────────
 function renderBestSetup(data) {
   var loading = document.getElementById('bestSetupLoading');
-  var content = document.getElementById('bestSetupContent');
+  var grid = document.getElementById('bestSetupGrid');
   var MIN = 5;
 
-  // Build all combinations from all permutation tables
   var allCombos = [];
 
   function scanCombos(keyFn, tableLabel) {
     var reviewed = data.filter(function(d) { return d.gatekeeper_correct && keyFn(d) !== null; });
     var groups = {};
-    reviewed.forEach(function(d) {
-      var key = keyFn(d);
-      if (!key) return;
-      if (!groups[key]) groups[key] = [];
-      groups[key].push(d);
-    });
+    reviewed.forEach(function(d) { var key = keyFn(d); if (!key) return; if (!groups[key]) groups[key] = []; groups[key].push(d); });
     Object.keys(groups).forEach(function(k) {
-      var g = groups[k];
-      if (g.length < MIN) return;
+      var g = groups[k]; if (g.length < MIN) return;
       var faded = g.filter(function(d) { return derivedDidFade(d) === true; }).length;
       var pct = Math.round(faded / g.length * 100);
       allCombos.push({ label: k, table: tableLabel, n: g.length, faded: faded, pct: pct });
     });
   }
 
-  scanCombos(function(d) {
-    var cat = d.catalyst_grade, dil = normaliseVal(d.dilution_overall), cash = normaliseVal(d.dilution_cash_need);
-    return (cat && dil && cash) ? cat + ' + ' + dil + ' DIL + ' + cash + ' CASH' : null;
-  }, 'Catalyst / Dilution / Cash Need');
-
-  scanCombos(function(d) {
-    var cat = d.catalyst_grade, dil = normaliseVal(d.dilution_overall), drop = dropBand(d.droppiness_score);
-    return (cat && dil && drop) ? cat + ' + ' + dil + ' DIL + DROP ' + drop : null;
-  }, 'Catalyst / Dilution / Droppiness');
-
-  scanCombos(function(d) {
-    var v = d.verdict, vwap = vwapBand(d.vwap_extension_pct), drop = dropBand(d.droppiness_score);
-    return (v && vwap && drop) ? v + ' + VWAP ' + vwap + ' + DROP ' + drop : null;
-  }, 'Verdict / VWAP / Droppiness');
-
-  scanCombos(function(d) {
-    var inst = instBand(d.inst_percent), cat = d.catalyst_grade;
-    return (inst && cat) ? 'INST ' + inst + ' + ' + cat : null;
-  }, 'Inst% / Catalyst');
-
-  scanCombos(function(d) {
-    var fl = floatBand(d.float_shares), cat = d.catalyst_grade, cash = normaliseVal(d.dilution_cash_need);
-    return (fl && cat && cash) ? 'FLOAT ' + fl + ' + ' + cat + ' + ' + cash + ' CASH' : null;
-  }, 'Float / Catalyst / Cash');
-
-  scanCombos(function(d) {
-    var freq = normaliseVal(d.dilution_offering_frequency), risk = normaliseVal(d.dilution_offering_risk);
-    return (freq && risk) ? freq + ' FREQ + ' + risk + ' RISK' : null;
-  }, 'Serial Diluter');
-
-  scanCombos(function(d) {
-    var cash = normaliseVal(d.dilution_cash_need), nasd = normaliseVal(d.dilution_nasdaq_compliance);
-    return (cash && nasd) ? cash + ' CASH + ' + nasd + ' NASDAQ' : null;
-  }, 'Desperate Company');
-
-  scanCombos(function(d) {
-    var p = priceBand(d.price_at_analysis);
-    return p ? 'PRICE ' + p : null;
-  }, 'Price Band');
+  scanCombos(function(d){var cat=d.catalyst_grade,dil=normaliseVal(d.dilution_overall),cash=normaliseVal(d.dilution_cash_need);return(cat&&dil&&cash)?cat+' + '+dil+' DIL + '+cash+' CASH':null;},'Catalyst / Dilution / Cash Need');
+  scanCombos(function(d){var cat=d.catalyst_grade,dil=normaliseVal(d.dilution_overall),drop=dropBand(d.droppiness_score);return(cat&&dil&&drop)?cat+' + '+dil+' DIL + DROP '+drop:null;},'Catalyst / Dilution / Droppiness');
+  scanCombos(function(d){var v=d.verdict,vwap=vwapBand(d.vwap_extension_pct),drop=dropBand(d.droppiness_score);return(v&&vwap&&drop)?v+' + VWAP '+vwap+' + DROP '+drop:null;},'Verdict / VWAP / Droppiness');
+  scanCombos(function(d){var inst=instBand(d.inst_percent),cat=d.catalyst_grade;return(inst&&cat)?'INST '+inst+' + '+cat:null;},'Inst% / Catalyst');
+  scanCombos(function(d){var fl=floatBand(d.float_shares),cat=d.catalyst_grade,cash=normaliseVal(d.dilution_cash_need);return(fl&&cat&&cash)?'FLOAT '+fl+' + '+cat+' + '+cash+' CASH':null;},'Float / Catalyst / Cash');
+  scanCombos(function(d){var freq=normaliseVal(d.dilution_offering_frequency),risk=normaliseVal(d.dilution_offering_risk);return(freq&&risk)?freq+' FREQ + '+risk+' RISK':null;},'Serial Diluter');
+  scanCombos(function(d){var cash=normaliseVal(d.dilution_cash_need),nasd=normaliseVal(d.dilution_nasdaq_compliance);return(cash&&nasd)?cash+' CASH + '+nasd+' NASDAQ':null;},'Desperate Company');
+  scanCombos(function(d){var p=priceBand(d.price_at_analysis);return p?'PRICE '+p:null;},'Price Band');
 
   if (allCombos.length === 0) {
     loading.textContent = 'Not enough data yet — need 5+ entries per combination. Keep logging.';
+    loading.style.display = 'block';
+    grid.innerHTML = '';
     return;
   }
 
-  allCombos.sort(function(a, b) { return b.pct - a.pct; });
-  var best = allCombos[0];
-
   loading.style.display = 'none';
-  content.style.display = 'block';
-  document.getElementById('bestSetupRate').textContent = best.pct + '%';
-  document.getElementById('bestSetupCombo').textContent = best.label;
-  document.getElementById('bestSetupMeta').innerHTML =
-    '<span>' + best.faded + '</span> of <span>' + best.n + '</span> faded — from ' + best.table + ' table';
+
+  // Sort and dedupe — take top 3 distinct combinations
+  allCombos.sort(function(a, b) { return b.pct - a.pct || b.n - a.n; });
+  var seen = {}, top3 = [];
+  allCombos.forEach(function(c) { if (top3.length < 3 && !seen[c.label]) { seen[c.label] = true; top3.push(c); } });
+
+  var rankLabels = ['#1 Best Setup', '#2 Setup', '#3 Setup'];
+  var rankClasses = ['rank-1', 'rank-2', 'rank-3'];
+
+  grid.innerHTML = top3.map(function(c, i) {
+    return '<div class="best-setup-box ' + rankClasses[i] + '">' +
+      '<div class="best-setup-rank">' + rankLabels[i] + '</div>' +
+      '<div class="best-setup-rate">' + c.pct + '%</div>' +
+      '<div class="best-setup-combo">' + c.label + '</div>' +
+      '<div class="best-setup-meta"><span>' + c.faded + '</span> of <span>' + c.n + '</span> faded &mdash; ' + c.table + '</div>' +
+    '</div>';
+  }).join('');
 }
 
 function sampleNote(n) { return n<10?' <span style="color:var(--text-dim);font-size:10px">(need '+(10-n)+' more)</span>':''; }
