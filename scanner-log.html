@@ -177,6 +177,14 @@
   .pct-bar.high-fade { background:var(--go); }
   .pct-bar.low-fade { background:var(--nogo); }
   .analytics-note { font-family:var(--mono); font-size:12px; color:var(--text-dim); letter-spacing:1px; padding:20px; text-align:center; border:1px solid var(--border); }
+  .best-setup-box { background:rgba(0,212,255,0.04); border:1px solid rgba(0,212,255,0.3); padding:20px 24px; margin-bottom:32px; position:relative; }
+  .best-setup-box::before { content:'BEST SETUP'; font-family:var(--mono); font-size:10px; letter-spacing:3px; color:var(--accent); position:absolute; top:-1px; left:16px; background:var(--bg); padding:0 8px; transform:translateY(-50%); }
+  .best-setup-loading { font-family:var(--mono); font-size:12px; color:var(--text-dim); letter-spacing:1px; text-align:center; padding:10px 0; }
+  .best-setup-combo { font-family:var(--display); font-weight:700; font-size:22px; letter-spacing:2px; color:var(--text-bright); text-transform:uppercase; margin-bottom:8px; line-height:1.3; }
+  .best-setup-rate { font-family:var(--display); font-weight:900; font-size:42px; letter-spacing:2px; color:var(--go); line-height:1; margin-bottom:6px; }
+  .best-setup-meta { font-family:var(--mono); font-size:11px; color:var(--text-dim); letter-spacing:1px; }
+  .best-setup-meta span { color:var(--accent); }
+  .perm-table-combo { font-family:var(--mono); font-size:11px; color:var(--text-dim); letter-spacing:0.5px; font-style:italic; }
   @media (max-width:640px) {
     .stat-cards { grid-template-columns:1fr 1fr; }
     .review-grid { grid-template-columns:1fr; }
@@ -233,11 +241,27 @@
       <div class="stat-card"><div class="stat-card-label">Fade Rate</div><div class="stat-card-value" id="statFadeRate">—</div><div class="stat-card-sub">gatekeeper was right</div></div>
       <div class="stat-card"><div class="stat-card-label">GO Accuracy</div><div class="stat-card-value" id="statGoAccuracy">—</div><div class="stat-card-sub">GO calls that faded</div></div>
     </div>
+    <div class="best-setup-box">
+      <div id="bestSetupLoading" class="best-setup-loading">Scanning combinations...</div>
+      <div id="bestSetupContent" style="display:none;">
+        <div class="best-setup-rate" id="bestSetupRate">—</div>
+        <div class="best-setup-combo" id="bestSetupCombo">—</div>
+        <div class="best-setup-meta" id="bestSetupMeta">—</div>
+      </div>
+    </div>
     <div class="analytics-section"><div class="analytics-title">Fade Rate by Droppiness Band</div><div id="dropTable"></div></div>
     <div class="analytics-section"><div class="analytics-title">Fade Rate by Verdict</div><div id="verdictTable"></div></div>
     <div class="analytics-section"><div class="analytics-title">VWAP Extension % vs Fade Outcome</div><div id="vwapTable"></div></div>
     <div class="analytics-section"><div class="analytics-title">Pre-Market HOD vs Open Market HOD — by Catalyst Grade</div><div id="hodTable"></div></div>
     <div class="analytics-section"><div class="analytics-title">Most Common Fade Destinations</div><div id="fadeDestTable"></div></div>
+    <div class="analytics-section"><div class="analytics-title">Catalyst Grade + Dilution Risk + Cash Need</div><div id="permCatDilCash"></div></div>
+    <div class="analytics-section"><div class="analytics-title">Catalyst Grade + Dilution Risk + Droppiness Band</div><div id="permCatDilDrop"></div></div>
+    <div class="analytics-section"><div class="analytics-title">Verdict + VWAP Extension + Droppiness Band</div><div id="permVerdictVwapDrop"></div></div>
+    <div class="analytics-section"><div class="analytics-title">Institutional Ownership Band + Catalyst Grade</div><div id="permInstCat"></div></div>
+    <div class="analytics-section"><div class="analytics-title">Float Band + Catalyst Grade + Cash Need</div><div id="permFloatCatCash"></div></div>
+    <div class="analytics-section"><div class="analytics-title">Serial Diluter — Offering Frequency + Offering Risk</div><div id="permSerialDiluter"></div></div>
+    <div class="analytics-section"><div class="analytics-title">Desperate Company — Cash Need + Nasdaq Compliance</div><div id="permDesperate"></div></div>
+    <div class="analytics-section"><div class="analytics-title">Price Band vs Fade Rate</div><div id="permPriceBand"></div></div>
   </div>
   <div class="lazy-tab-panel" id="tabLazy">
 
@@ -810,7 +834,364 @@ async function loadAnalytics() {
     document.getElementById('statFadeRate').textContent=fadeRate!==null?fadeRate+'%':'—';
     document.getElementById('statGoAccuracy').textContent=goAcc!==null?goAcc+'%':'—';
     renderDropTable(data); renderVerdictTable(data); renderVwapTable(data); renderHODTable(data); renderFadeDestTable(data);
+    renderPermCatDilCash(data); renderPermCatDilDrop(data); renderPermVerdictVwapDrop(data);
+    renderPermInstCat(data); renderPermFloatCatCash(data); renderPermSerialDiluter(data);
+    renderPermDesperate(data); renderPermPriceBand(data);
+    renderBestSetup(data);
   } catch(e) { console.error('Analytics error:',e); }
+}
+
+// ─────────────────────────────────────────────
+// HELPER: derive did_fade from verdict + gatekeeper_correct
+// ─────────────────────────────────────────────
+function derivedDidFade(d) {
+  if (!d.gatekeeper_correct) return null;
+  var isBlock = d.verdict === 'NO TRADE' || d.verdict === 'NO GO';
+  if (d.gatekeeper_correct === 'YES') return !isBlock;
+  if (d.gatekeeper_correct === 'NO') return isBlock ? true : false;
+  if (d.gatekeeper_correct === 'PARTIAL') return true;
+  return null;
+}
+
+function dropBand(score) {
+  if (score === null || score === undefined) return null;
+  if (score >= 67) return 'High (67+)';
+  if (score >= 35) return 'Med (35-66)';
+  return 'Low (<35)';
+}
+
+function vwapBand(pct) {
+  if (pct === null || pct === undefined) return null;
+  if (pct >= 50) return '50%+';
+  if (pct >= 30) return '30-50%';
+  if (pct >= 20) return '20-30%';
+  return '<20%';
+}
+
+function instBand(pct) {
+  if (pct === null || pct === undefined) return null;
+  if (pct >= 50) return '50%+';
+  if (pct >= 20) return '20-50%';
+  return '0-20%';
+}
+
+function floatBand(shares) {
+  if (shares === null || shares === undefined) return null;
+  if (shares < 5000000) return '<5M';
+  if (shares < 10000000) return '5-10M';
+  return '10M+';
+}
+
+function priceBand(price) {
+  if (price === null || price === undefined) return null;
+  if (price < 2) return '<$2';
+  if (price < 5) return '$2-5';
+  return '$5+';
+}
+
+function normaliseVal(v) {
+  if (!v) return null;
+  var s = v.toString().toLowerCase().trim();
+  if (s === 'high') return 'HIGH';
+  if (s === 'medium' || s === 'moderate' || s === 'med') return 'MED';
+  if (s === 'low') return 'LOW';
+  return v.toString().toUpperCase();
+}
+
+// ─────────────────────────────────────────────
+// PERMUTATION TABLE BUILDER
+// ─────────────────────────────────────────────
+function buildPermTable(data, keyFn, headers, cellFn, minEntries) {
+  minEntries = minEntries || 5;
+  var reviewed = data.filter(function(d) { return d.gatekeeper_correct && keyFn(d) !== null; });
+  if (reviewed.length < minEntries) {
+    return '<div class="analytics-note">Need ' + minEntries + '+ reviewed entries for this table. You have ' + reviewed.length + ' so far.</div>';
+  }
+  var groups = {};
+  reviewed.forEach(function(d) {
+    var key = keyFn(d);
+    if (key === null) return;
+    if (!groups[key]) groups[key] = { entries: [], label: key };
+    groups[key].entries.push(d);
+  });
+  var rows = Object.keys(groups).map(function(k) {
+    var g = groups[k];
+    var faded = g.entries.filter(function(d) { return derivedDidFade(d) === true; }).length;
+    var total = g.entries.length;
+    var pct = total >= minEntries ? Math.round(faded / total * 100) : null;
+    return { label: k, n: total, faded: faded, pct: pct };
+  }).filter(function(r) { return r.n > 0; }).sort(function(a, b) { return (b.pct || 0) - (a.pct || 0); });
+
+  if (rows.length === 0) return '<div class="analytics-note">No data yet for this combination.</div>';
+
+  return '<table class="analytics-table"><thead><tr>' +
+    headers.map(function(h) { return '<th>' + h + '</th>'; }).join('') +
+    '<th>Entries</th><th>Faded</th><th>Fade Rate</th></tr></thead><tbody>' +
+    rows.map(function(r) {
+      var bc = r.pct !== null && r.pct >= 70 ? 'high-fade' : r.pct !== null && r.pct < 40 ? 'low-fade' : '';
+      var cells = cellFn(r.label);
+      return '<tr>' + cells + '<td>' + r.n + '</td><td>' + r.faded + '</td><td>' +
+        '<div class="pct-bar-wrap"><div class="pct-bar ' + bc + '" style="width:' + (r.pct !== null ? Math.min(r.pct, 100) : 0) + 'px"></div>' +
+        '<span>' + (r.pct !== null ? r.pct + '%' : '—') + '</span>' +
+        (r.n < minEntries ? ' <span style="color:var(--text-dim);font-size:10px">(need ' + (minEntries - r.n) + ' more)</span>' : '') +
+        '</div></td></tr>';
+    }).join('') + '</tbody></table>';
+}
+
+// ─────────────────────────────────────────────
+// TABLE 1: Catalyst + Dilution Overall + Cash Need
+// ─────────────────────────────────────────────
+function renderPermCatDilCash(data) {
+  var el = document.getElementById('permCatDilCash');
+  el.innerHTML = buildPermTable(data,
+    function(d) {
+      var cat = d.catalyst_grade, dil = normaliseVal(d.dilution_overall), cash = normaliseVal(d.dilution_cash_need);
+      if (!cat || !dil || !cash) return null;
+      return cat + ' | ' + dil + ' dil | ' + cash + ' cash';
+    },
+    ['Catalyst', 'Dilution', 'Cash Need'],
+    function(label) {
+      var parts = label.split(' | ');
+      var catCol = parts[0] === 'WEAK/FLUFF' ? 'var(--go)' : parts[0] === 'MID' ? 'var(--caution)' : 'var(--nogo)';
+      return '<td style="color:' + catCol + '">' + (parts[0]||'—') + '</td>' +
+             '<td class="perm-table-combo">' + (parts[1]||'—') + '</td>' +
+             '<td class="perm-table-combo">' + (parts[2]||'—') + '</td>';
+    }
+  );
+}
+
+// ─────────────────────────────────────────────
+// TABLE 2: Catalyst + Dilution Overall + Droppiness Band
+// ─────────────────────────────────────────────
+function renderPermCatDilDrop(data) {
+  var el = document.getElementById('permCatDilDrop');
+  el.innerHTML = buildPermTable(data,
+    function(d) {
+      var cat = d.catalyst_grade, dil = normaliseVal(d.dilution_overall), drop = dropBand(d.droppiness_score);
+      if (!cat || !dil || !drop) return null;
+      return cat + ' | ' + dil + ' dil | Drop ' + drop;
+    },
+    ['Catalyst', 'Dilution', 'Droppiness'],
+    function(label) {
+      var parts = label.split(' | ');
+      var catCol = parts[0] === 'WEAK/FLUFF' ? 'var(--go)' : parts[0] === 'MID' ? 'var(--caution)' : 'var(--nogo)';
+      return '<td style="color:' + catCol + '">' + (parts[0]||'—') + '</td>' +
+             '<td class="perm-table-combo">' + (parts[1]||'—') + '</td>' +
+             '<td class="perm-table-combo">' + (parts[2]||'—') + '</td>';
+    }
+  );
+}
+
+// ─────────────────────────────────────────────
+// TABLE 3: Verdict + VWAP Extension + Droppiness Band
+// ─────────────────────────────────────────────
+function renderPermVerdictVwapDrop(data) {
+  var el = document.getElementById('permVerdictVwapDrop');
+  el.innerHTML = buildPermTable(data,
+    function(d) {
+      var v = d.verdict, vwap = vwapBand(d.vwap_extension_pct), drop = dropBand(d.droppiness_score);
+      if (!v || !vwap || !drop) return null;
+      return v + ' | VWAP ' + vwap + ' | Drop ' + drop;
+    },
+    ['Verdict', 'VWAP Ext', 'Droppiness'],
+    function(label) {
+      var parts = label.split(' | ');
+      var v = parts[0]; var col = v==='GO'?'var(--go)':v==='CAUTION'?'var(--caution)':'var(--nogo)';
+      return '<td style="color:' + col + '">' + (parts[0]||'—') + '</td>' +
+             '<td class="perm-table-combo">' + (parts[1]||'—') + '</td>' +
+             '<td class="perm-table-combo">' + (parts[2]||'—') + '</td>';
+    }
+  );
+}
+
+// ─────────────────────────────────────────────
+// TABLE 4: Inst% Band + Catalyst Grade
+// ─────────────────────────────────────────────
+function renderPermInstCat(data) {
+  var el = document.getElementById('permInstCat');
+  el.innerHTML = buildPermTable(data,
+    function(d) {
+      var inst = instBand(d.inst_percent), cat = d.catalyst_grade;
+      if (!inst || !cat) return null;
+      return 'Inst ' + inst + ' | ' + cat;
+    },
+    ['Inst% Band', 'Catalyst'],
+    function(label) {
+      var parts = label.split(' | ');
+      var catCol = parts[1] === 'WEAK/FLUFF' ? 'var(--go)' : parts[1] === 'MID' ? 'var(--caution)' : 'var(--nogo)';
+      return '<td class="perm-table-combo">' + (parts[0]||'—') + '</td>' +
+             '<td style="color:' + catCol + '">' + (parts[1]||'—') + '</td>';
+    }
+  );
+}
+
+// ─────────────────────────────────────────────
+// TABLE 5: Float Band + Catalyst + Cash Need
+// ─────────────────────────────────────────────
+function renderPermFloatCatCash(data) {
+  var el = document.getElementById('permFloatCatCash');
+  el.innerHTML = buildPermTable(data,
+    function(d) {
+      var fl = floatBand(d.float_shares), cat = d.catalyst_grade, cash = normaliseVal(d.dilution_cash_need);
+      if (!fl || !cat || !cash) return null;
+      return 'Float ' + fl + ' | ' + cat + ' | ' + cash + ' cash';
+    },
+    ['Float', 'Catalyst', 'Cash Need'],
+    function(label) {
+      var parts = label.split(' | ');
+      var catCol = parts[1] === 'WEAK/FLUFF' ? 'var(--go)' : parts[1] === 'MID' ? 'var(--caution)' : 'var(--nogo)';
+      return '<td class="perm-table-combo">' + (parts[0]||'—') + '</td>' +
+             '<td style="color:' + catCol + '">' + (parts[1]||'—') + '</td>' +
+             '<td class="perm-table-combo">' + (parts[2]||'—') + '</td>';
+    }
+  );
+}
+
+// ─────────────────────────────────────────────
+// TABLE 6: Serial Diluter — Offering Frequency + Offering Risk
+// ─────────────────────────────────────────────
+function renderPermSerialDiluter(data) {
+  var el = document.getElementById('permSerialDiluter');
+  el.innerHTML = buildPermTable(data,
+    function(d) {
+      var freq = normaliseVal(d.dilution_offering_frequency), risk = normaliseVal(d.dilution_offering_risk);
+      if (!freq || !risk) return null;
+      return freq + ' freq | ' + risk + ' risk';
+    },
+    ['Offering Freq', 'Offering Risk'],
+    function(label) {
+      var parts = label.split(' | ');
+      var freqCol = parts[0].startsWith('HIGH') ? 'var(--nogo)' : parts[0].startsWith('MED') ? 'var(--caution)' : 'var(--go)';
+      var riskCol = parts[1].startsWith('HIGH') ? 'var(--nogo)' : parts[1].startsWith('MED') ? 'var(--caution)' : 'var(--go)';
+      return '<td style="color:' + freqCol + '">' + (parts[0]||'—') + '</td>' +
+             '<td style="color:' + riskCol + '">' + (parts[1]||'—') + '</td>';
+    }
+  );
+}
+
+// ─────────────────────────────────────────────
+// TABLE 7: Desperate Company — Cash Need + Nasdaq Compliance
+// ─────────────────────────────────────────────
+function renderPermDesperate(data) {
+  var el = document.getElementById('permDesperate');
+  el.innerHTML = buildPermTable(data,
+    function(d) {
+      var cash = normaliseVal(d.dilution_cash_need), nasd = normaliseVal(d.dilution_nasdaq_compliance);
+      if (!cash || !nasd) return null;
+      return cash + ' cash | ' + nasd + ' nasdaq';
+    },
+    ['Cash Need', 'Nasdaq Compliance'],
+    function(label) {
+      var parts = label.split(' | ');
+      var cashCol = parts[0].startsWith('HIGH') ? 'var(--nogo)' : parts[0].startsWith('MED') ? 'var(--caution)' : 'var(--go)';
+      var nasdCol = parts[1].startsWith('HIGH') ? 'var(--nogo)' : parts[1].startsWith('MED') ? 'var(--caution)' : 'var(--go)';
+      return '<td style="color:' + cashCol + '">' + (parts[0]||'—') + '</td>' +
+             '<td style="color:' + nasdCol + '">' + (parts[1]||'—') + '</td>';
+    }
+  );
+}
+
+// ─────────────────────────────────────────────
+// TABLE 8: Price Band vs Fade Rate
+// ─────────────────────────────────────────────
+function renderPermPriceBand(data) {
+  var el = document.getElementById('permPriceBand');
+  el.innerHTML = buildPermTable(data,
+    function(d) {
+      var p = priceBand(d.price_at_analysis);
+      if (!p) return null;
+      return p;
+    },
+    ['Price at Analysis'],
+    function(label) {
+      return '<td class="perm-table-combo">' + label + '</td>';
+    }
+  );
+}
+
+// ─────────────────────────────────────────────
+// BEST SETUP BOX
+// ─────────────────────────────────────────────
+function renderBestSetup(data) {
+  var loading = document.getElementById('bestSetupLoading');
+  var content = document.getElementById('bestSetupContent');
+  var MIN = 5;
+
+  // Build all combinations from all permutation tables
+  var allCombos = [];
+
+  function scanCombos(keyFn, tableLabel) {
+    var reviewed = data.filter(function(d) { return d.gatekeeper_correct && keyFn(d) !== null; });
+    var groups = {};
+    reviewed.forEach(function(d) {
+      var key = keyFn(d);
+      if (!key) return;
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(d);
+    });
+    Object.keys(groups).forEach(function(k) {
+      var g = groups[k];
+      if (g.length < MIN) return;
+      var faded = g.filter(function(d) { return derivedDidFade(d) === true; }).length;
+      var pct = Math.round(faded / g.length * 100);
+      allCombos.push({ label: k, table: tableLabel, n: g.length, faded: faded, pct: pct });
+    });
+  }
+
+  scanCombos(function(d) {
+    var cat = d.catalyst_grade, dil = normaliseVal(d.dilution_overall), cash = normaliseVal(d.dilution_cash_need);
+    return (cat && dil && cash) ? cat + ' + ' + dil + ' DIL + ' + cash + ' CASH' : null;
+  }, 'Catalyst / Dilution / Cash Need');
+
+  scanCombos(function(d) {
+    var cat = d.catalyst_grade, dil = normaliseVal(d.dilution_overall), drop = dropBand(d.droppiness_score);
+    return (cat && dil && drop) ? cat + ' + ' + dil + ' DIL + DROP ' + drop : null;
+  }, 'Catalyst / Dilution / Droppiness');
+
+  scanCombos(function(d) {
+    var v = d.verdict, vwap = vwapBand(d.vwap_extension_pct), drop = dropBand(d.droppiness_score);
+    return (v && vwap && drop) ? v + ' + VWAP ' + vwap + ' + DROP ' + drop : null;
+  }, 'Verdict / VWAP / Droppiness');
+
+  scanCombos(function(d) {
+    var inst = instBand(d.inst_percent), cat = d.catalyst_grade;
+    return (inst && cat) ? 'INST ' + inst + ' + ' + cat : null;
+  }, 'Inst% / Catalyst');
+
+  scanCombos(function(d) {
+    var fl = floatBand(d.float_shares), cat = d.catalyst_grade, cash = normaliseVal(d.dilution_cash_need);
+    return (fl && cat && cash) ? 'FLOAT ' + fl + ' + ' + cat + ' + ' + cash + ' CASH' : null;
+  }, 'Float / Catalyst / Cash');
+
+  scanCombos(function(d) {
+    var freq = normaliseVal(d.dilution_offering_frequency), risk = normaliseVal(d.dilution_offering_risk);
+    return (freq && risk) ? freq + ' FREQ + ' + risk + ' RISK' : null;
+  }, 'Serial Diluter');
+
+  scanCombos(function(d) {
+    var cash = normaliseVal(d.dilution_cash_need), nasd = normaliseVal(d.dilution_nasdaq_compliance);
+    return (cash && nasd) ? cash + ' CASH + ' + nasd + ' NASDAQ' : null;
+  }, 'Desperate Company');
+
+  scanCombos(function(d) {
+    var p = priceBand(d.price_at_analysis);
+    return p ? 'PRICE ' + p : null;
+  }, 'Price Band');
+
+  if (allCombos.length === 0) {
+    loading.textContent = 'Not enough data yet — need 5+ entries per combination. Keep logging.';
+    return;
+  }
+
+  allCombos.sort(function(a, b) { return b.pct - a.pct; });
+  var best = allCombos[0];
+
+  loading.style.display = 'none';
+  content.style.display = 'block';
+  document.getElementById('bestSetupRate').textContent = best.pct + '%';
+  document.getElementById('bestSetupCombo').textContent = best.label;
+  document.getElementById('bestSetupMeta').innerHTML =
+    '<span>' + best.faded + '</span> of <span>' + best.n + '</span> faded — from ' + best.table + ' table';
 }
 
 function sampleNote(n) { return n<10?' <span style="color:var(--text-dim);font-size:10px">(need '+(10-n)+' more)</span>':''; }
