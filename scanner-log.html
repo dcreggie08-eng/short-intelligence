@@ -77,7 +77,8 @@
   .review-title { font-family:var(--mono); font-size:12px; letter-spacing:2px; text-transform:uppercase; color:var(--accent); margin-bottom:16px; }
   .review-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px; }
   .review-field { display:flex; flex-direction:column; gap:6px; }
-  .review-label { font-family:var(--mono); font-size:11px; letter-spacing:2px; text-transform:uppercase; color:var(--text-dim); }
+  .review-label { font-family:var(--mono); font-size:11px; letter-spacing:2px; text-transform:uppercase; color:var(--accent); }
+  .review-label.green { color:var(--go); }
   .review-input { background:var(--bg); border:1px solid var(--border); color:var(--text-bright); font-family:var(--mono); font-size:14px; padding:9px 12px; outline:none; width:100%; }
   .review-input:focus { border-color:var(--accent); }
   .review-select { background:var(--bg); border:1px solid var(--border); color:var(--text-bright); font-family:var(--mono); font-size:14px; padding:9px 12px; outline:none; width:100%; cursor:pointer; appearance:none; }
@@ -685,7 +686,7 @@ function buildTagChips(id, entry) {
     }).join('');
   }
 
-  return '<div class="review-label" style="margin-bottom:10px;">Trade Tags</div>' +
+  return '<div class="review-label green" style="margin-bottom:10px;">Trade Tags</div>' +
     '<div class="tag-section"><div class="tag-section-label">Entry Quality</div><div class="tag-chips">' + chipRow(ENTRY_QUALITY_TAGS, 'entry-quality') + '</div></div>' +
     '<div class="tag-section"><div class="tag-section-label">Price Action</div><div class="tag-chips">' + chipRow(PRICE_ACTION_TAGS, 'price-action') + '</div></div>' +
     '<div class="tag-section"><div class="tag-section-label">Thesis</div><div class="tag-chips">' + chipRow(THESIS_TAGS, 'thesis') + '</div></div>';
