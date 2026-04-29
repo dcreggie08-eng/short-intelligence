@@ -120,6 +120,28 @@
   .log-tab-panel.active { display:block; }
   .lazy-tab-panel { display:none; }
   .lazy-tab-panel.active { display:block; }
+  .wag-section { margin-bottom:32px; padding-bottom:28px; border-bottom:1px solid var(--border); }
+  .wag-ticker-row { display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-bottom:14px; }
+  .wag-ticker-chip { display:flex; align-items:stretch; border:1px solid var(--border); background:var(--surface); }
+  .wag-ticker-chip .lazy-ticker-prefix { font-size:13px; padding:0 8px; }
+  .wag-ticker-chip input { width:72px; font-family:var(--mono); font-size:13px; letter-spacing:2px; text-transform:uppercase; background:transparent; border:none; color:var(--text-bright); padding:7px 8px; outline:none; }
+  .wag-scan-btn { font-family:var(--display); font-weight:700; font-size:13px; letter-spacing:2px; text-transform:uppercase; padding:8px 20px; background:var(--accent); color:#000; border:none; cursor:pointer; }
+  .wag-scan-btn:hover { background:#fff; }
+  .wag-scan-btn:disabled { background:rgba(0,212,255,0.2); color:var(--text-dim); cursor:not-allowed; }
+  .wag-buckets { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top:16px; }
+  .wag-bucket { border:1px solid var(--border); background:var(--surface); padding:14px 16px; min-height:80px; }
+  .wag-bucket-title { font-family:var(--mono); font-size:10px; letter-spacing:3px; text-transform:uppercase; margin-bottom:10px; }
+  .wag-bucket.ready .wag-bucket-title { color:var(--go); }
+  .wag-bucket.watching .wag-bucket-title { color:var(--caution); }
+  .wag-ticker-result { font-family:var(--mono); font-size:12px; padding:6px 10px; margin-bottom:6px; border:1px solid; }
+  .wag-ticker-result.ready { border-color:rgba(0,230,118,0.4); background:rgba(0,230,118,0.06); color:var(--go); }
+  .wag-ticker-result.watching { border-color:rgba(255,179,0,0.3); background:rgba(255,179,0,0.04); color:var(--caution); }
+  .wag-ticker-result.invalid { border-color:rgba(255,61,90,0.3); background:rgba(255,61,90,0.04); color:var(--nogo); }
+  .wag-ticker-name { font-weight:700; letter-spacing:2px; margin-right:8px; }
+  .wag-ticker-detail { font-size:10px; opacity:0.8; }
+  .wag-status { font-family:var(--mono); font-size:11px; color:var(--text-dim); margin-top:8px; min-height:16px; }
+  .wag-autoscan { font-family:var(--mono); font-size:10px; color:var(--text-dim); letter-spacing:1px; margin-top:6px; }
+  .wag-empty { font-family:var(--mono); font-size:11px; color:var(--text-dim); padding:8px 0; }
   .lazy-section { margin-bottom:28px; }
   .lazy-section-title { font-family:var(--mono); font-size:12px; letter-spacing:2px; text-transform:uppercase; color:var(--accent); margin-bottom:16px; padding-bottom:8px; border-bottom:1px solid var(--border); }
   .lazy-input-row { display:flex; gap:10px; align-items:flex-end; margin-bottom:20px; flex-wrap:wrap; }
@@ -298,6 +320,34 @@
     <div class="analytics-section"><div class="analytics-title" onclick="toggleSection(this)">Price Band vs Fade Rate <span class="analytics-toggle">▼</span></div><div class="analytics-body"><div id="permPriceBand"></div></div></div>
   </div>
   <div class="lazy-tab-panel" id="tabLazy">
+
+    <!-- LAZY WAG SCANNER -->
+    <div class="lazy-section wag-section">
+      <div class="lazy-section-title">🐕 Lazy Wag Scanner</div>
+      <p style="font-family:var(--mono);font-size:11px;color:var(--text-dim);letter-spacing:0.5px;margin-bottom:14px;line-height:1.7;">
+        Both tails pointing down = READY. Enter up to 5 tickers from your TradingView Lazy Trades watchlist.
+      </p>
+      <div class="wag-ticker-row" id="wagTickerRow">
+        <div class="wag-ticker-chip"><div class="lazy-ticker-prefix">$</div><input type="text" class="wag-input" placeholder="ATOM" maxlength="6" oninput="this.value=this.value.toUpperCase()" /></div>
+        <div class="wag-ticker-chip"><div class="lazy-ticker-prefix">$</div><input type="text" class="wag-input" placeholder="" maxlength="6" oninput="this.value=this.value.toUpperCase()" /></div>
+        <div class="wag-ticker-chip"><div class="lazy-ticker-prefix">$</div><input type="text" class="wag-input" placeholder="" maxlength="6" oninput="this.value=this.value.toUpperCase()" /></div>
+        <div class="wag-ticker-chip"><div class="lazy-ticker-prefix">$</div><input type="text" class="wag-input" placeholder="" maxlength="6" oninput="this.value=this.value.toUpperCase()" /></div>
+        <div class="wag-ticker-chip"><div class="lazy-ticker-prefix">$</div><input type="text" class="wag-input" placeholder="" maxlength="6" oninput="this.value=this.value.toUpperCase()" /></div>
+        <button class="wag-scan-btn" id="wagScanBtn" onclick="runWagScan()">Scan</button>
+      </div>
+      <div class="wag-status" id="wagStatus"></div>
+      <div class="wag-buckets" id="wagBuckets" style="display:none;">
+        <div class="wag-bucket ready">
+          <div class="wag-bucket-title">✓ Ready — Both Tails Down</div>
+          <div id="wagReadyList"><div class="wag-empty">None yet</div></div>
+        </div>
+        <div class="wag-bucket watching">
+          <div class="wag-bucket-title">◎ Watching — Building</div>
+          <div id="wagWatchList"><div class="wag-empty">None yet</div></div>
+        </div>
+      </div>
+      <div class="wag-autoscan" id="wagAutoStatus"></div>
+    </div>
 
     <!-- ITT: Cobra Overnight Cost Calculator -->
     <div class="lazy-section">
@@ -1761,6 +1811,154 @@ function calcRSISeries(closes, period) {
     crossedBelow70: prev >= 70 && cur < 70,
     below70: cur < 70
   };
+}
+
+// ─────────────────────────────────────────────
+// LAZY WAG SCANNER
+// ─────────────────────────────────────────────
+var wagAutoInterval = null;
+var wagLastReady = [];
+var WAG_NOTIFY_URL = 'http://localhost:8080/notify';
+var WAG_RESCAN_MS = 10 * 60 * 1000; // 10 minutes
+
+function getWagTickers() {
+  return Array.from(document.querySelectorAll('.wag-input'))
+    .map(function(el) { return el.value.trim().toUpperCase(); })
+    .filter(function(t) { return t.length > 0; });
+}
+
+function setWagStatus(msg, color) {
+  var el = document.getElementById('wagStatus');
+  el.textContent = msg;
+  el.style.color = color || 'var(--text-dim)';
+}
+
+async function runWagScan(silent) {
+  var tickers = getWagTickers();
+  if (!tickers.length) { setWagStatus('Enter at least one ticker.', 'var(--caution)'); return; }
+
+  var btn = document.getElementById('wagScanBtn');
+  btn.disabled = true;
+  if (!silent) { btn.textContent = 'Scanning...'; setWagStatus('Scanning ' + tickers.length + ' ticker' + (tickers.length > 1 ? 's' : '') + '...', 'var(--accent)'); }
+
+  // Run all in parallel
+  var results = await Promise.all(tickers.map(function(ticker) { return wagCheckTicker(ticker); }));
+
+  var ready = results.filter(function(r) { return r.status === 'READY'; });
+  var watching = results.filter(function(r) { return r.status === 'WATCHING'; });
+  var invalid = results.filter(function(r) { return r.status === 'INVALID'; });
+
+  renderWagBuckets(ready, watching, invalid);
+  document.getElementById('wagBuckets').style.display = 'grid';
+
+  var now = new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+  setWagStatus('Last scanned: ' + now + ' — ' + ready.length + ' ready, ' + watching.length + ' watching', ready.length > 0 ? 'var(--go)' : 'var(--text-dim)');
+
+  // Fire notification for new READY tickers
+  var newReady = ready.filter(function(r) { return wagLastReady.indexOf(r.ticker) === -1; });
+  newReady.forEach(function(r) { fireWagNotification(r); });
+
+  // Track READY list for invalidation detection
+  wagLastReady = ready.map(function(r) { return r.ticker; });
+
+  btn.disabled = false;
+  btn.textContent = 'Scan';
+
+  // Start auto-rescan if not already running
+  if (!wagAutoInterval) { startWagAutoScan(); }
+}
+
+async function wagCheckTicker(ticker) {
+  try {
+    // Fetch both in parallel
+    var results = await Promise.all([
+      fetch(WORKER_URL + '/rsi4hr?ticker=' + ticker).then(function(r) { return r.json(); }),
+      fetch(WORKER_URL + '/rsi30m?ticker=' + ticker).then(function(r) { return r.json(); })
+    ]);
+
+    var rsi4hr = results[0];
+    var rsi30m = results[1];
+
+    if (rsi4hr.error) return { ticker: ticker, status: 'INVALID', reason: 'No 4hr data', rsi4hr: null, rsi30m: null };
+
+    var tail1Down = rsi4hr.below70; // 4hr RSI below 70
+    var tail2Down = rsi30m && !rsi30m.error && rsi30m.below_ma && rsi30m.rsi_current < 70; // 30m RSI below MA and below 70
+
+    // Invalidation: 4hr RSI reclaimed above 69 (Garth rule)
+    if (rsi4hr.current > 69 && rsi4hr.previous < 70) {
+      return { ticker: ticker, status: 'WATCHING', reason: 'RSI reclaimed 69 — invalidated', rsi4hr: rsi4hr, rsi30m: rsi30m };
+    }
+
+    var status = (tail1Down && tail2Down) ? 'READY' : 'WATCHING';
+    var reason = '';
+    if (status === 'READY') {
+      reason = '4hr RSI ' + rsi4hr.current + ' + 30m confirmed';
+    } else if (!tail1Down) {
+      reason = '4hr RSI ' + rsi4hr.current + ' — above 70, wait';
+    } else if (!tail2Down) {
+      reason = '4hr done, 30m not confirmed yet';
+    }
+
+    return { ticker: ticker, status: status, reason: reason, rsi4hr: rsi4hr, rsi30m: rsi30m };
+
+  } catch(e) {
+    return { ticker: ticker, status: 'INVALID', reason: 'Fetch error', rsi4hr: null, rsi30m: null };
+  }
+}
+
+function renderWagBuckets(ready, watching, invalid) {
+  var readyEl = document.getElementById('wagReadyList');
+  var watchEl = document.getElementById('wagWatchList');
+
+  if (ready.length === 0) {
+    readyEl.innerHTML = '<div class="wag-empty">None ready</div>';
+  } else {
+    readyEl.innerHTML = ready.map(function(r) {
+      return '<div class="wag-ticker-result ready">' +
+        '<span class="wag-ticker-name">' + r.ticker + '</span>' +
+        '<span class="wag-ticker-detail">' + r.reason + '</span>' +
+      '</div>';
+    }).join('');
+  }
+
+  var allWatch = watching.concat(invalid);
+  if (allWatch.length === 0) {
+    watchEl.innerHTML = '<div class="wag-empty">None watching</div>';
+  } else {
+    watchEl.innerHTML = allWatch.map(function(r) {
+      var cls = r.status === 'INVALID' ? 'invalid' : 'watching';
+      return '<div class="wag-ticker-result ' + cls + '">' +
+        '<span class="wag-ticker-name">' + r.ticker + '</span>' +
+        '<span class="wag-ticker-detail">' + r.reason + '</span>' +
+      '</div>';
+    }).join('');
+  }
+}
+
+function fireWagNotification(result) {
+  try {
+    fetch(WAG_NOTIFY_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        symbol: result.ticker,
+        entry_zone: 'Lazy Wag READY — both tails down'
+      })
+    });
+  } catch(e) { /* server.py not running — silent fail */ }
+}
+
+function startWagAutoScan() {
+  var autoEl = document.getElementById('wagAutoStatus');
+  wagAutoInterval = setInterval(function() {
+    var tickers = getWagTickers();
+    if (tickers.length > 0) {
+      runWagScan(true);
+      var now = new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+      autoEl.textContent = 'Auto-scanning every 10 mins — last: ' + now;
+    }
+  }, WAG_RESCAN_MS);
+  autoEl.textContent = 'Auto-scan active — every 10 minutes';
 }
 
 initDate();
