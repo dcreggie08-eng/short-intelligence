@@ -166,8 +166,14 @@
   .stat-card-label { font-family:var(--mono); font-size:11px; letter-spacing:2px; text-transform:uppercase; color:var(--text-dim); margin-bottom:8px; }
   .stat-card-value { font-family:var(--display); font-weight:900; font-size:32px; letter-spacing:1px; color:var(--accent); line-height:1; }
   .stat-card-sub { font-family:var(--mono); font-size:12px; color:var(--text-dim); margin-top:4px; }
-  .analytics-section { margin-bottom:32px; }
-  .analytics-title { font-family:var(--mono); font-size:12px; letter-spacing:2px; text-transform:uppercase; color:var(--accent); margin-bottom:14px; padding-bottom:8px; border-bottom:1px solid var(--border); }
+  .analytics-section { margin-bottom:12px; border:1px solid var(--border); }
+  .analytics-title { font-family:var(--mono); font-size:12px; letter-spacing:2px; text-transform:uppercase; color:var(--accent); padding:14px 16px; display:flex; align-items:center; justify-content:space-between; cursor:pointer; user-select:none; transition:background 0.15s; margin:0; border-bottom:none; }
+  .analytics-title:hover { background:rgba(0,212,255,0.04); }
+  .analytics-title.open { border-bottom:1px solid var(--border); }
+  .analytics-toggle { font-size:14px; color:var(--text-dim); transition:transform 0.2s; flex-shrink:0; }
+  .analytics-toggle.open { transform:rotate(180deg); }
+  .analytics-body { display:none; padding:16px; }
+  .analytics-body.open { display:block; }
   .analytics-table { width:100%; border-collapse:collapse; }
   .analytics-table th { font-family:var(--mono); font-size:11px; letter-spacing:2px; text-transform:uppercase; color:var(--text-dim); padding:8px 12px; text-align:left; border-bottom:1px solid var(--border); }
   .analytics-table td { font-family:var(--mono); font-size:13px; color:var(--text); padding:10px 12px; border-bottom:1px solid rgba(30,37,48,0.6); }
@@ -249,19 +255,19 @@
         <div class="best-setup-meta" id="bestSetupMeta">—</div>
       </div>
     </div>
-    <div class="analytics-section"><div class="analytics-title">Fade Rate by Droppiness Band</div><div id="dropTable"></div></div>
-    <div class="analytics-section"><div class="analytics-title">Fade Rate by Verdict</div><div id="verdictTable"></div></div>
-    <div class="analytics-section"><div class="analytics-title">VWAP Extension % vs Fade Outcome</div><div id="vwapTable"></div></div>
-    <div class="analytics-section"><div class="analytics-title">Pre-Market HOD vs Open Market HOD — by Catalyst Grade</div><div id="hodTable"></div></div>
-    <div class="analytics-section"><div class="analytics-title">Most Common Fade Destinations</div><div id="fadeDestTable"></div></div>
-    <div class="analytics-section"><div class="analytics-title">Catalyst Grade + Dilution Risk + Cash Need</div><div id="permCatDilCash"></div></div>
-    <div class="analytics-section"><div class="analytics-title">Catalyst Grade + Dilution Risk + Droppiness Band</div><div id="permCatDilDrop"></div></div>
-    <div class="analytics-section"><div class="analytics-title">Verdict + VWAP Extension + Droppiness Band</div><div id="permVerdictVwapDrop"></div></div>
-    <div class="analytics-section"><div class="analytics-title">Institutional Ownership Band + Catalyst Grade</div><div id="permInstCat"></div></div>
-    <div class="analytics-section"><div class="analytics-title">Float Band + Catalyst Grade + Cash Need</div><div id="permFloatCatCash"></div></div>
-    <div class="analytics-section"><div class="analytics-title">Serial Diluter — Offering Frequency + Offering Risk</div><div id="permSerialDiluter"></div></div>
-    <div class="analytics-section"><div class="analytics-title">Desperate Company — Cash Need + Nasdaq Compliance</div><div id="permDesperate"></div></div>
-    <div class="analytics-section"><div class="analytics-title">Price Band vs Fade Rate</div><div id="permPriceBand"></div></div>
+    <div class="analytics-section"><div class="analytics-title" onclick="toggleSection(this)">Fade Rate by Droppiness Band <span class="analytics-toggle">▼</span></div><div class="analytics-body"><div id="dropTable"></div></div></div>
+    <div class="analytics-section"><div class="analytics-title" onclick="toggleSection(this)">Fade Rate by Verdict <span class="analytics-toggle">▼</span></div><div class="analytics-body"><div id="verdictTable"></div></div></div>
+    <div class="analytics-section"><div class="analytics-title" onclick="toggleSection(this)">VWAP Extension % vs Fade Outcome <span class="analytics-toggle">▼</span></div><div class="analytics-body"><div id="vwapTable"></div></div></div>
+    <div class="analytics-section"><div class="analytics-title" onclick="toggleSection(this)">Pre-Market HOD vs Open Market HOD — by Catalyst Grade <span class="analytics-toggle">▼</span></div><div class="analytics-body"><div id="hodTable"></div></div></div>
+    <div class="analytics-section"><div class="analytics-title" onclick="toggleSection(this)">Most Common Fade Destinations <span class="analytics-toggle">▼</span></div><div class="analytics-body"><div id="fadeDestTable"></div></div></div>
+    <div class="analytics-section"><div class="analytics-title" onclick="toggleSection(this)">Catalyst Grade + Dilution Risk + Cash Need <span class="analytics-toggle">▼</span></div><div class="analytics-body"><div id="permCatDilCash"></div></div></div>
+    <div class="analytics-section"><div class="analytics-title" onclick="toggleSection(this)">Catalyst Grade + Dilution Risk + Droppiness Band <span class="analytics-toggle">▼</span></div><div class="analytics-body"><div id="permCatDilDrop"></div></div></div>
+    <div class="analytics-section"><div class="analytics-title" onclick="toggleSection(this)">Verdict + VWAP Extension + Droppiness Band <span class="analytics-toggle">▼</span></div><div class="analytics-body"><div id="permVerdictVwapDrop"></div></div></div>
+    <div class="analytics-section"><div class="analytics-title" onclick="toggleSection(this)">Institutional Ownership Band + Catalyst Grade <span class="analytics-toggle">▼</span></div><div class="analytics-body"><div id="permInstCat"></div></div></div>
+    <div class="analytics-section"><div class="analytics-title" onclick="toggleSection(this)">Float Band + Catalyst Grade + Cash Need <span class="analytics-toggle">▼</span></div><div class="analytics-body"><div id="permFloatCatCash"></div></div></div>
+    <div class="analytics-section"><div class="analytics-title" onclick="toggleSection(this)">Serial Diluter — Offering Frequency + Offering Risk <span class="analytics-toggle">▼</span></div><div class="analytics-body"><div id="permSerialDiluter"></div></div></div>
+    <div class="analytics-section"><div class="analytics-title" onclick="toggleSection(this)">Desperate Company — Cash Need + Nasdaq Compliance <span class="analytics-toggle">▼</span></div><div class="analytics-body"><div id="permDesperate"></div></div></div>
+    <div class="analytics-section"><div class="analytics-title" onclick="toggleSection(this)">Price Band vs Fade Rate <span class="analytics-toggle">▼</span></div><div class="analytics-body"><div id="permPriceBand"></div></div></div>
   </div>
   <div class="lazy-tab-panel" id="tabLazy">
 
@@ -379,6 +385,15 @@ function switchTab(tab) {
   document.getElementById('tabAnalytics').classList.toggle('active', tab === 'analytics');
   document.getElementById('tabLazy').classList.toggle('active', tab === 'lazy');
   if (tab === 'analytics') loadAnalytics();
+}
+
+function toggleSection(titleEl) {
+  var body = titleEl.nextElementSibling;
+  var arrow = titleEl.querySelector('.analytics-toggle');
+  var isOpen = body.classList.contains('open');
+  body.classList.toggle('open', !isOpen);
+  titleEl.classList.toggle('open', !isOpen);
+  if (arrow) arrow.classList.toggle('open', !isOpen);
 }
 
 function todayNY() { return new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' }); }
