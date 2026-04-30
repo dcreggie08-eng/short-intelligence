@@ -1929,7 +1929,6 @@ function stopWagAutoScan() {
 // ─────────────────────────────────────────────
 // PULL HOD DATA FROM POLYGON
 // ─────────────────────────────────────────────
-var POLYGON_KEY = 'iz170hZwJjkiLavb9YM1f3zhDKTYkxHi';
 
 async function pullHodData(id, ticker, tradingDate) {
   var btn = document.getElementById('pullHodBtn-' + id);
@@ -1939,24 +1938,17 @@ async function pullHodData(id, ticker, tradingDate) {
   btn.textContent = 'Fetching...';
   status.textContent = '';
   try {
-    var url = 'https://api.polygon.io/v2/aggs/ticker/' + ticker + '/range/1/minute/' + tradingDate + '/' + tradingDate + '?adjusted=true&sort=asc&limit=1000&apiKey=' + POLYGON_KEY;
-    var res = await fetch(url);
+    var res = await fetch(WORKER_URL + '/eod?ticker=' + ticker + '&date=' + tradingDate);
     var data = await res.json();
-    if (!data.results || data.results.length === 0) {
+    if (data.error || (!data.pm_hod && !data.om_hod)) {
       status.textContent = 'No data returned.'; btn.disabled = false; btn.textContent = '↓ Pull HOD from Polygon'; return;
     }
-    // Polygon timestamps in ms UTC. EDT = UTC-4. Market open = 13:30 UTC. Close = 20:00 UTC.
-    var OPEN_MS = new Date(tradingDate + 'T13:30:00Z').getTime();
-    var CLOSE_MS = new Date(tradingDate + 'T20:00:00Z').getTime();
-    var pmBars = data.results.filter(function(b) { return b.t < OPEN_MS; });
-    var omBars = data.results.filter(function(b) { return b.t >= OPEN_MS && b.t <= CLOSE_MS; });
-    var pmHod = pmBars.length ? Math.max.apply(null, pmBars.map(function(b) { return b.h; })) : 0;
-    var omHod = omBars.length ? Math.max.apply(null, omBars.map(function(b) { return b.h; })) : 0;
-    if (pmHod > 0) { var el = document.getElementById('pmHod-' + id); if (el) { el.value = pmHod.toFixed(2); } }
-    if (omHod > 0) { var el2 = document.getElementById('omHod-' + id); if (el2) { el2.value = omHod.toFixed(2); } }
+    var pmHod = data.pm_hod;
+    var omHod = data.om_hod;
+    if (pmHod) { var el = document.getElementById('pmHod-' + id); if (el) el.value = pmHod.toFixed(2); }
+    if (omHod) { var el2 = document.getElementById('omHod-' + id); if (el2) el2.value = omHod.toFixed(2); }
     calcVwapExt(id);
-    // Auto-select which HOD was higher
-    if (pmHod > 0 && omHod > 0) {
+    if (pmHod && omHod) {
       var diff = Math.abs(pmHod - omHod);
       if (diff < 0.02) { selectHOD(id, 'Same'); }
       else if (pmHod > omHod) { selectHOD(id, 'PM'); }
