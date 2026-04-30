@@ -128,6 +128,8 @@
   .wag-scan-btn { font-family:var(--display); font-weight:700; font-size:13px; letter-spacing:2px; text-transform:uppercase; padding:8px 20px; background:var(--accent); color:#000; border:none; cursor:pointer; }
   .wag-scan-btn:hover { background:#fff; }
   .wag-scan-btn:disabled { background:rgba(0,212,255,0.2); color:var(--text-dim); cursor:not-allowed; }
+  .wag-stop-btn { font-family:var(--display); font-weight:700; font-size:13px; letter-spacing:2px; text-transform:uppercase; padding:8px 20px; background:transparent; color:var(--nogo); border:1px solid var(--nogo); cursor:pointer; display:none; }
+  .wag-stop-btn:hover { background:var(--nogo-dim); }
   .wag-buckets { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top:16px; }
   .wag-bucket { border:1px solid var(--border); background:var(--surface); padding:14px 16px; min-height:80px; }
   .wag-bucket-title { font-family:var(--mono); font-size:10px; letter-spacing:3px; text-transform:uppercase; margin-bottom:10px; }
@@ -334,6 +336,7 @@
         <div class="wag-ticker-chip"><div class="lazy-ticker-prefix">$</div><input type="text" class="wag-input" placeholder="" maxlength="6" oninput="this.value=this.value.toUpperCase()" /></div>
         <div class="wag-ticker-chip"><div class="lazy-ticker-prefix">$</div><input type="text" class="wag-input" placeholder="" maxlength="6" oninput="this.value=this.value.toUpperCase()" /></div>
         <button class="wag-scan-btn" id="wagScanBtn" onclick="runWagScan()">Scan</button>
+        <button class="wag-stop-btn" id="wagStopBtn" onclick="stopWagAutoScan()">Stop</button>
       </div>
       <div class="wag-status" id="wagStatus"></div>
       <div class="wag-buckets" id="wagBuckets" style="display:none;">
@@ -1892,6 +1895,7 @@ function fireWagNotification(result) {
 
 function startWagAutoScan() {
   var autoEl = document.getElementById('wagAutoStatus');
+  var stopBtn = document.getElementById('wagStopBtn');
   wagAutoInterval = setInterval(function() {
     var tickers = getWagTickers();
     if (tickers.length > 0) {
@@ -1901,6 +1905,16 @@ function startWagAutoScan() {
     }
   }, WAG_RESCAN_MS);
   autoEl.textContent = 'Auto-scan active — every 10 minutes';
+  stopBtn.style.display = 'block';
+}
+
+function stopWagAutoScan() {
+  if (wagAutoInterval) { clearInterval(wagAutoInterval); wagAutoInterval = null; }
+  var autoEl = document.getElementById('wagAutoStatus');
+  var stopBtn = document.getElementById('wagStopBtn');
+  autoEl.textContent = 'Auto-scan stopped.';
+  autoEl.style.color = 'var(--text-dim)';
+  stopBtn.style.display = 'none';
 }
 
 initDate();
