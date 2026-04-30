@@ -349,48 +349,6 @@
       <div class="wag-autoscan" id="wagAutoStatus"></div>
     </div>
 
-    <!-- Lazy Trade: Day 2/3 Analyser -->
-    <div class="lazy-section">
-      <div class="lazy-section-title">ITT — Cobra Overnight Cost Calculator</div>
-      <p style="font-family:var(--mono);font-size:11px;color:var(--text-dim);letter-spacing:0.5px;margin-bottom:16px;line-height:1.7;">
-        Formula: (Shares × Closing Price rounded up × Int Rate) ÷ 360. Thursday overnight = ×3.
-      </p>
-      <div class="lazy-input-row">
-        <div class="lazy-input-group">
-          <div class="lazy-input-label">Shares</div>
-          <input type="number" class="lazy-input" id="ittShares" placeholder="700" step="1" min="1" oninput="calcITT()" />
-        </div>
-        <div class="lazy-input-group">
-          <div class="lazy-input-label">Closing Price $</div>
-          <input type="number" class="lazy-input" id="ittPrice" placeholder="7.00" step="0.01" min="0" oninput="calcITT()" />
-        </div>
-        <div class="lazy-input-group">
-          <div class="lazy-input-label">Int Rate %</div>
-          <input type="number" class="lazy-input" id="ittRate" placeholder="7.43" step="0.01" min="0" oninput="calcITT()" />
-        </div>
-      </div>
-      <div class="itt-grid" id="ittResults" style="display:none;">
-        <div class="itt-result">
-          <div class="itt-result-label">Daily Borrow Cost</div>
-          <div class="itt-result-value" id="ittDaily">—</div>
-          <div class="itt-result-sub">per day</div>
-        </div>
-        <div class="itt-result">
-          <div class="itt-result-label">Thursday Overnight</div>
-          <div class="itt-result-value" id="ittThursday">—</div>
-          <div class="itt-result-sub">×3 days</div>
-        </div>
-        <div class="itt-result">
-          <div class="itt-result-label">Price Rounded Up</div>
-          <div class="itt-result-value" id="ittRounded">—</div>
-          <div class="itt-result-sub">used in calculation</div>
-        </div>
-      </div>
-      <div style="font-family:var(--mono);font-size:11px;color:var(--text-dim);letter-spacing:0.5px;margin-top:12px;">
-        ITT is price-action based. No stop. In and out on signals only. Treat as a new trade — not revenge.
-      </div>
-    </div>
-
     <!-- Lazy Trade: Day 2 Analyser -->
     <div class="lazy-section">
       <div class="lazy-section-title">Lazy Trade — Day 2/3 Setup Analyser</div>
@@ -437,6 +395,48 @@
       <div class="lazy-verdict-banner" id="lazyVerdictBanner">
         <div class="lazy-verdict-label" id="lazyVerdictLabel">—</div>
         <div class="lazy-verdict-reason" id="lazyVerdictReason">—</div>
+      </div>
+    </div>
+
+    <!-- ITT: Cobra Overnight Cost Calculator -->
+    <div class="lazy-section">
+      <div class="lazy-section-title">ITT — Cobra Overnight Cost Calculator</div>
+      <p style="font-family:var(--mono);font-size:11px;color:var(--text-dim);letter-spacing:0.5px;margin-bottom:16px;line-height:1.7;">
+        Formula: (Shares × Closing Price rounded up × Int Rate) ÷ 360. Thursday overnight = ×3.
+      </p>
+      <div class="lazy-input-row">
+        <div class="lazy-input-group">
+          <div class="lazy-input-label">Shares</div>
+          <input type="number" class="lazy-input" id="ittShares" placeholder="700" step="1" min="1" oninput="calcITT()" />
+        </div>
+        <div class="lazy-input-group">
+          <div class="lazy-input-label">Closing Price $</div>
+          <input type="number" class="lazy-input" id="ittPrice" placeholder="7.00" step="0.01" min="0" oninput="calcITT()" />
+        </div>
+        <div class="lazy-input-group">
+          <div class="lazy-input-label">Int Rate %</div>
+          <input type="number" class="lazy-input" id="ittRate" placeholder="7.43" step="0.01" min="0" oninput="calcITT()" />
+        </div>
+      </div>
+      <div class="itt-grid" id="ittResults" style="display:none;">
+        <div class="itt-result">
+          <div class="itt-result-label">Daily Borrow Cost</div>
+          <div class="itt-result-value" id="ittDaily">—</div>
+          <div class="itt-result-sub">per day</div>
+        </div>
+        <div class="itt-result">
+          <div class="itt-result-label">Thursday Overnight</div>
+          <div class="itt-result-value" id="ittThursday">—</div>
+          <div class="itt-result-sub">×3 days</div>
+        </div>
+        <div class="itt-result">
+          <div class="itt-result-label">Price Rounded Up</div>
+          <div class="itt-result-value" id="ittRounded">—</div>
+          <div class="itt-result-sub">used in calculation</div>
+        </div>
+      </div>
+      <div style="font-family:var(--mono);font-size:11px;color:var(--text-dim);letter-spacing:0.5px;margin-top:12px;">
+        ITT is price-action based. No stop. In and out on signals only. Treat as a new trade — not revenge.
       </div>
     </div>
 
