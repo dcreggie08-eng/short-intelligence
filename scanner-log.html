@@ -39,6 +39,30 @@
   .nav-link { font-family:var(--mono); font-size:11px; letter-spacing:1.5px; padding:6px 12px; border:1px solid var(--border-bright); color:var(--accent); text-decoration:none; text-transform:uppercase; transition:all 0.2s; }
   .nav-link:hover { border-color:var(--accent); background:var(--accent-dim); }
   .status-pill { font-family:var(--mono); font-size:11px; letter-spacing:1.5px; padding:6px 12px; border:1px solid var(--border-bright); color:var(--text-dim); text-transform:uppercase; }
+  /* ── MARKET STRENGTH BANNER ────────────────────────────────────── */
+  .ms-wrap { margin-bottom:18px; border:1px solid var(--border); background:var(--surface); border-radius:0; transition:border-color 0.2s; }
+  .ms-wrap.collapsed { cursor:pointer; }
+  .ms-wrap.collapsed:hover { border-color:var(--border-bright); }
+  .ms-pill { display:flex; align-items:center; gap:14px; padding:10px 14px; font-family:var(--mono); font-size:12px; letter-spacing:1px; }
+  .ms-label { color:var(--text-dim); text-transform:uppercase; }
+  .ms-rating { font-family:var(--display); font-weight:900; font-size:14px; letter-spacing:2px; padding:2px 10px; border:1px solid currentColor; }
+  .ms-rating.hot { color:var(--go); }
+  .ms-rating.neutral { color:var(--caution); }
+  .ms-rating.cold { color:var(--nogo); }
+  .ms-rating.unknown { color:var(--text-dim); }
+  .ms-date { color:var(--text); font-size:11px; }
+  .ms-bias { color:var(--text-dim); font-size:10px; margin-left:auto; font-style:italic; }
+  .ms-toggle { color:var(--accent); font-size:10px; letter-spacing:2px; text-transform:uppercase; }
+  .ms-body { display:none; padding:0 14px 14px; border-top:1px solid var(--border); }
+  .ms-wrap.expanded .ms-body { display:block; }
+  .ms-section { margin-top:14px; }
+  .ms-section-title { font-family:var(--mono); font-size:10px; letter-spacing:2px; color:var(--text-dim); text-transform:uppercase; margin-bottom:8px; }
+  .ms-text { font-family:var(--body); font-size:13px; line-height:1.6; color:var(--text); white-space:pre-wrap; }
+  .ms-text strong { color:var(--text-bright); font-weight:700; }
+  .ms-text code, .ms-perf-pre { font-family:var(--mono); font-size:11px; background:var(--bg); padding:8px 12px; display:block; white-space:pre; overflow-x:auto; color:var(--text); border:1px solid var(--border); }
+  .ms-footer { margin-top:14px; padding-top:10px; border-top:1px dashed var(--border); font-family:var(--mono); font-size:10px; color:var(--text-dim); letter-spacing:1px; }
+  .ms-footer-warn { color:var(--caution); }
+  /* ─────────────────────────────────────────────────────────────── */
   .tabs { display:flex; border-bottom:1px solid var(--border); margin-bottom:28px; }
   .tab { font-family:var(--mono); font-size:12px; letter-spacing:2px; text-transform:uppercase; padding:12px 20px; cursor:pointer; color:var(--text-dim); border-bottom:2px solid transparent; transition:all 0.2s; background:none; border-top:none; border-left:none; border-right:none; }
   .tab:hover { color:var(--text); }
@@ -271,6 +295,17 @@
       </div>
     </div>
   </header>
+
+  <div class="ms-wrap collapsed" id="msWrap" onclick="toggleMarketStrength()" style="display:none">
+    <div class="ms-pill">
+      <span class="ms-label">Market Strength</span>
+      <span class="ms-rating unknown" id="msRating">—</span>
+      <span class="ms-date" id="msDate"></span>
+      <span class="ms-bias">Long-biased read</span>
+      <span class="ms-toggle" id="msToggle">Click for details</span>
+    </div>
+    <div class="ms-body" id="msBody"></div>
+  </div>
 
   <div class="tabs">
     <button class="tab active" onclick="switchTab('log')">Daily Log</button>
@@ -653,11 +688,14 @@ function buildReviewForm(entry) {
   var actualExit = entry.actual_exit_level || '';
   var note = entry.note || '';
   var vwapExt = entry.vwap_extension_pct || '';
+  var marketContext = entry.market_context || '';
+  var backsideSqueeze = entry.backside_squeeze_risk || '';
 
   // Pre-populate button state tracking from saved data
   if (hodHigher) hodSel[id] = hodHigher;
   if (gkCorrect) gkSel[id] = gkCorrect;
   if (didTrade !== null && didTrade !== undefined) tradeSel[id] = didTrade;
+  if (backsideSqueeze) backsideSel[id] = backsideSqueeze;
 
   var alreadyReviewed = !!(entry.fade_destination || entry.gatekeeper_correct || entry.premarket_hod);
   var btnClass = alreadyReviewed ? 'save-review-btn saved' : 'save-review-btn';
@@ -721,12 +759,22 @@ function buildReviewForm(entry) {
       '</div>' +
       '<div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);margin-top:2px;">Giveback % from PM HOD vs exit. Auto-saves to Journal.</div>' +
     '</div>' +
+    '<div class="review-row-full" style="display:grid;grid-template-columns:2fr 1fr;gap:14px;">' +
+      '<div><div class="review-label">Market Context <span style="color:var(--text-dim);font-weight:400;">(optional)</span></div>' +
+        '<input type="text" class="review-input" id="marketContext-'+id+'" placeholder="Hot / Cold / Neutral + brief reason" maxlength="120" value="'+marketContext.replace(/"/g,'&quot;')+'" /></div>' +
+      '<div><div class="review-label">Backside Squeeze Risk?</div>' +
+        '<div class="btn-group" id="bsqGroup-'+id+'">' +
+          '<button type="button" class="btn-option'+(backsideSqueeze==='Y'?' sel-no':'')+'" onclick="selectBackside(\''+id+'\',\'Y\')">Y</button>' +
+          '<button type="button" class="btn-option'+(backsideSqueeze==='N'?' sel-yes':'')+'" onclick="selectBackside(\''+id+'\',\'N\')">N</button>' +
+        '</div>' +
+      '</div>' +
+    '</div>' +
     '<div class="review-row-full"><div class="review-label">Note</div><input type="text" class="review-input" id="note-'+id+'" placeholder="One line — what happened, why, what you noticed" maxlength="200" value="'+note.replace(/"/g,'&quot;')+'" /></div>' +
     '<div class="review-row-full">' + buildTagChips(id, entry) + '</div>' +
     '<div class="review-actions"><button class="'+btnClass+'" id="saveBtn-'+id+'" onclick="saveReview(\''+id+'\')">'+btnText+'</button><div class="review-save-msg" id="saveMsg-'+id+'"></div></div>';
 }
 
-var hodSel={}, gkSel={}, tradeSel={}, tagSel={};
+var hodSel={}, gkSel={}, tradeSel={}, tagSel={}, backsideSel={};
 
 var ENTRY_QUALITY_TAGS = ['Not Traded','Fast Flush','Held Longer','Second Attempt','Second Entry to Avg Cost','Missed Entry','Entered Too Late','Max Loss Hit','Below MMP','Exited Below VWAP'];
 var PRICE_ACTION_TAGS  = ['Thin Pre-Market','Wide Spread','Clean Move','Choppy','VWAP Hugger / Up','VWAP Hugger / Down','Ranging','Power Hour Move','Reclaimed VWAP','MMP Hit','Halted / Resumed','Grinder'];
@@ -787,6 +835,16 @@ function selectTrade(id, val) {
   // Show/hide trade price fields
   var priceRow = document.getElementById('tradePrices-'+id);
   if (priceRow) priceRow.style.display = val === true ? 'flex' : 'none';
+}
+
+function selectBackside(id, val) {
+  backsideSel[id] = val;
+  // Y = squeeze risk present (red); N = no squeeze (green)
+  var g = document.getElementById('bsqGroup-'+id);
+  if (g) g.querySelectorAll('.btn-option').forEach(function(b){
+    var label = b.textContent.trim();
+    b.className = 'btn-option' + (label === val ? (val === 'Y' ? ' sel-no' : ' sel-yes') : '');
+  });
 }
 
 function calcExtPct(hod, vwap) {
@@ -867,6 +925,11 @@ async function saveReview(id) {
   var didTrade = tradeSel[id]!==undefined?tradeSel[id]:null;
   var entryPrice = parseFloat(document.getElementById('entryPrice-'+id) && document.getElementById('entryPrice-'+id).value)||null;
   var exitPrice = parseFloat(document.getElementById('exitPrice-'+id) && document.getElementById('exitPrice-'+id).value)||null;
+  var marketContext = document.getElementById('marketContext-'+id) ? (document.getElementById('marketContext-'+id).value.trim() || null) : null;
+  var backsideRisk = backsideSel[id] || null;
+  // Auto-capture: stamp the current Ask Edgar market strength rating onto this entry.
+  // Set by loadMarketStrength() on page load. Stays NULL if the banner hasn't loaded.
+  var marketStrengthRating = (typeof window.currentMarketStrength === 'string' && window.currentMarketStrength) ? window.currentMarketStrength : null;
 
   var payload = {
     premarket_hod: pmHod,
@@ -882,7 +945,10 @@ async function saveReview(id) {
     entry_price: entryPrice,
     exit_price: exitPrice,
     note: note,
-    trade_tags: JSON.stringify(tagSel[id] || [])
+    trade_tags: JSON.stringify(tagSel[id] || []),
+    market_context: marketContext,
+    backside_squeeze_risk: backsideRisk,
+    market_strength_rating: marketStrengthRating
   };
 
   try {
@@ -1966,6 +2032,87 @@ async function pullHodData(id, ticker, tradingDate) {
 
 initDate();
 loadEntries();
+
+// ── Market Strength banner ──────────────────────────────────────
+// Fetches Ask Edgar's weekly read once on page load, renders compact pill,
+// click-to-expand reveals full analysis + 5-day performance stats.
+// Long-biased read — for shorts, "Hot" implies caution (squeeze risk).
+// Also exposes window.currentMarketStrength so saveReview can auto-stamp it.
+async function loadMarketStrength() {
+  var wrap = document.getElementById('msWrap');
+  if (!wrap) return;
+  try {
+    var res = await fetch(WORKER_URL + '/marketstrength');
+    var data = await res.json();
+    if (!data || data.status !== 'success') {
+      wrap.style.display = 'none';
+      return;
+    }
+    var rating = data.rating || 'Unknown';
+    var ratingColor = data.rating_color || 'unknown';
+    var date = data.date || '';
+    var dateObj = date ? new Date(date) : null;
+    var dateStr = dateObj ? ('Week of ' + dateObj.toLocaleDateString('en-GB', { day:'numeric', month:'short' })) : '';
+
+    var ratingEl = document.getElementById('msRating');
+    var dateEl = document.getElementById('msDate');
+    if (ratingEl) {
+      ratingEl.textContent = rating.toUpperCase();
+      ratingEl.className = 'ms-rating ' + ratingColor;
+    }
+    if (dateEl) dateEl.textContent = dateStr;
+
+    var body = document.getElementById('msBody');
+    if (body) {
+      var analysisHtml = renderMarketStrengthText(data.analysis || '');
+      var performanceHtml = renderMarketStrengthText(data.performance || '');
+      body.innerHTML =
+        '<div class="ms-section">' +
+          '<div class="ms-section-title">Analysis</div>' +
+          '<div class="ms-text">' + analysisHtml + '</div>' +
+        '</div>' +
+        '<div class="ms-section">' +
+          '<div class="ms-section-title">Performance \u00b7 Last 5 Trading Days</div>' +
+          '<div class="ms-text">' + performanceHtml + '</div>' +
+        '</div>' +
+        '<div class="ms-footer"><span class="ms-footer-warn">\u26a0</span> Long-biased read \u2014 for shorts, treat HOT as squeeze caution and COLD as a green light for fades.</div>';
+    }
+
+    wrap.style.display = '';
+    window.currentMarketStrength = rating;
+  } catch(e) {
+    if (wrap) wrap.style.display = 'none';
+  }
+}
+
+function renderMarketStrengthText(raw) {
+  if (!raw) return '';
+  var s = raw.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  s = s.replace(/```([\s\S]*?)```/g, function(_, inner) {
+    return '<pre class="ms-perf-pre">' + inner.replace(/^\n/, '') + '</pre>';
+  });
+  s = s.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  s = s.replace(/:green_circle:/g, '\uD83D\uDFE2');
+  s = s.replace(/:red_circle:/g, '\uD83D\uDD34');
+  s = s.replace(/:orange_circle:/g, '\uD83D\uDFE0');
+  s = s.replace(/:yellow_circle:/g, '\uD83D\uDFE1');
+  s = s.replace(/:arrow_up:/g, '\u2197\uFE0F');
+  s = s.replace(/:arrow_down:/g, '\u2198\uFE0F');
+  s = s.replace(/^\*\s{3}/gm, '\u2022 ');
+  return s;
+}
+
+function toggleMarketStrength() {
+  var wrap = document.getElementById('msWrap');
+  var toggle = document.getElementById('msToggle');
+  if (!wrap) return;
+  var isExpanded = wrap.classList.toggle('expanded');
+  wrap.classList.toggle('collapsed', !isExpanded);
+  if (toggle) toggle.textContent = isExpanded ? 'Click to collapse' : 'Click for details';
+}
+
+loadMarketStrength();
+// ─────────────────────────────────────────────────────────────────
 </script>
 </body>
 </html>
