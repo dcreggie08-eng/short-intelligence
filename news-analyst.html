@@ -256,12 +256,27 @@
 
     /* Header — strip decoration, keep essentials */
     header { margin-bottom: 14px; padding-bottom: 14px; }
-    .header-top { gap: 10px; align-items: center; }
+    .header-top {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 10px;
+    }
     .bear-logo-box { display: none !important; }
     .clocks { display: none !important; }
-    .logo-area h1 { font-size: 22px; line-height: 1; margin: 0; }
-    .logo-area p { font-size: 10px; margin-top: 4px; }
-    .status-pill { font-size: 10px; padding: 4px 8px; }
+    /* SHORT INTEL big — fills the width, tagline gone */
+    .logo-area { text-align: center; }
+    .logo-area h1 { font-size: 38px; line-height: 1; margin: 0; letter-spacing: 3px; }
+    .logo-area p { display: none; }
+    /* Status + nav row spaced equally across full width */
+    .header-top > div:not(.logo-area):not(.bear-logo-box):not(.clocks) {
+      display: flex !important;
+      justify-content: space-around !important;
+      align-items: center !important;
+      width: 100%;
+      gap: 6px;
+    }
+    .status-pill { font-size: 10px; padding: 4px 8px; align-self: center !important; flex: 1; text-align: center; }
+    .nav-link { font-size: 10px; padding: 4px 8px; flex: 1; text-align: center; }
 
     /* Gainers strip — hidden on mobile (your call: manual ticker input) */
     .gainers-strip-wrap { display: none !important; }
@@ -284,9 +299,10 @@
     .field-group label { font-size: 10px; }
     input.ticker-input { font-size: 18px; padding: 14px 14px 14px 36px; height: auto; min-height: 50px; }
     .ticker-prefix { font-size: 18px; left: 16px; }
-    /* Make buttons big tap targets, full width, stacked side-by-side */
+    /* Fetch News + NEW share one row, equal width, both slimmer */
+    .btn-row { grid-template-columns: 1fr 1fr !important; gap: 10px !important; }
     .fetch-btn, .analyse-btn, .float-analyse-btn {
-      width: 100%; min-height: 50px; height: auto; font-size: 15px; padding: 14px 16px;
+      width: 100%; min-height: 46px; height: auto; font-size: 13px; padding: 12px 8px; letter-spacing: 1.5px;
     }
 
     /* Stock info bar (Float / OS / MC etc when shown) — wraps cleanly */
