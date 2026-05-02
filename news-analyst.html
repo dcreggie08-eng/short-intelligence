@@ -35,6 +35,31 @@
   .clock-ampm { color:var(--text-bright); font-weight:400; font-size:11px; }
   .clock-tz { font-family:var(--mono); font-size:11px; color:var(--text-dim); letter-spacing:1.5px; text-transform:uppercase; }
   .gainers-strip-wrap { border-bottom:1px solid var(--border); padding-bottom:12px; margin-bottom:24px; }
+  /* ── MARKET STRENGTH BANNER ────────────────────────────────────── */
+  .ms-wrap { margin-bottom:14px; border:1px solid var(--border); background:var(--surface); border-radius:0; transition:border-color 0.2s; }
+  .ms-wrap.collapsed { cursor:pointer; }
+  .ms-wrap.collapsed:hover { border-color:var(--border-bright); }
+  .ms-pill { display:flex; align-items:center; gap:14px; padding:10px 14px; font-family:var(--mono); font-size:12px; letter-spacing:1px; }
+  .ms-label { color:var(--text-dim); text-transform:uppercase; }
+  .ms-rating { font-family:var(--display); font-weight:900; font-size:14px; letter-spacing:2px; padding:2px 10px; border:1px solid currentColor; }
+  .ms-rating.hot { color:var(--go); }
+  .ms-rating.neutral { color:var(--caution); }
+  .ms-rating.cold { color:var(--nogo); }
+  .ms-rating.unknown { color:var(--text-dim); }
+  .ms-date { color:var(--text); font-size:11px; }
+  .ms-bias { color:var(--text-dim); font-size:10px; margin-left:auto; font-style:italic; }
+  .ms-toggle { color:var(--accent); font-size:10px; letter-spacing:2px; text-transform:uppercase; }
+  .ms-body { display:none; padding:0 14px 14px; border-top:1px solid var(--border); }
+  .ms-wrap.expanded .ms-body { display:block; }
+  .ms-section { margin-top:14px; }
+  .ms-section-title { font-family:var(--mono); font-size:10px; letter-spacing:2px; color:var(--text-dim); text-transform:uppercase; margin-bottom:8px; }
+  .ms-text { font-family:var(--body); font-size:13px; line-height:1.6; color:var(--text); white-space:pre-wrap; }
+  .ms-text strong { color:var(--text-bright); font-weight:700; }
+  .ms-text code, .ms-perf-pre { font-family:var(--mono); font-size:11px; background:var(--bg); padding:8px 12px; display:block; white-space:pre; overflow-x:auto; color:var(--text); border:1px solid var(--border); }
+  .ms-footer { margin-top:14px; padding-top:10px; border-top:1px dashed var(--border); font-family:var(--mono); font-size:10px; color:var(--text-dim); letter-spacing:1px; }
+  .ms-footer-warn { color:var(--caution); }
+  .ms-error { padding:10px 14px; font-family:var(--mono); font-size:11px; color:var(--text-dim); }
+  /* ─────────────────────────────────────────────────────────────── */
   .gainers-strip { display:flex; align-items:center; gap:6px; overflow-x:auto; padding-bottom:4px; }
   .gainers-strip::-webkit-scrollbar { height:2px; }
   .gainers-strip::-webkit-scrollbar-thumb { background:var(--border-bright); }
@@ -5513,6 +5538,16 @@ eXpilSpDG70qVKmI/9k=" alt="Bear Intel" /></div>
       </div>
     </div>
   </header>
+  <div class="ms-wrap collapsed" id="msWrap" onclick="toggleMarketStrength()" style="display:none">
+    <div class="ms-pill">
+      <span class="ms-label">Market Strength</span>
+      <span class="ms-rating unknown" id="msRating">—</span>
+      <span class="ms-date" id="msDate"></span>
+      <span class="ms-bias">Long-biased read</span>
+      <span class="ms-toggle" id="msToggle">Click for details</span>
+    </div>
+    <div class="ms-body" id="msBody"></div>
+  </div>
   <div class="gainers-strip-wrap"><div class="gainers-strip" id="gainersStrip"><span class="gainers-strip-label">Top Gainers</span><span class="gainers-strip-status" id="gainersStatus">Loading...</span></div></div>
   <div class="input-section">
     <div style="display:grid;grid-template-columns:120px minmax(220px,1fr) auto auto;gap:12px;align-items:end;margin-bottom:16px;">
@@ -6169,6 +6204,95 @@ async function loadGainers() {
 }
 
 loadGainers(); gainersInterval = setInterval(loadGainers, 60000);
+
+// ── Market Strength banner ──────────────────────────────────────
+// Fetches Ask Edgar's weekly read once on page load, renders compact pill,
+// click-to-expand reveals full analysis + 5-day performance stats.
+// Long-biased read — for shorts, "Hot" implies caution (squeeze risk).
+async function loadMarketStrength() {
+  var wrap = document.getElementById('msWrap');
+  if (!wrap) return;
+  try {
+    var res = await fetch(PROXY + '/marketstrength');
+    var data = await res.json();
+    if (!data || data.status !== 'success') {
+      // Quietly hide on error — banner is advisory, not critical
+      wrap.style.display = 'none';
+      return;
+    }
+    var rating = data.rating || 'Unknown';
+    var ratingColor = data.rating_color || 'unknown';
+    var date = data.date || '';
+    var dateObj = date ? new Date(date) : null;
+    var dateStr = dateObj ? ('Week of ' + dateObj.toLocaleDateString('en-GB', { day:'numeric', month:'short' })) : '';
+
+    var ratingEl = document.getElementById('msRating');
+    var dateEl = document.getElementById('msDate');
+    if (ratingEl) {
+      ratingEl.textContent = rating.toUpperCase();
+      ratingEl.className = 'ms-rating ' + ratingColor;
+    }
+    if (dateEl) dateEl.textContent = dateStr;
+
+    // Build the expandable body
+    var body = document.getElementById('msBody');
+    if (body) {
+      var analysisHtml = renderMarketStrengthText(data.analysis || '');
+      var performanceHtml = renderMarketStrengthText(data.performance || '');
+      body.innerHTML =
+        '<div class="ms-section">' +
+          '<div class="ms-section-title">Analysis</div>' +
+          '<div class="ms-text">' + analysisHtml + '</div>' +
+        '</div>' +
+        '<div class="ms-section">' +
+          '<div class="ms-section-title">Performance \u00b7 Last 5 Trading Days</div>' +
+          '<div class="ms-text">' + performanceHtml + '</div>' +
+        '</div>' +
+        '<div class="ms-footer"><span class="ms-footer-warn">\u26a0</span> Long-biased read \u2014 for shorts, treat HOT as squeeze caution and COLD as a green light for fades.</div>';
+    }
+
+    wrap.style.display = '';
+    window.currentMarketStrength = rating; // expose for any consumer (e.g. ticker save flows)
+  } catch(e) {
+    if (wrap) wrap.style.display = 'none';
+  }
+}
+
+// Translate Ask Edgar's Discord-flavoured markdown into safe inline HTML.
+// Keeps **bold**, code blocks (```), bullet *   markers, and emoji codes.
+function renderMarketStrengthText(raw) {
+  if (!raw) return '';
+  // Escape HTML first to avoid injection from Ask Edgar's payload
+  var s = raw.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  // Triple-backtick fenced code blocks → <pre>
+  s = s.replace(/```([\s\S]*?)```/g, function(_, inner) {
+    return '<pre class="ms-perf-pre">' + inner.replace(/^\n/, '') + '</pre>';
+  });
+  // Bold **xx**
+  s = s.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  // Discord emoji codes → unicode dots
+  s = s.replace(/:green_circle:/g, '\uD83D\uDFE2');
+  s = s.replace(/:red_circle:/g, '\uD83D\uDD34');
+  s = s.replace(/:orange_circle:/g, '\uD83D\uDFE0');
+  s = s.replace(/:yellow_circle:/g, '\uD83D\uDFE1');
+  s = s.replace(/:arrow_up:/g, '\u2197\uFE0F');
+  s = s.replace(/:arrow_down:/g, '\u2198\uFE0F');
+  // Bullet markers "*   " at line start → "• "
+  s = s.replace(/^\*\s{3}/gm, '\u2022 ');
+  return s;
+}
+
+function toggleMarketStrength() {
+  var wrap = document.getElementById('msWrap');
+  var toggle = document.getElementById('msToggle');
+  if (!wrap) return;
+  var isExpanded = wrap.classList.toggle('expanded');
+  wrap.classList.toggle('collapsed', !isExpanded);
+  if (toggle) toggle.textContent = isExpanded ? 'Click to collapse' : 'Click for details';
+}
+
+loadMarketStrength();
+// ─────────────────────────────────────────────────────────────────
 </script>
 </div><!-- /page-body -->
 </body>
