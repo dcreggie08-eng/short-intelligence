@@ -278,6 +278,94 @@
     .review-grid { grid-template-columns:1fr; }
     .logo-area h1 { font-size:28px; }
   }
+
+  /* ════════════════════════════════════════════════════════════════
+     MOBILE OPTIMISATION — Active below 768px
+     Use case: read-only review of saved entries while travelling
+     Strips: clocks (none here), header decoration, heavy padding
+     Keeps:  market strength banner, tabs, entry cards readable,
+             scanner log entries viewable
+     Form editing on mobile is allowed but de-prioritised in styling.
+     Desktop CSS above is COMPLETELY UNTOUCHED.
+     ════════════════════════════════════════════════════════════════ */
+  @media (max-width: 768px) {
+    /* Container — tighter padding */
+    .container { padding: 14px 12px 60px; max-width: 100%; }
+
+    /* Header — slimmer, no decoration */
+    header { margin-bottom: 14px; padding-bottom: 14px; }
+    .header-top { gap: 8px; align-items: center; flex-wrap: wrap; }
+    .logo-area h1 { font-size: 22px; line-height: 1; margin: 0; }
+    .logo-area p { font-size: 10px; margin-top: 4px; }
+    .nav-link { font-size: 11px; padding: 4px 8px; }
+    .status-pill { font-size: 10px; padding: 4px 8px; }
+
+    /* Market Strength banner — same compact treatment */
+    .ms-pill { gap: 10px; padding: 9px 12px; flex-wrap: wrap; font-size: 11px; }
+    .ms-rating { font-size: 13px; padding: 1px 8px; }
+    .ms-bias { display: none; }
+    .ms-toggle { font-size: 9px; }
+    .ms-text { font-size: 12px; line-height: 1.55; }
+    .ms-text code, .ms-perf-pre { font-size: 9px; padding: 6px 8px; }
+
+    /* Tabs — smaller, but keep horizontal */
+    .tabs { margin-bottom: 16px; overflow-x: auto; }
+    .tab { font-size: 10px; padding: 10px 12px; letter-spacing: 1px; white-space: nowrap; }
+
+    /* Date bar */
+    .date-bar { gap: 8px; flex-wrap: wrap; }
+    .date-input { font-size: 13px; }
+    .date-nav { padding: 6px 10px; }
+
+    /* Session strip — make wrap nicely */
+    .session-strip { gap: 4px; }
+
+    /* Entry cards — readable but compressed */
+    .entry-card { font-size: 13px; }
+
+    /* Review form — usable but not optimised */
+    .review-form { padding: 14px 12px; }
+    .review-input, .review-select { font-size: 14px; padding: 10px; }
+    .review-label { font-size: 11px; }
+    .btn-option { font-size: 11px; padding: 8px 10px; min-height: 38px; }
+    .btn-group { flex-wrap: wrap; }
+    .save-review-btn { width: 100%; min-height: 46px; font-size: 13px; }
+
+    /* Stack paired HOD+VWAP rows on mobile */
+    .review-form > div[style*="grid-template-columns:1fr 1fr"] {
+      display: flex !important;
+      flex-direction: column !important;
+      gap: 10px !important;
+    }
+    /* But keep the market context + backside Y/N row paired since it's tighter */
+    .review-row-full > div[style*="grid-template-columns:2fr 1fr"] {
+      display: grid !important;
+      grid-template-columns: 1fr !important;
+      gap: 10px !important;
+    }
+
+    /* Analytics tab — keep readable, tables horizontal scroll */
+    .analytics-section { font-size: 12px; }
+    .analytics-title { padding: 12px 14px; font-size: 11px; }
+    .analytics-body { padding: 12px; overflow-x: auto; }
+    .analytics-table { font-size: 11px; }
+    .analytics-table th, .analytics-table td { padding: 6px 8px; }
+    .stat-card { padding: 12px; }
+    .stat-card-value { font-size: 24px; }
+    .stat-card-label { font-size: 9px; }
+    .best-setup-box { padding: 12px; }
+    .best-setup-rate { font-size: 28px; }
+    .key-finding-row { padding: 8px 12px; font-size: 11px; }
+
+    /* Lazy Trades — buckets stack */
+    .lazy-data-grid, .itt-grid { grid-template-columns: 1fr !important; }
+
+    /* Generic guards */
+    body, .page-body, .container { overflow-x: hidden; }
+    pre, code { white-space: pre-wrap !important; word-break: break-word; }
+    table { display: block; overflow-x: auto; max-width: 100%; }
+  }
+  /* ════════════════════════════════════════════════════════════════ */
 </style>
 </head>
 <body>
