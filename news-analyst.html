@@ -289,19 +289,36 @@
     .ms-text { font-size: 12px; line-height: 1.55; }
     .ms-text code, .ms-perf-pre { font-size: 9px; padding: 6px 8px; }
 
-    /* Input section — stack ticker, price context, buttons vertically */
+    /* Input section — force the 4-col desktop grid into vertical stack
+       Original desktop grid: 120px | minmax(220px,1fr) | auto | auto
+       Mobile: each cell becomes its own full-width row */
     .input-section { gap: 10px; margin-bottom: 16px; }
     .input-section > div[style*="grid-template-columns"] {
-      display: flex !important;
-      flex-direction: column !important;
+      display: grid !important;
+      grid-template-columns: 1fr !important;
       gap: 10px !important;
+      margin-bottom: 0 !important;
     }
+    /* Field groups go full-width — overrides the 120px ticker column */
+    .input-section .field-group { width: 100% !important; }
     .field-group label { font-size: 10px; }
     input.ticker-input { font-size: 18px; padding: 14px 14px 14px 36px; height: auto; min-height: 50px; }
     .ticker-prefix { font-size: 18px; left: 16px; }
-    /* Fetch News + NEW share one row, equal width, both slimmer */
-    .btn-row { grid-template-columns: 1fr 1fr !important; gap: 10px !important; }
-    .fetch-btn, .analyse-btn, .float-analyse-btn {
+    /* Fetch News full-width on its own row in the stack */
+    .fetch-btn {
+      width: 100%; min-height: 46px; height: auto; font-size: 13px; padding: 12px 16px; letter-spacing: 1.5px;
+    }
+    /* action-slot wraps ANALYSE + NEW — make them share its row equally */
+    .action-slot {
+      display: flex !important;
+      flex-direction: row !important;
+      gap: 10px !important;
+      width: 100%;
+    }
+    .float-analyse-btn, .float-new-btn {
+      flex: 1 !important; width: auto !important; min-height: 46px; height: auto; font-size: 13px; padding: 12px 8px; letter-spacing: 1.5px;
+    }
+    .analyse-btn {
       width: 100%; min-height: 46px; height: auto; font-size: 13px; padding: 12px 8px; letter-spacing: 1.5px;
     }
 
