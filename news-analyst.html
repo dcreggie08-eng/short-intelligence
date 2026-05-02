@@ -241,6 +241,97 @@
   .droppiness-loading { font-family:var(--mono); font-size:11px; color:var(--accent); letter-spacing:1px; animation:pulse 1.5s infinite; }
   @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.4; } }
   @media (max-width:600px) { .ticker-row { grid-template-columns:1fr; } .logo-area h1 { font-size:30px; } .verdict-label { font-size:28px; } .verdict-meta { align-items:flex-start; } .badge { min-width:100px; } }
+
+  /* ════════════════════════════════════════════════════════════════
+     MOBILE OPTIMISATION — Active below 768px
+     Use case: travelling, glance check on stock, decide trade in low size
+     Strips: bear illustration, clocks, gainers strip, header tagline
+     Keeps:  ticker input, fetch+analyse, dilution profile, risk grid,
+             ask edgar tldr, droppiness, verdict, save-to-log, market strength
+     Desktop CSS above is COMPLETELY UNTOUCHED.
+     ════════════════════════════════════════════════════════════════ */
+  @media (max-width: 768px) {
+    /* Container — tighter padding, eliminate horizontal waste */
+    .container { padding: 14px 12px 60px; max-width: 100%; }
+
+    /* Header — strip decoration, keep essentials */
+    header { margin-bottom: 14px; padding-bottom: 14px; }
+    .header-top { gap: 10px; align-items: center; }
+    .bear-logo-box { display: none !important; }
+    .clocks { display: none !important; }
+    .logo-area h1 { font-size: 22px; line-height: 1; margin: 0; }
+    .logo-area p { font-size: 10px; margin-top: 4px; }
+    .status-pill { font-size: 10px; padding: 4px 8px; }
+
+    /* Gainers strip — hidden on mobile (your call: manual ticker input) */
+    .gainers-strip-wrap { display: none !important; }
+
+    /* Market Strength banner — stays, slimmer */
+    .ms-pill { gap: 10px; padding: 9px 12px; flex-wrap: wrap; font-size: 11px; }
+    .ms-rating { font-size: 13px; padding: 1px 8px; }
+    .ms-bias { display: none; } /* stripped on mobile, visible in expanded body footer */
+    .ms-toggle { font-size: 9px; }
+    .ms-text { font-size: 12px; line-height: 1.55; }
+    .ms-text code, .ms-perf-pre { font-size: 9px; padding: 6px 8px; }
+
+    /* Input section — stack ticker, price context, buttons vertically */
+    .input-section { gap: 10px; margin-bottom: 16px; }
+    .input-section > div[style*="grid-template-columns"] {
+      display: flex !important;
+      flex-direction: column !important;
+      gap: 10px !important;
+    }
+    .field-group label { font-size: 10px; }
+    input.ticker-input { font-size: 18px; padding: 14px 14px 14px 36px; height: auto; min-height: 50px; }
+    .ticker-prefix { font-size: 18px; left: 16px; }
+    /* Make buttons big tap targets, full width, stacked side-by-side */
+    .fetch-btn, .analyse-btn, .float-analyse-btn {
+      width: 100%; min-height: 50px; height: auto; font-size: 15px; padding: 14px 16px;
+    }
+
+    /* Stock info bar (Float / OS / MC etc when shown) — wraps cleanly */
+    .stock-info-bar { font-size: 12px; padding: 10px 12px; gap: 6px 16px; }
+
+    /* Dilution Profile — restructure horizontal table into vertical */
+    .dilution-meta-row { display: grid !important; grid-template-columns: 1fr 1fr !important; gap: 8px 14px !important; }
+    .dilution-meta-row > div, .dilution-meta-row span { font-size: 12px !important; }
+
+    /* Risk grid — 2 columns instead of 6 */
+    .risk-grid { grid-template-columns: 1fr 1fr !important; gap: 8px !important; }
+    .risk-card { padding: 10px 8px !important; }
+    .risk-card-label { font-size: 9px !important; }
+    .risk-card-value { font-size: 14px !important; }
+
+    /* Ask Edgar TLDR + bullets */
+    .grok-header { font-size: 9px; }
+    .grok-header span { display: block; margin-top: 4px; margin-left: 0 !important; }
+
+    /* Droppiness card */
+    .drop-stats-row { flex-direction: column !important; align-items: stretch !important; gap: 8px !important; }
+
+    /* Verdict banner — stack vertically, full-width state */
+    .verdict-banner { padding: 16px 16px; flex-direction: column; align-items: flex-start; gap: 12px; }
+    .verdict-label { font-size: 32px !important; line-height: 1; }
+    .verdict-state { font-size: 11px; padding: 4px 10px; }
+    .verdict-meta { width: 100%; }
+
+    /* Scanner Log save row — make it tappable */
+    .scanner-log-save-row { padding: 12px !important; flex-direction: column !important; align-items: stretch !important; gap: 10px !important; }
+    .scanner-log-save-btn { width: 100%; min-height: 46px; font-size: 13px !important; }
+
+    /* AI section / catalyst reasoning */
+    .ai-section { padding: 12px !important; }
+    .ai-section .grok-header { font-size: 10px; }
+
+    /* History panel — collapse-friendly */
+    .history-header { flex-wrap: wrap; gap: 6px; }
+    .history-title { font-size: 13px; }
+
+    /* Generic guards: prevent any horizontal scroll bleed */
+    body, .page-body, .container { overflow-x: hidden; }
+    pre, code { white-space: pre-wrap !important; word-break: break-word; }
+  }
+  /* ════════════════════════════════════════════════════════════════ */
 </style>
 </head>
 <body>
