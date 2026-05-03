@@ -6292,7 +6292,22 @@ async function logOutcome() {
   if (hodPrice && exitPrice && hodPrice > exitPrice) givebackPct = Math.round(((hodPrice - exitPrice) / hodPrice) * 100);
   btn.disabled = true; btn.textContent = 'Saving...';
   try {
-    var res = await supabaseRequest('trade_outcomes', 'POST', { ticker: ticker || null, analysis_id: currentAnalysisId || null, verdict: verdict || null, catalyst_grade: catalystGrade || null, droppiness_score: droppinessScore ? parseFloat(droppinessScore) : null, did_fade: currentFadeSelection, hod_giveback_pct: givebackPct, note: note || null });
+    var payload = { ticker: ticker || null, analysis_id: currentAnalysisId || null, verdict: verdict || null, catalyst_grade: catalystGrade || null, droppiness_score: droppinessScore ? parseFloat(droppinessScore) : null, did_fade: currentFadeSelection, hod_giveback_pct: givebackPct, note: note || null };
+
+    // Upsert: if a trade_outcomes row already exists for this analysis_id, PATCH it; otherwise POST.
+    var res;
+    if (currentAnalysisId) {
+      var existingCheck = await supabaseRequest('trade_outcomes?analysis_id=eq.' + currentAnalysisId + '&select=id');
+      var existingRows = await existingCheck.json();
+      if (existingRows && existingRows.length > 0) {
+        res = await supabaseRequest('trade_outcomes?analysis_id=eq.' + currentAnalysisId, 'PATCH', payload);
+      } else {
+        res = await supabaseRequest('trade_outcomes', 'POST', payload);
+      }
+    } else {
+      res = await supabaseRequest('trade_outcomes', 'POST', payload);
+    }
+
     if (res.status === 201 || res.ok) { savedMsg.className = 'outcome-saved visible'; btn.textContent = 'Saved \u2713'; document.getElementById('hodPrice').value = ''; document.getElementById('entryPrice').value = ''; document.getElementById('exitPrice').value = ''; document.getElementById('outcomeNote').value = ''; document.getElementById('outcomeCalc').textContent = '\u2014'; currentFadeSelection = null; document.getElementById('fadeYes').className = 'fade-btn'; document.getElementById('fadeNo').className = 'fade-btn'; }
     else { btn.disabled = false; btn.textContent = 'Save'; alert('Could not save \u2014 try again.'); }
   } catch(e) { btn.disabled = false; btn.textContent = 'Save'; alert('Error: ' + e.message); }
