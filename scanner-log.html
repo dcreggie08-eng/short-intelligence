@@ -1541,7 +1541,6 @@ function calcITT() {
 // ─────────────────────────────────────────────
 // LAZY TRADE ANALYSER
 // ─────────────────────────────────────────────
-var POLYGON_KEY = 'iz170hZwJjkiLavb9YM1f3zhDKTYkxHi';
 var WORKER_URL = 'https://anthropic-proxy.dcreggie08.workers.dev';
 
 function setLazyStatus(msg, color) {
@@ -1794,37 +1793,6 @@ async function fetch4hrRSI(ticker) {
     if (data.error) { console.warn('RSI4hr error:', data.error); return { workerError: data.error }; }
     return data;
   } catch(e) { console.warn('RSI4hr fetch failed:', e); return null; }
-}
-
-function calcRSISeries(closes, period) {
-  if (closes.length < period + 2) return null;
-  var changes = [];
-  for (var i = 1; i < closes.length; i++) changes.push(closes[i] - closes[i-1]);
-  var avgGain = 0, avgLoss = 0;
-  for (var j = 0; j < period; j++) {
-    if (changes[j] > 0) avgGain += changes[j];
-    else avgLoss += Math.abs(changes[j]);
-  }
-  avgGain /= period; avgLoss /= period;
-  var rsiVals = [];
-  var rs0 = avgLoss === 0 ? Infinity : avgGain / avgLoss;
-  rsiVals.push(avgLoss === 0 ? 100 : 100 - (100 / (1 + rs0)));
-  for (var k = period; k < changes.length; k++) {
-    var gain = changes[k] > 0 ? changes[k] : 0;
-    var loss = changes[k] < 0 ? Math.abs(changes[k]) : 0;
-    avgGain = (avgGain * (period - 1) + gain) / period;
-    avgLoss = (avgLoss * (period - 1) + loss) / period;
-    var rs = avgLoss === 0 ? Infinity : avgGain / avgLoss;
-    rsiVals.push(avgLoss === 0 ? 100 : 100 - (100 / (1 + rs)));
-  }
-  var cur = rsiVals[rsiVals.length - 1];
-  var prev = rsiVals[rsiVals.length - 2];
-  return {
-    current: Math.round(cur * 10) / 10,
-    previous: Math.round(prev * 10) / 10,
-    crossedBelow70: prev >= 70 && cur < 70,
-    below70: cur < 70
-  };
 }
 
 // ─────────────────────────────────────────────
