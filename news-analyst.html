@@ -5908,6 +5908,7 @@ async function fetchNews() {
     applyFetchedData(cached, ticker);
     document.getElementById('dilutionSource').textContent = 'via Ask Edgar (cached)';
     fetchDroppiness(ticker);
+    fetchRVOL(ticker);
     return;
   }
 
@@ -5924,6 +5925,7 @@ async function fetchNews() {
     fetchCache[ticker] = { newsData, dilutionData, floatData, tldrData };
     applyFetchedData(fetchCache[ticker], ticker);
     fetchDroppiness(ticker);
+    fetchRVOL(ticker);
   } catch(e) {
     showError('Could not fetch data: ' + e.message);
   } finally {
@@ -5955,6 +5957,26 @@ async function fetchDroppiness(ticker) {
       '<span class="droppiness-stat"><span class="ds-label">Last Event:</span> <span class="ds-value">' + data.last_event + '</span></span>' +
       '<span class="droppiness-stat"><span class="ds-label">Trend:</span> <span class="ds-value">' + data.trend + '</span></span>';
   } catch(e) { scoreEl.textContent = 'Error'; statsEl.innerHTML = '<span class="droppiness-stat" style="color:var(--nogo)">' + e.message + '</span>'; }
+}
+
+async function fetchRVOL(ticker) {
+  try {
+    var res = await fetch(PROXY + '/rvol?ticker=' + ticker);
+    var data = await res.json();
+    if (data.error || data.rvol === null) { window.currentRVOL = null; return; }
+    window.currentRVOL = data;
+    var infoBar = document.getElementById('infoBar');
+    if (!infoBar) return;
+    var existing = infoBar.querySelector('#rvolSpan');
+    if (existing) existing.remove();
+    var rvolSpan = document.createElement('span');
+    rvolSpan.id = 'rvolSpan';
+    var rvolVal = data.rvol;
+    var rvolColor = rvolVal >= 5 ? 'var(--go)' : rvolVal >= 2 ? 'var(--accent)' : 'var(--text-dim)';
+    var rvolLabel = data.is_premarket ? 'RVOL (PM)' : 'RVOL';
+    rvolSpan.innerHTML = '<span style="color:var(--text-bright);font-weight:700">' + rvolLabel + ': <span style="color:' + rvolColor + '">' + rvolVal + 'x</span></span>';
+    infoBar.appendChild(rvolSpan);
+  } catch(e) { window.currentRVOL = null; }
 }
 
 function applyFetchedData(cached, ticker) {
