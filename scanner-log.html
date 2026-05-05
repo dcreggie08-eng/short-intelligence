@@ -39,6 +39,30 @@
   .nav-link { font-family:var(--mono); font-size:11px; letter-spacing:1.5px; padding:6px 12px; border:1px solid var(--border-bright); color:var(--accent); text-decoration:none; text-transform:uppercase; transition:all 0.2s; }
   .nav-link:hover { border-color:var(--accent); background:var(--accent-dim); }
   .status-pill { font-family:var(--mono); font-size:11px; letter-spacing:1.5px; padding:6px 12px; border:1px solid var(--border-bright); color:var(--text-dim); text-transform:uppercase; }
+  /* ── MARKET STRENGTH BANNER ────────────────────────────────────── */
+  .ms-wrap { margin-bottom:18px; border:1px solid var(--border); background:var(--surface); border-radius:0; transition:border-color 0.2s; }
+  .ms-wrap.collapsed { cursor:pointer; }
+  .ms-wrap.collapsed:hover { border-color:var(--border-bright); }
+  .ms-pill { display:flex; align-items:center; gap:14px; padding:10px 14px; font-family:var(--mono); font-size:12px; letter-spacing:1px; }
+  .ms-label { color:var(--text-dim); text-transform:uppercase; }
+  .ms-rating { font-family:var(--display); font-weight:900; font-size:14px; letter-spacing:2px; padding:2px 10px; border:1px solid currentColor; }
+  .ms-rating.hot { color:var(--go); }
+  .ms-rating.neutral { color:var(--caution); }
+  .ms-rating.cold { color:var(--nogo); }
+  .ms-rating.unknown { color:var(--text-dim); }
+  .ms-date { color:var(--text); font-size:11px; }
+  .ms-bias { color:var(--text-dim); font-size:10px; margin-left:auto; font-style:italic; }
+  .ms-toggle { color:var(--accent); font-size:10px; letter-spacing:2px; text-transform:uppercase; }
+  .ms-body { display:none; padding:0 14px 14px; border-top:1px solid var(--border); }
+  .ms-wrap.expanded .ms-body { display:block; }
+  .ms-section { margin-top:14px; }
+  .ms-section-title { font-family:var(--mono); font-size:10px; letter-spacing:2px; color:var(--text-dim); text-transform:uppercase; margin-bottom:8px; }
+  .ms-text { font-family:var(--body); font-size:13px; line-height:1.6; color:var(--text); white-space:pre-wrap; }
+  .ms-text strong { color:var(--text-bright); font-weight:700; }
+  .ms-text code, .ms-perf-pre { font-family:var(--mono); font-size:11px; background:var(--bg); padding:8px 12px; display:block; white-space:pre; overflow-x:auto; color:var(--text); border:1px solid var(--border); }
+  .ms-footer { margin-top:14px; padding-top:10px; border-top:1px dashed var(--border); font-family:var(--mono); font-size:10px; color:var(--text-dim); letter-spacing:1px; }
+  .ms-footer-warn { color:var(--caution); }
+  /* ─────────────────────────────────────────────────────────────── */
   .tabs { display:flex; border-bottom:1px solid var(--border); margin-bottom:28px; }
   .tab { font-family:var(--mono); font-size:12px; letter-spacing:2px; text-transform:uppercase; padding:12px 20px; cursor:pointer; color:var(--text-dim); border-bottom:2px solid transparent; transition:all 0.2s; background:none; border-top:none; border-left:none; border-right:none; }
   .tab:hover { color:var(--text); }
@@ -100,6 +124,10 @@
   .save-review-btn.saved { background:rgba(0,230,118,0.85); color:#000; }
   .review-save-msg { font-family:var(--mono); font-size:12px; color:var(--go); letter-spacing:1px; display:none; }
   .review-save-msg.visible { display:block; }
+  .pull-hod-btn { font-family:var(--mono); font-size:11px; letter-spacing:1.5px; text-transform:uppercase; padding:6px 14px; border:1px solid var(--accent); color:var(--accent); background:transparent; cursor:pointer; transition:all 0.2s; }
+  .pull-hod-btn:hover { background:var(--accent-dim); }
+  .pull-hod-btn:disabled { opacity:0.4; cursor:not-allowed; }
+  .pull-hod-status { font-family:var(--mono); font-size:11px; color:var(--text-dim); margin-left:10px; }
   .empty-state { font-family:var(--mono); font-size:13px; color:var(--text-dim); letter-spacing:1px; padding:40px 0; text-align:center; border:1px solid var(--border); }
   .session-strip-wrap { margin-bottom:16px; }
   .session-strip-label { font-family:var(--mono); font-size:10px; letter-spacing:2px; text-transform:uppercase; color:var(--text-dim); margin-bottom:8px; display:flex; align-items:center; gap:10px; cursor:pointer; user-select:none; }
@@ -128,6 +156,8 @@
   .wag-scan-btn { font-family:var(--display); font-weight:700; font-size:13px; letter-spacing:2px; text-transform:uppercase; padding:8px 20px; background:var(--accent); color:#000; border:none; cursor:pointer; }
   .wag-scan-btn:hover { background:#fff; }
   .wag-scan-btn:disabled { background:rgba(0,212,255,0.2); color:var(--text-dim); cursor:not-allowed; }
+  .wag-stop-btn { font-family:var(--display); font-weight:700; font-size:13px; letter-spacing:2px; text-transform:uppercase; padding:8px 20px; background:transparent; color:var(--nogo); border:1px solid var(--nogo); cursor:pointer; display:none; }
+  .wag-stop-btn:hover { background:var(--nogo-dim); }
   .wag-buckets { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top:16px; }
   .wag-bucket { border:1px solid var(--border); background:var(--surface); padding:14px 16px; min-height:80px; }
   .wag-bucket-title { font-family:var(--mono); font-size:10px; letter-spacing:3px; text-transform:uppercase; margin-bottom:10px; }
@@ -248,6 +278,94 @@
     .review-grid { grid-template-columns:1fr; }
     .logo-area h1 { font-size:28px; }
   }
+
+  /* ════════════════════════════════════════════════════════════════
+     MOBILE OPTIMISATION — Active below 768px
+     Use case: read-only review of saved entries while travelling
+     Strips: clocks (none here), header decoration, heavy padding
+     Keeps:  market strength banner, tabs, entry cards readable,
+             scanner log entries viewable
+     Form editing on mobile is allowed but de-prioritised in styling.
+     Desktop CSS above is COMPLETELY UNTOUCHED.
+     ════════════════════════════════════════════════════════════════ */
+  @media (max-width: 768px) {
+    /* Container — tighter padding */
+    .container { padding: 14px 12px 60px; max-width: 100%; }
+
+    /* Header — slimmer, no decoration */
+    header { margin-bottom: 14px; padding-bottom: 14px; }
+    .header-top { gap: 8px; align-items: center; flex-wrap: wrap; }
+    .logo-area h1 { font-size: 22px; line-height: 1; margin: 0; }
+    .logo-area p { font-size: 10px; margin-top: 4px; }
+    .nav-link { font-size: 11px; padding: 4px 8px; }
+    .status-pill { font-size: 10px; padding: 4px 8px; }
+
+    /* Market Strength banner — same compact treatment */
+    .ms-pill { gap: 10px; padding: 9px 12px; flex-wrap: wrap; font-size: 11px; }
+    .ms-rating { font-size: 13px; padding: 1px 8px; }
+    .ms-bias { display: none; }
+    .ms-toggle { font-size: 12px; }
+    .ms-text { font-size: 12px; line-height: 1.55; }
+    .ms-text code, .ms-perf-pre { font-size: 9px; padding: 6px 8px; }
+
+    /* Tabs — smaller, but keep horizontal */
+    .tabs { margin-bottom: 16px; overflow-x: auto; }
+    .tab { font-size: 10px; padding: 10px 12px; letter-spacing: 1px; white-space: nowrap; }
+
+    /* Date bar */
+    .date-bar { gap: 8px; flex-wrap: wrap; }
+    .date-input { font-size: 13px; }
+    .date-nav { padding: 6px 10px; }
+
+    /* Session strip — make wrap nicely */
+    .session-strip { gap: 4px; }
+
+    /* Entry cards — readable but compressed */
+    .entry-card { font-size: 13px; }
+
+    /* Review form — usable but not optimised */
+    .review-form { padding: 14px 12px; }
+    .review-input, .review-select { font-size: 14px; padding: 10px; }
+    .review-label { font-size: 11px; }
+    .btn-option { font-size: 11px; padding: 8px 10px; min-height: 38px; }
+    .btn-group { flex-wrap: wrap; }
+    .save-review-btn { width: 100%; min-height: 46px; font-size: 13px; }
+
+    /* Stack paired HOD+VWAP rows on mobile */
+    .review-form > div[style*="grid-template-columns:1fr 1fr"] {
+      display: flex !important;
+      flex-direction: column !important;
+      gap: 10px !important;
+    }
+    /* But keep the market context + backside Y/N row paired since it's tighter */
+    .review-row-full > div[style*="grid-template-columns:2fr 1fr"] {
+      display: grid !important;
+      grid-template-columns: 1fr !important;
+      gap: 10px !important;
+    }
+
+    /* Analytics tab — keep readable, tables horizontal scroll */
+    .analytics-section { font-size: 12px; }
+    .analytics-title { padding: 12px 14px; font-size: 11px; }
+    .analytics-body { padding: 12px; overflow-x: auto; }
+    .analytics-table { font-size: 11px; }
+    .analytics-table th, .analytics-table td { padding: 6px 8px; }
+    .stat-card { padding: 12px; }
+    .stat-card-value { font-size: 24px; }
+    .stat-card-label { font-size: 9px; }
+    .best-setup-box { padding: 12px; }
+    .best-setup-rate { font-size: 28px; }
+    .key-finding-row { padding: 8px 12px; font-size: 11px; }
+
+    /* Lazy Trades — buckets stack */
+    .lazy-data-grid, .itt-grid { grid-template-columns: 1fr !important; }
+
+    /* Generic guards */
+    body, .page-body, .container { overflow-x: hidden; }
+    pre, code { white-space: pre-wrap !important; word-break: break-word; }
+    table { display: block; overflow-x: auto; max-width: 100%; }
+  }
+  /* ════════════════════════════════════════════════════════════════ */
 </style>
 </head>
 <body>
@@ -265,6 +383,17 @@
       </div>
     </div>
   </header>
+
+  <div class="ms-wrap collapsed" id="msWrap" onclick="toggleMarketStrength()" style="display:none">
+    <div class="ms-pill">
+      <span class="ms-label">Market Strength</span>
+      <span class="ms-rating unknown" id="msRating">—</span>
+      <span class="ms-date" id="msDate"></span>
+      <span class="ms-bias">Long-biased read</span>
+      <span class="ms-toggle" id="msToggle">Click for details</span>
+    </div>
+    <div class="ms-body" id="msBody"></div>
+  </div>
 
   <div class="tabs">
     <button class="tab active" onclick="switchTab('log')">Daily Log</button>
@@ -334,6 +463,7 @@
         <div class="wag-ticker-chip"><div class="lazy-ticker-prefix">$</div><input type="text" class="wag-input" placeholder="" maxlength="6" oninput="this.value=this.value.toUpperCase()" /></div>
         <div class="wag-ticker-chip"><div class="lazy-ticker-prefix">$</div><input type="text" class="wag-input" placeholder="" maxlength="6" oninput="this.value=this.value.toUpperCase()" /></div>
         <button class="wag-scan-btn" id="wagScanBtn" onclick="runWagScan()">Scan</button>
+        <button class="wag-stop-btn" id="wagStopBtn" onclick="stopWagAutoScan()">Stop</button>
       </div>
       <div class="wag-status" id="wagStatus"></div>
       <div class="wag-buckets" id="wagBuckets" style="display:none;">
@@ -399,6 +529,7 @@
     </div>
 
     <!-- ITT: Cobra Overnight Cost Calculator -->
+    <div style="border-top:1px solid var(--accent);margin:28px 0 24px;opacity:0.35;"></div>
     <div class="lazy-section">
       <div class="lazy-section-title">ITT — Cobra Overnight Cost Calculator</div>
       <p style="font-family:var(--mono);font-size:11px;color:var(--text-dim);letter-spacing:0.5px;margin-bottom:16px;line-height:1.7;">
@@ -646,11 +777,18 @@ function buildReviewForm(entry) {
   var actualExit = entry.actual_exit_level || '';
   var note = entry.note || '';
   var vwapExt = entry.vwap_extension_pct || '';
+  var marketContext = entry.market_context || '';
+  var backsideSqueeze = entry.backside_squeeze_risk || '';
+  var pmHodTime = entry.pm_hod_time || '';
+  var omHodTime = entry.om_hod_time || '';
+  var omVwapBelowVwap = entry.om_vwap_below_vwap || false;
 
   // Pre-populate button state tracking from saved data
   if (hodHigher) hodSel[id] = hodHigher;
   if (gkCorrect) gkSel[id] = gkCorrect;
   if (didTrade !== null && didTrade !== undefined) tradeSel[id] = didTrade;
+  if (backsideSqueeze) backsideSel[id] = backsideSqueeze;
+  tradeWasRecorded[id] = (entry.did_trade === true && !!entry.entry_price);
 
   var alreadyReviewed = !!(entry.fade_destination || entry.gatekeeper_correct || entry.premarket_hod);
   var btnClass = alreadyReviewed ? 'save-review-btn saved' : 'save-review-btn';
@@ -673,14 +811,28 @@ function buildReviewForm(entry) {
 
   return '<div class="review-title">Evening Review</div>' +
 
+    '<div style="display:flex;align-items:center;gap:0;margin-bottom:14px;">' +
+      '<button class="pull-hod-btn" id="pullHodBtn-'+id+'" onclick="pullHodData(\''+id+'\',\''+entry.ticker+'\',\''+entry.trading_date+'\')">↓ Pull HOD from Polygon</button>' +
+      '<span class="pull-hod-status" id="pullHodStatus-'+id+'"></span>' +
+    '</div>' +
+
     // Paired HOD + VWAP rows: PM on row 1 (green labels), OM on row 2 (default labels).
     '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:8px;">' +
-      '<div class="review-field"><div class="review-label" style="color:var(--go)">Pre-Market HOD $</div><input type="number" class="review-input" id="pmHod-'+id+'" placeholder="0.00" step="0.01" min="0" value="'+pmHod+'" oninput="calcVwapExt(\''+id+'\')" /></div>' +
+      '<div class="review-field"><div class="review-label" style="color:var(--go)">Pre-Market HOD $</div><input type="number" class="review-input" id="pmHod-'+id+'" placeholder="0.00" step="0.01" min="0" value="'+pmHod+'" oninput="calcVwapExt(\''+id+'\')" />' +
+        '<select class="review-select" id="pmHodTime-'+id+'" style="margin-top:6px;font-size:11px;padding:5px 8px;"><option value="">PM HOD time...</option>' +
+        ['4:00am','5:00am','6:00am','7:00am','8:00am','9:00am','9:30am'].map(function(t){return '<option value="'+t+'"'+(pmHodTime===t?' selected':'')+'>'+t+'</option>';}).join('') +
+        '</select></div>' +
       '<div class="review-field"><div class="review-label" style="color:var(--go)">Pre-Market VWAP $</div><input type="number" class="review-input" id="pmVwap-'+id+'" placeholder="0.00" step="0.01" min="0" value="'+pmVwap+'" oninput="calcVwapExt(\''+id+'\')" /></div>' +
     '</div>' +
     '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">' +
-      '<div class="review-field"><div class="review-label">Open Market HOD $</div><input type="number" class="review-input" id="omHod-'+id+'" placeholder="0.00" step="0.01" min="0" value="'+omHod+'" oninput="calcVwapExt(\''+id+'\')" /></div>' +
-      '<div class="review-field"><div class="review-label">Open Market VWAP $</div><input type="number" class="review-input" id="omVwap-'+id+'" placeholder="0.00" step="0.01" min="0" value="'+omVwap+'" oninput="calcVwapExt(\''+id+'\')" /></div>' +
+      '<div class="review-field"><div class="review-label">Open Market HOD $</div><input type="number" class="review-input" id="omHod-'+id+'" placeholder="0.00" step="0.01" min="0" value="'+omHod+'" oninput="calcVwapExt(\''+id+'\')" />' +
+        '<select class="review-select" id="omHodTime-'+id+'" style="margin-top:6px;font-size:11px;padding:5px 8px;"><option value="">OM HOD time...</option>' +
+        ['9:30am','10:00am','11:00am','12:00pm','1:00pm','2:00pm','3:00pm','4:00pm'].map(function(t){return '<option value="'+t+'"'+(omHodTime===t?' selected':'')+'>'+t+'</option>';}).join('') +
+        '</select></div>' +
+      '<div class="review-field"><div class="review-label">Open Market VWAP $</div><input type="number" class="review-input" id="omVwap-'+id+'" placeholder="0.00" step="0.01" min="0" value="'+omVwap+'" oninput="calcVwapExt(\''+id+'\')" style="'+(omVwapBelowVwap?'opacity:0.4;':'')+'" '+(omVwapBelowVwap?'disabled':'')+' />' +
+        '<label style="display:flex;align-items:center;gap:6px;margin-top:8px;font-family:var(--mono);font-size:11px;color:var(--text-dim);cursor:pointer;">' +
+        '<input type="checkbox" id="omVwapBelowVwap-'+id+'" '+(omVwapBelowVwap?'checked':'')+' onchange="toggleOmVwapBelow(\''+id+'\')" style="width:auto;accent-color:var(--caution);" />' +
+        "OM HOD didn't reclaim VWAP</label></div>" +
     '</div>' +
     '<div style="font-family:var(--mono);font-size:11px;color:var(--accent);margin-bottom:16px;min-height:16px;" id="vwapExtDisplay-'+id+'"></div>' +
 
@@ -699,9 +851,9 @@ function buildReviewForm(entry) {
       '<button class="btn-option '+tradSl('YES')+'" onclick="selectTrade(\''+id+'\',true)">Yes</button>' +
       '<button class="btn-option '+tradSl('NO')+'" onclick="selectTrade(\''+id+'\',false)">No</button>' +
     '</div></div>' +
-    '<div class="review-row-full"><div class="review-label">Your Actual Exit Level (if traded)</div>' + exitSelect + '</div>' +
     '<div class="review-row-full trade-prices-row" id="tradePrices-'+id+'" style="display:'+(didTrade?'flex':'none')+';flex-direction:column;gap:6px;">' +
-      '<div class="review-label">Trade Prices — for Journal</div>' +
+      '<div class="review-label">Your Actual Exit Level</div>' + exitSelect +
+      '<div class="review-label" style="margin-top:10px;">Trade Prices — for Journal</div>' +
       '<div style="display:flex;gap:12px;flex-wrap:wrap;">' +
         '<div class="review-field" style="flex:1;min-width:120px;"><div class="review-label" style="font-size:10px;">Entry $</div><input type="number" class="review-input" id="entryPrice-'+id+'" placeholder="0.00" step="0.01" min="0" value="'+(entry.entry_price||'')+'" /></div>' +
         '<div class="review-field" style="flex:1;min-width:120px;"><div class="review-label" style="font-size:10px;">Exit $</div><input type="number" class="review-input" id="exitPrice-'+id+'" placeholder="0.00" step="0.01" min="0" value="'+(entry.exit_price||'')+'" oninput="calcGivebackPreview(\''+id+'\')" /></div>' +
@@ -709,15 +861,33 @@ function buildReviewForm(entry) {
       '</div>' +
       '<div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);margin-top:2px;">Giveback % from PM HOD vs exit. Auto-saves to Journal.</div>' +
     '</div>' +
+    '<div class="review-row-full" style="display:grid;grid-template-columns:2fr 1fr;gap:14px;">' +
+      '<div><div class="review-label">Market Context <span style="color:var(--text-dim);font-weight:400;">(optional)</span></div>' +
+        '<input type="text" class="review-input" id="marketContext-'+id+'" placeholder="Hot / Cold / Neutral + brief reason" maxlength="120" value="'+marketContext.replace(/"/g,'&quot;')+'" /></div>' +
+      '<div><div class="review-label">Backside Squeeze Risk?</div>' +
+        '<div class="btn-group" id="bsqGroup-'+id+'">' +
+          '<button type="button" class="btn-option'+(backsideSqueeze==='Y'?' sel-no':'')+'" onclick="selectBackside(\''+id+'\',\'Y\')">Y</button>' +
+          '<button type="button" class="btn-option'+(backsideSqueeze==='N'?' sel-yes':'')+'" onclick="selectBackside(\''+id+'\',\'N\')">N</button>' +
+        '</div>' +
+      '</div>' +
+    '</div>' +
     '<div class="review-row-full"><div class="review-label">Note</div><input type="text" class="review-input" id="note-'+id+'" placeholder="One line — what happened, why, what you noticed" maxlength="200" value="'+note.replace(/"/g,'&quot;')+'" /></div>' +
     '<div class="review-row-full">' + buildTagChips(id, entry) + '</div>' +
     '<div class="review-actions"><button class="'+btnClass+'" id="saveBtn-'+id+'" onclick="saveReview(\''+id+'\')">'+btnText+'</button><div class="review-save-msg" id="saveMsg-'+id+'"></div></div>';
 }
 
-var hodSel={}, gkSel={}, tradeSel={}, tagSel={};
+var hodSel={}, gkSel={}, tradeSel={}, tagSel={}, backsideSel={}, tradeWasRecorded={};
+
+function toggleOmVwapBelow(id) {
+  var cb = document.getElementById('omVwapBelowVwap-'+id);
+  var input = document.getElementById('omVwap-'+id);
+  if (!input) return;
+  if (cb.checked) { input.disabled = true; input.style.opacity = '0.4'; }
+  else { input.disabled = false; input.style.opacity = '1'; }
+}
 
 var ENTRY_QUALITY_TAGS = ['Not Traded','Fast Flush','Held Longer','Second Attempt','Second Entry to Avg Cost','Missed Entry','Entered Too Late','Max Loss Hit','Below MMP','Exited Below VWAP'];
-var PRICE_ACTION_TAGS  = ['Thin Pre-Market','Wide Spread','Clean Move','Choppy','VWAP Hugger / Up','VWAP Hugger / Down','Ranging','Power Hour Move','Reclaimed VWAP','MMP Hit','Halted / Resumed','Grinder'];
+var PRICE_ACTION_TAGS  = ['Thin Pre-Market','Wide Spread','Clean Move','Choppy','VWAP Hugger — Ranging','VWAP Hugger / Up','VWAP Hugger / Down','Ranging','Power Hour Move','Reclaimed VWAP','MMP Hit','Halted / Resumed','Grinder'];
 var THESIS_TAGS        = ['Played Out As Expected','Played Out As Graded','Stronger Than Expected','Weaker Than Expected'];
 
 function buildTagChips(id, entry) {
@@ -775,6 +945,16 @@ function selectTrade(id, val) {
   // Show/hide trade price fields
   var priceRow = document.getElementById('tradePrices-'+id);
   if (priceRow) priceRow.style.display = val === true ? 'flex' : 'none';
+}
+
+function selectBackside(id, val) {
+  backsideSel[id] = val;
+  // Y = squeeze risk present (red); N = no squeeze (green)
+  var g = document.getElementById('bsqGroup-'+id);
+  if (g) g.querySelectorAll('.btn-option').forEach(function(b){
+    var label = b.textContent.trim();
+    b.className = 'btn-option' + (label === val ? (val === 'Y' ? ' sel-no' : ' sel-yes') : '');
+  });
 }
 
 function calcExtPct(hod, vwap) {
@@ -855,6 +1035,14 @@ async function saveReview(id) {
   var didTrade = tradeSel[id]!==undefined?tradeSel[id]:null;
   var entryPrice = parseFloat(document.getElementById('entryPrice-'+id) && document.getElementById('entryPrice-'+id).value)||null;
   var exitPrice = parseFloat(document.getElementById('exitPrice-'+id) && document.getElementById('exitPrice-'+id).value)||null;
+  var marketContext = document.getElementById('marketContext-'+id) ? (document.getElementById('marketContext-'+id).value.trim() || null) : null;
+  var backsideRisk = backsideSel[id] || null;
+  var pmHodTime = document.getElementById('pmHodTime-'+id) ? (document.getElementById('pmHodTime-'+id).value || null) : null;
+  var omHodTime = document.getElementById('omHodTime-'+id) ? (document.getElementById('omHodTime-'+id).value || null) : null;
+  var omVwapBelowVwap = document.getElementById('omVwapBelowVwap-'+id) ? document.getElementById('omVwapBelowVwap-'+id).checked : false;
+  // Auto-capture: stamp the current Ask Edgar market strength rating onto this entry.
+  // Set by loadMarketStrength() on page load. Stays NULL if the banner hasn't loaded.
+  var marketStrengthRating = (typeof window.currentMarketStrength === 'string' && window.currentMarketStrength) ? window.currentMarketStrength : null;
 
   var payload = {
     premarket_hod: pmHod,
@@ -870,7 +1058,13 @@ async function saveReview(id) {
     entry_price: entryPrice,
     exit_price: exitPrice,
     note: note,
-    trade_tags: JSON.stringify(tagSel[id] || [])
+    trade_tags: JSON.stringify(tagSel[id] || []),
+    market_context: marketContext,
+    backside_squeeze_risk: backsideRisk,
+    market_strength_rating: marketStrengthRating,
+    pm_hod_time: pmHodTime,
+    om_hod_time: omHodTime,
+    om_vwap_below_vwap: omVwapBelowVwap
   };
 
   try {
@@ -878,8 +1072,8 @@ async function saveReview(id) {
     var res = await sbFetch('scanner_log?id=eq.'+id, 'PATCH', payload);
     if (!res.ok) throw new Error('Scanner log save failed');
 
-    // Step 2 — if traded, derive did_fade and write to trade_outcomes
-    if (didTrade === true) {
+    // Step 2 — if traded, derive did_fade and write to trade_outcomes (first time only)
+    if (didTrade === true && !tradeWasRecorded[id]) {
       // Fetch the full scanner log entry to get ticker, verdict, grade, droppiness
       var entryRes = await sbFetch('scanner_log?id=eq.'+id+'&select=*');
       var entryData = await entryRes.json();
@@ -908,45 +1102,33 @@ async function saveReview(id) {
           givebackPct = Math.round(((pmHod - exitPrice) / pmHod) * 100);
         }
 
-        var outcomePayload = {
-          ticker: entry.ticker || null,
-          analysis_id: null,
-          verdict: entry.verdict || null,
-          catalyst_grade: entry.catalyst_grade || null,
-          droppiness_score: entry.droppiness_score ? parseFloat(entry.droppiness_score) : null,
-          did_fade: didFade,
-          hod_giveback_pct: givebackPct,
-          note: note || null
-        };
-
-        // Check if a trade_outcomes entry already exists for this scanner_log id
-        var existingCheck = await fetch(SUPABASE_URL + '/rest/v1/trade_outcomes?analysis_id=eq.' + id + '&select=id', {
-          headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY }
+        await fetch(SUPABASE_URL + '/rest/v1/trade_outcomes', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': SUPABASE_KEY,
+            'Authorization': 'Bearer ' + SUPABASE_KEY,
+            'Prefer': 'return=minimal'
+          },
+          body: JSON.stringify({
+            ticker: entry.ticker || null,
+            analysis_id: null,
+            verdict: entry.verdict || null,
+            catalyst_grade: entry.catalyst_grade || null,
+            droppiness_score: entry.droppiness_score ? parseFloat(entry.droppiness_score) : null,
+            did_fade: didFade,
+            hod_giveback_pct: givebackPct,
+            note: note || null
+          })
         });
-        var existingRows = await existingCheck.json();
-
-        if (existingRows && existingRows.length > 0) {
-          // Update existing row
-          await fetch(SUPABASE_URL + '/rest/v1/trade_outcomes?analysis_id=eq.' + id, {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Prefer': 'return=minimal' },
-            body: JSON.stringify(outcomePayload)
-          });
-        } else {
-          // No existing row — insert new, storing scanner_log id as analysis_id for future updates
-          outcomePayload.analysis_id = id;
-          await fetch(SUPABASE_URL + '/rest/v1/trade_outcomes', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Prefer': 'return=minimal' },
-            body: JSON.stringify(outcomePayload)
-          });
-        }
+        tradeWasRecorded[id] = true;
       }
     }
 
     // Step 3 — update UI
     btn.textContent = didTrade ? '✓ Reviewed — Saved + Journal Updated' : '✓ Reviewed — Save Changes';
     btn.className='save-review-btn saved';
+    btn.disabled = false;
     msg.className='review-save-msg visible';
     msg.textContent = didTrade ? '✓ Scanner log saved and trade written to Journal' : '✓ Review saved';
     var h = document.querySelector('#card-'+id+' .entry-header');
@@ -1541,6 +1723,7 @@ function calcITT() {
 // ─────────────────────────────────────────────
 // LAZY TRADE ANALYSER
 // ─────────────────────────────────────────────
+var POLYGON_KEY = 'iz170hZwJjkiLavb9YM1f3zhDKTYkxHi';
 var WORKER_URL = 'https://anthropic-proxy.dcreggie08.workers.dev';
 
 function setLazyStatus(msg, color) {
@@ -1795,6 +1978,37 @@ async function fetch4hrRSI(ticker) {
   } catch(e) { console.warn('RSI4hr fetch failed:', e); return null; }
 }
 
+function calcRSISeries(closes, period) {
+  if (closes.length < period + 2) return null;
+  var changes = [];
+  for (var i = 1; i < closes.length; i++) changes.push(closes[i] - closes[i-1]);
+  var avgGain = 0, avgLoss = 0;
+  for (var j = 0; j < period; j++) {
+    if (changes[j] > 0) avgGain += changes[j];
+    else avgLoss += Math.abs(changes[j]);
+  }
+  avgGain /= period; avgLoss /= period;
+  var rsiVals = [];
+  var rs0 = avgLoss === 0 ? Infinity : avgGain / avgLoss;
+  rsiVals.push(avgLoss === 0 ? 100 : 100 - (100 / (1 + rs0)));
+  for (var k = period; k < changes.length; k++) {
+    var gain = changes[k] > 0 ? changes[k] : 0;
+    var loss = changes[k] < 0 ? Math.abs(changes[k]) : 0;
+    avgGain = (avgGain * (period - 1) + gain) / period;
+    avgLoss = (avgLoss * (period - 1) + loss) / period;
+    var rs = avgLoss === 0 ? Infinity : avgGain / avgLoss;
+    rsiVals.push(avgLoss === 0 ? 100 : 100 - (100 / (1 + rs)));
+  }
+  var cur = rsiVals[rsiVals.length - 1];
+  var prev = rsiVals[rsiVals.length - 2];
+  return {
+    current: Math.round(cur * 10) / 10,
+    previous: Math.round(prev * 10) / 10,
+    crossedBelow70: prev >= 70 && cur < 70,
+    below70: cur < 70
+  };
+}
+
 // ─────────────────────────────────────────────
 // LAZY WAG SCANNER
 // ─────────────────────────────────────────────
@@ -1874,6 +2088,7 @@ function fireWagNotification(result) {
 
 function startWagAutoScan() {
   var autoEl = document.getElementById('wagAutoStatus');
+  var stopBtn = document.getElementById('wagStopBtn');
   wagAutoInterval = setInterval(function() {
     var tickers = getWagTickers();
     if (tickers.length > 0) {
@@ -1883,10 +2098,139 @@ function startWagAutoScan() {
     }
   }, WAG_RESCAN_MS);
   autoEl.textContent = 'Auto-scan active — every 10 minutes';
+  stopBtn.style.display = 'block';
+}
+
+function stopWagAutoScan() {
+  if (wagAutoInterval) { clearInterval(wagAutoInterval); wagAutoInterval = null; }
+  var autoEl = document.getElementById('wagAutoStatus');
+  var stopBtn = document.getElementById('wagStopBtn');
+  autoEl.textContent = 'Auto-scan stopped.';
+  autoEl.style.color = 'var(--text-dim)';
+  stopBtn.style.display = 'none';
+}
+
+// ─────────────────────────────────────────────
+// PULL HOD DATA FROM POLYGON
+// ─────────────────────────────────────────────
+
+async function pullHodData(id, ticker, tradingDate) {
+  var btn = document.getElementById('pullHodBtn-' + id);
+  var status = document.getElementById('pullHodStatus-' + id);
+  if (!ticker || !tradingDate) { status.textContent = 'No ticker/date.'; return; }
+  btn.disabled = true;
+  btn.textContent = 'Fetching...';
+  status.textContent = '';
+  try {
+    var res = await fetch(WORKER_URL + '/eod?ticker=' + ticker + '&date=' + tradingDate);
+    var data = await res.json();
+    if (data.error || (!data.pm_hod && !data.om_hod)) {
+      status.textContent = 'No data returned.'; btn.disabled = false; btn.textContent = '↓ Pull HOD from Polygon'; return;
+    }
+    var pmHod = data.pm_hod;
+    var omHod = data.om_hod;
+    if (pmHod) { var el = document.getElementById('pmHod-' + id); if (el) el.value = pmHod.toFixed(2); }
+    if (omHod) { var el2 = document.getElementById('omHod-' + id); if (el2) el2.value = omHod.toFixed(2); }
+    calcVwapExt(id);
+    if (pmHod && omHod) {
+      var diff = Math.abs(pmHod - omHod);
+      if (diff < 0.02) { selectHOD(id, 'Same'); }
+      else if (pmHod > omHod) { selectHOD(id, 'PM'); }
+      else { selectHOD(id, 'OM'); }
+    }
+    status.textContent = '✓ PM HOD ' + (pmHod ? '$' + pmHod.toFixed(2) : 'n/a') + '  OM HOD ' + (omHod ? '$' + omHod.toFixed(2) : 'n/a');
+    status.style.color = 'var(--go)';
+  } catch(e) {
+    status.textContent = 'Error: ' + e.message;
+    status.style.color = 'var(--nogo)';
+  }
+  btn.disabled = false;
+  btn.textContent = '↓ Pull HOD from Polygon';
 }
 
 initDate();
 loadEntries();
+
+// ── Market Strength banner ──────────────────────────────────────
+// Fetches Ask Edgar's weekly read once on page load, renders compact pill,
+// click-to-expand reveals full analysis + 5-day performance stats.
+// Long-biased read — for shorts, "Hot" implies caution (squeeze risk).
+// Also exposes window.currentMarketStrength so saveReview can auto-stamp it.
+async function loadMarketStrength() {
+  var wrap = document.getElementById('msWrap');
+  if (!wrap) return;
+  try {
+    var res = await fetch(WORKER_URL + '/marketstrength');
+    var data = await res.json();
+    if (!data || data.status !== 'success') {
+      wrap.style.display = 'none';
+      return;
+    }
+    var rating = data.rating || 'Unknown';
+    var ratingColor = data.rating_color || 'unknown';
+    var date = data.date || '';
+    var dateObj = date ? new Date(date) : null;
+    var dateStr = dateObj ? ('Week of ' + dateObj.toLocaleDateString('en-GB', { day:'numeric', month:'short' })) : '';
+
+    var ratingEl = document.getElementById('msRating');
+    var dateEl = document.getElementById('msDate');
+    if (ratingEl) {
+      ratingEl.textContent = rating.toUpperCase();
+      ratingEl.className = 'ms-rating ' + ratingColor;
+    }
+    if (dateEl) dateEl.textContent = dateStr;
+
+    var body = document.getElementById('msBody');
+    if (body) {
+      var analysisHtml = renderMarketStrengthText(data.analysis || '');
+      var performanceHtml = renderMarketStrengthText(data.performance || '');
+      body.innerHTML =
+        '<div class="ms-section">' +
+          '<div class="ms-section-title">Analysis</div>' +
+          '<div class="ms-text">' + analysisHtml + '</div>' +
+        '</div>' +
+        '<div class="ms-section">' +
+          '<div class="ms-section-title">Performance \u00b7 Last 5 Trading Days</div>' +
+          '<div class="ms-text">' + performanceHtml + '</div>' +
+        '</div>' +
+        '<div class="ms-footer"><span class="ms-footer-warn">\u26a0</span> Long-biased read \u2014 for shorts, treat HOT as squeeze caution and COLD as a green light for fades.</div>';
+    }
+
+    wrap.style.display = '';
+    window.currentMarketStrength = rating;
+  } catch(e) {
+    if (wrap) wrap.style.display = 'none';
+  }
+}
+
+function renderMarketStrengthText(raw) {
+  if (!raw) return '';
+  var s = raw.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  s = s.replace(/```([\s\S]*?)```/g, function(_, inner) {
+    return '<pre class="ms-perf-pre">' + inner.replace(/^\n/, '') + '</pre>';
+  });
+  s = s.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  s = s.replace(/:green_circle:/g, '\uD83D\uDFE2');
+  s = s.replace(/:red_circle:/g, '\uD83D\uDD34');
+  s = s.replace(/:orange_circle:/g, '\uD83D\uDFE0');
+  s = s.replace(/:yellow_circle:/g, '\uD83D\uDFE1');
+  s = s.replace(/:arrow_up:/g, '\u2197\uFE0F');
+  s = s.replace(/:arrow_down:/g, '\u2198\uFE0F');
+  s = s.replace(/^\*\s{3}/gm, '\u2022 ');
+  return s;
+}
+
+function toggleMarketStrength() {
+  var wrap = document.getElementById('msWrap');
+  var toggle = document.getElementById('msToggle');
+  if (!wrap) return;
+  var isExpanded = wrap.classList.toggle('expanded');
+  wrap.classList.toggle('collapsed', !isExpanded);
+  if (toggle) toggle.textContent = isExpanded ? 'Click to collapse' : 'Click for details';
+}
+
+loadMarketStrength();
+// ─────────────────────────────────────────────────────────────────
 </script>
 </body>
 </html>
