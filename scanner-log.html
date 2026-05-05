@@ -447,6 +447,9 @@
     <div class="analytics-section"><div class="analytics-title" onclick="toggleSection(this)">Serial Diluter — Offering Frequency + Offering Risk <span class="analytics-toggle">▼</span></div><div class="analytics-body"><div id="permSerialDiluter"></div></div></div>
     <div class="analytics-section"><div class="analytics-title" onclick="toggleSection(this)">Desperate Company — Cash Need + Nasdaq Compliance <span class="analytics-toggle">▼</span></div><div class="analytics-body"><div id="permDesperate"></div></div></div>
     <div class="analytics-section"><div class="analytics-title" onclick="toggleSection(this)">Price Band vs Fade Rate <span class="analytics-toggle">▼</span></div><div class="analytics-body"><div id="permPriceBand"></div></div></div>
+    <div class="analytics-section"><div class="analytics-title" onclick="toggleSection(this)">Entry Quality Tags vs Fade Outcome <span class="analytics-toggle">▼</span></div><div class="analytics-body"><div id="tagEntryQualityTable"></div></div></div>
+    <div class="analytics-section"><div class="analytics-title" onclick="toggleSection(this)">Price Action Tags vs Fade Outcome <span class="analytics-toggle">▼</span></div><div class="analytics-body"><div id="tagPriceActionTable"></div></div></div>
+    <div class="analytics-section"><div class="analytics-title" onclick="toggleSection(this)">Thesis Tags vs Fade Outcome <span class="analytics-toggle">▼</span></div><div class="analytics-body"><div id="tagThesisTable"></div></div></div>
   </div>
   <div class="lazy-tab-panel" id="tabLazy">
 
@@ -529,7 +532,7 @@
     </div>
 
     <!-- ITT: Cobra Overnight Cost Calculator -->
-    <div style="border-top:2px solid var(--accent);margin:28px 0 24px;opacity:0.35;"></div>
+    <div style="border-top:2px solid var(--accent);margin:28px 0 24px;"></div>
     <div class="lazy-section">
       <div class="lazy-section-title">ITT — Cobra Overnight Cost Calculator</div>
       <p style="font-family:var(--mono);font-size:11px;color:var(--text-dim);letter-spacing:0.5px;margin-bottom:16px;line-height:1.7;">
@@ -1168,6 +1171,9 @@ async function loadAnalytics() {
     renderPermCatDilCash(data); renderPermCatDilDrop(data); renderPermVerdictVwapDrop(data);
     renderPermInstCat(data); renderPermFloatCatCash(data); renderPermSerialDiluter(data);
     renderPermDesperate(data); renderPermPriceBand(data);
+    renderTagTable(data, 'tagEntryQualityTable', ENTRY_QUALITY_TAGS, 'Entry Quality');
+    renderTagTable(data, 'tagPriceActionTable', PRICE_ACTION_TAGS, 'Price Action');
+    renderTagTable(data, 'tagThesisTable', THESIS_TAGS, 'Thesis');
     renderBestSetup(data);
     renderKeySummary(data);
   } catch(e) { console.error('Analytics error:',e); }
@@ -1439,6 +1445,87 @@ function renderPermPriceBand(data) {
       return '<td class="perm-table-combo">' + label + '</td>';
     }
   );
+}
+
+function renderTagTable(data, elId, tagList, category) {
+  var el = document.getElementById(elId);
+  if (!el) return;
+
+  // Only use reviewed entries (gatekeeper_correct set) that have trade_tags
+  var reviewed = data.filter(function(d) {
+    return d.gatekeeper_correct && d.gatekeeper_correct !== '';
+  });
+
+  if (reviewed.length < 5) {
+    el.innerHTML = '<div class="analytics-note">Not enough reviewed entries yet.</div>';
+    return;
+  }
+
+  // For each tag, count appearances and fade rate
+  function didFade(d) {
+    var v = (d.verdict || '').toUpperCase();
+    var g = (d.gatekeeper_correct || '').toUpperCase();
+    if (v === 'PARTIAL') return true;
+    if ((v === 'GO' || v === 'CAUTION') && g === 'YES') return true;
+    if ((v === 'NO TRADE' || v === 'NO GO') && g === 'NO') return true;
+    return false;
+  }
+
+  var rows = tagList.map(function(tag) {
+    var tagged = reviewed.filter(function(d) {
+      try {
+        var tags = JSON.parse(d.trade_tags || '[]');
+        return tags.indexOf(tag) !== -1;
+      } catch(e) { return false; }
+    });
+    if (tagged.length === 0) return null;
+    var faded = tagged.filter(didFade).length;
+    var fadeRate = Math.round(faded / tagged.length * 100);
+
+    // Average giveback where available
+    var withGiveback = tagged.filter(function(d) {
+      return d.hod_giveback_pct !== null && d.hod_giveback_pct !== undefined;
+    });
+    var avgGiveback = withGiveback.length > 0
+      ? Math.round(withGiveback.reduce(function(s,d){ return s + parseFloat(d.hod_giveback_pct); }, 0) / withGiveback.length)
+      : null;
+
+    // Colour code fade rate
+    var rateColor = fadeRate >= 60 ? 'var(--go)' : fadeRate >= 40 ? 'var(--caution)' : '#FF4444';
+
+    return {
+      tag: tag,
+      count: tagged.length,
+      fadeRate: fadeRate,
+      rateColor: rateColor,
+      avgGiveback: avgGiveback
+    };
+  }).filter(Boolean);
+
+  // Sort by fade rate descending
+  rows.sort(function(a,b){ return b.fadeRate - a.fadeRate; });
+
+  if (rows.length === 0) {
+    el.innerHTML = '<div class="analytics-note">No ' + category + ' tags logged yet.</div>';
+    return;
+  }
+
+  var html = '<table class="analytics-table"><thead><tr>' +
+    '<th>Tag</th><th>Appearances</th><th>Fade Rate</th><th>Avg Giveback</th>' +
+    '</tr></thead><tbody>';
+
+  rows.forEach(function(r) {
+    html += '<tr>' +
+      '<td style="color:var(--text-bright);font-size:12px;">' + r.tag + '</td>' +
+      '<td style="color:var(--text-dim);">' + r.count + '</td>' +
+      '<td style="color:' + r.rateColor + ';font-weight:bold;">' + r.fadeRate + '%</td>' +
+      '<td style="color:var(--text-dim);">' + (r.avgGiveback !== null ? r.avgGiveback + '%' : '—') + '</td>' +
+      '</tr>';
+  });
+
+  html += '</tbody></table>';
+  html += '<div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);padding:10px 0 0;letter-spacing:1px;">Fade rate: green ≥60% · amber 40-59% · red &lt;40% · sorted highest to lowest</div>';
+  el.innerHTML = html;
 }
 
 // ─────────────────────────────────────────────
