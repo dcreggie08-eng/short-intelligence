@@ -801,8 +801,8 @@ function buildReviewForm(entry) {
   function gkSl(v) { return gkCorrect===v?(v==='YES'?'sel-yes':v==='NO'?'sel-no':'sel-partial'):''; }
   function tradSl(v) { return (v==='YES'&&didTrade===true)||(v==='NO'&&didTrade===false)?(v==='YES'?'sel-yes':'sel-no'):''; }
 
-  var fadeOpts = ['VWAP','Ghost Pivot','76% Fib','61% Fib','38% Fib','Below VWAP','Did Not Fade'];
-  var exitOpts = ['VWAP','Ghost Pivot','76% Fib','61% Fib','38% Fib','Below VWAP','Stopped Out'];
+  var fadeOpts = ['VWAP','Ghost Pivot','100% Fib','76% Fib','61% Fib','50% Fib','38% Fib','Below VWAP','Did Not Fade'];
+  var exitOpts = ['VWAP','Ghost Pivot','100% Fib','76% Fib','61% Fib','50% Fib','38% Fib','Below VWAP','Stopped Out'];
 
   var fadeSelect = '<select class="review-select" id="fadeDest-' + id + '"><option value="">Select destination...</option>' +
     fadeOpts.map(function(o){return '<option value="'+o+'"'+(fadeDest===o?' selected':'')+'>'+o+'</option>';}).join('') + '</select>';
