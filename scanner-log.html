@@ -529,7 +529,7 @@
     </div>
 
     <!-- ITT: Cobra Overnight Cost Calculator -->
-    <div style="border-top:1px solid var(--accent);margin:28px 0 24px;opacity:0.35;"></div>
+    <div style="border-top:2px solid var(--accent);margin:28px 0 24px;opacity:0.35;"></div>
     <div class="lazy-section">
       <div class="lazy-section-title">ITT — Cobra Overnight Cost Calculator</div>
       <p style="font-family:var(--mono);font-size:11px;color:var(--text-dim);letter-spacing:0.5px;margin-bottom:16px;line-height:1.7;">
@@ -816,23 +816,25 @@ function buildReviewForm(entry) {
       '<span class="pull-hod-status" id="pullHodStatus-'+id+'"></span>' +
     '</div>' +
 
-    // Paired HOD + VWAP rows: PM on row 1 (green labels), OM on row 2 (default labels).
-    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:8px;">' +
-      '<div class="review-field"><div class="review-label" style="color:var(--go)">Pre-Market HOD $</div><input type="number" class="review-input" id="pmHod-'+id+'" placeholder="0.00" step="0.01" min="0" value="'+pmHod+'" oninput="calcVwapExt(\''+id+'\')" />' +
-        '<select class="review-select" id="pmHodTime-'+id+'" style="margin-top:6px;font-size:11px;padding:5px 8px;"><option value="">PM HOD time...</option>' +
+    // Paired HOD + VWAP + Time rows: PM on row 1 (green labels), OM on row 2 (accent/blue labels).
+    '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:8px;">' +
+      '<div class="review-field"><div class="review-label" style="color:var(--go)">Pre-Market HOD $</div><input type="number" class="review-input" id="pmHod-'+id+'" placeholder="0.00" step="0.01" min="0" value="'+pmHod+'" oninput="calcVwapExt(\''+id+'\')" /></div>' +
+      '<div class="review-field"><div class="review-label" style="color:var(--go)">Pre-Market VWAP $</div><input type="number" class="review-input" id="pmVwap-'+id+'" placeholder="0.00" step="0.01" min="0" value="'+pmVwap+'" oninput="calcVwapExt(\''+id+'\')" /></div>' +
+      '<div class="review-field"><div class="review-label" style="color:var(--go)">Pre-Market HOD Time</div>' +
+        '<select class="review-select" id="pmHodTime-'+id+'"><option value="">Select time...</option>' +
         ['4:00am','5:00am','6:00am','7:00am','8:00am','9:00am','9:30am'].map(function(t){return '<option value="'+t+'"'+(pmHodTime===t?' selected':'')+'>'+t+'</option>';}).join('') +
         '</select></div>' +
-      '<div class="review-field"><div class="review-label" style="color:var(--go)">Pre-Market VWAP $</div><input type="number" class="review-input" id="pmVwap-'+id+'" placeholder="0.00" step="0.01" min="0" value="'+pmVwap+'" oninput="calcVwapExt(\''+id+'\')" /></div>' +
     '</div>' +
-    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">' +
-      '<div class="review-field"><div class="review-label">Open Market HOD $</div><input type="number" class="review-input" id="omHod-'+id+'" placeholder="0.00" step="0.01" min="0" value="'+omHod+'" oninput="calcVwapExt(\''+id+'\')" />' +
-        '<select class="review-select" id="omHodTime-'+id+'" style="margin-top:6px;font-size:11px;padding:5px 8px;"><option value="">OM HOD time...</option>' +
-        ['9:30am','10:00am','11:00am','12:00pm','1:00pm','2:00pm','3:00pm','4:00pm'].map(function(t){return '<option value="'+t+'"'+(omHodTime===t?' selected':'')+'>'+t+'</option>';}).join('') +
-        '</select></div>' +
-      '<div class="review-field"><div class="review-label">Open Market VWAP $</div><input type="number" class="review-input" id="omVwap-'+id+'" placeholder="0.00" step="0.01" min="0" value="'+omVwap+'" oninput="calcVwapExt(\''+id+'\')" style="'+(omVwapBelowVwap?'opacity:0.4;':'')+'" '+(omVwapBelowVwap?'disabled':'')+' />' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:16px;">' +
+      '<div class="review-field"><div class="review-label" style="color:var(--accent)">Open Market HOD $</div><input type="number" class="review-input" id="omHod-'+id+'" placeholder="0.00" step="0.01" min="0" value="'+omHod+'" oninput="calcVwapExt(\''+id+'\')" /></div>' +
+      '<div class="review-field"><div class="review-label" style="color:var(--accent)">Open Market VWAP $</div><input type="number" class="review-input" id="omVwap-'+id+'" placeholder="0.00" step="0.01" min="0" value="'+omVwap+'" oninput="calcVwapExt(\''+id+'\')" style="'+(omVwapBelowVwap?'opacity:0.4;':'')+'" '+(omVwapBelowVwap?'disabled':'')+' />' +
         '<label style="display:flex;align-items:center;gap:6px;margin-top:8px;font-family:var(--mono);font-size:11px;color:var(--text-dim);cursor:pointer;">' +
         '<input type="checkbox" id="omVwapBelowVwap-'+id+'" '+(omVwapBelowVwap?'checked':'')+' onchange="toggleOmVwapBelow(\''+id+'\')" style="width:auto;accent-color:var(--caution);" />' +
         "OM HOD didn't reclaim VWAP</label></div>" +
+      '<div class="review-field"><div class="review-label" style="color:var(--accent)">Open Market HOD Time</div>' +
+        '<select class="review-select" id="omHodTime-'+id+'"><option value="">Select time...</option>' +
+        ['9:30am','10:00am','11:00am','12:00pm','1:00pm','2:00pm','3:00pm','4:00pm'].map(function(t){return '<option value="'+t+'"'+(omHodTime===t?' selected':'')+'>'+t+'</option>';}).join('') +
+        '</select></div>' +
     '</div>' +
     '<div style="font-family:var(--mono);font-size:11px;color:var(--accent);margin-bottom:16px;min-height:16px;" id="vwapExtDisplay-'+id+'"></div>' +
 
