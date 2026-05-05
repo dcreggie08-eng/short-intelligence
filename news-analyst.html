@@ -5965,7 +5965,7 @@ async function fetchRVOL(ticker) {
     var data = await res.json();
     if (data.error || data.rvol === null) { window.currentRVOL = null; return; }
     window.currentRVOL = data;
-    var infoBar = document.getElementById('infoBar');
+    var infoBar = document.getElementById('stockInfoBar');
     if (!infoBar) return;
     var existing = infoBar.querySelector('#rvolSpan');
     if (existing) existing.remove();
