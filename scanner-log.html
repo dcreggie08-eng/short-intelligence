@@ -1008,7 +1008,7 @@ function calcGivebackPreview(id) {
   if (trueHod > 0 && exit > 0 && trueHod > exit) {
     var pct = Math.round(((trueHod - exit) / trueHod) * 100);
     preview.textContent = pct + '%';
-    preview.style.color = pct >= 50 ? 'var(--go)' : pct >= 20 ? 'var(--caution)' : 'var(--text-dim)';
+    preview.style.color = 'var(--accent)';
   } else {
     preview.textContent = '—';
     preview.style.color = 'var(--accent)';
