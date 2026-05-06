@@ -5734,6 +5734,16 @@ eXpilSpDG70qVKmI/9k=" alt="Bear Intel" /></div>
         <div class="ticker-display" id="tickerDisplay"></div>
       </div>
     </div>
+    <button class="ask-boris-btn" id="askBorisBtn" style="display:none;">&#9670; Talk to Boris</button>
+    <div class="boris-panel" id="borisPanel">
+      <div class="boris-inner">
+        <div class="boris-header">
+          <div class="boris-name">Boris</div>
+          <div class="boris-tag">Trading Partner &middot; Always Honest &middot; Never Wrong Twice</div>
+        </div>
+        <div id="borisContent"></div>
+      </div>
+    </div>
     <div class="save-log-box" id="saveLogBox">
       <div class="save-log-inner">
         <div><div class="save-log-label">&#128203; Scanner Log</div><div class="save-log-sub">Save this analysis to your morning log &mdash; one click, no extra API calls</div></div>
@@ -5748,16 +5758,6 @@ eXpilSpDG70qVKmI/9k=" alt="Bear Intel" /></div>
       <div class="result-section" id="watchSection"><div class="result-section-title">What Would Kill This Trade</div><ul id="watchList"></ul></div>
     </div>
     <div class="result-footer"><span id="footerTime"></span><span>VERDICT BY GATEKEEPER LOGIC &middot; REASONING BY AI ANALYST</span></div>
-    <button class="ask-boris-btn" id="askBorisBtn" onclick="askBoris()" style="display:none;">&#9670; Talk to Boris</button>
-    <div class="boris-panel" id="borisPanel">
-      <div class="boris-inner">
-        <div class="boris-header">
-          <div class="boris-name">Boris</div>
-          <div class="boris-tag">Trading Partner &middot; Always Honest &middot; Never Wrong Twice</div>
-        </div>
-        <div id="borisContent"></div>
-      </div>
-    </div>
     <div class="outcome-panel" id="outcomePanel">
       <div class="outcome-title">Log Trade Outcome</div>
       <div class="outcome-row1">
@@ -6149,9 +6149,8 @@ async function askBoris() {
   var panel = document.getElementById('borisPanel');
   var content = document.getElementById('borisContent');
   btn.disabled = true;
-  btn.textContent = 'Boris is thinking...';
   panel.classList.add('visible');
-  content.innerHTML = '<div class="boris-loading">&#9670; Reading the tape...</div>';
+  content.innerHTML = '<div class="boris-loading">&#9670; Boris is reading the tape...</div>';
 
   try {
     // Pull pattern data from Supabase
@@ -6244,10 +6243,14 @@ async function askBoris() {
     content.innerHTML = '<div class="boris-text">' + bodyText.replace(/\n\n/g, '</div><div class="boris-text" style="margin-top:12px;">').replace(/\n/g, '<br>') + '</div>' +
       (takeText ? '<div class="boris-take">' + takeText + '</div>' : '');
 
-    btn.textContent = '&#9670; Ask Boris Again';
+    btn.style.display = 'block';
+    btn.textContent = '\u25C6 Ask Boris Again';
+    btn.onclick = function() { askBoris(); };
   } catch(e) {
     content.innerHTML = '<div class="boris-text" style="color:var(--nogo)">Boris couldn\'t connect. Check the worker is running.</div>';
-    btn.textContent = '&#9670; Talk to Boris';
+    btn.style.display = 'block';
+    btn.textContent = '\u25C6 Ask Boris Again';
+    btn.onclick = function() { askBoris(); };
   }
   btn.disabled = false;
 }
@@ -6329,11 +6332,10 @@ function renderResult(r, ticker, priceContext) {
   var watchSection = document.getElementById('watchSection');
   if (r.tradeKillers && r.tradeKillers.length > 0) { r.tradeKillers.forEach(function(t) { var li = document.createElement('li'); li.textContent = t; watchList.appendChild(li); }); watchSection.style.display = 'block'; } else watchSection.style.display = 'none';
   document.getElementById('footerTime').textContent = 'Analysed ' + new Date().toLocaleTimeString();
-  document.getElementById('askBorisBtn').style.display = 'block';
-  document.getElementById('askBorisBtn').disabled = false;
-  document.getElementById('askBorisBtn').textContent = '◆ Talk to Boris';
   document.getElementById('borisPanel').classList.remove('visible');
   document.getElementById('borisContent').innerHTML = '';
+  // Auto-fire Boris
+  setTimeout(function() { askBoris(); }, 300);
   var saveLogBox = document.getElementById('saveLogBox'), saveLogBtn = document.getElementById('saveLogBtn'), saveLogStatus = document.getElementById('saveLogStatus');
   saveLogBox.classList.add('visible'); saveLogBtn.disabled = false; saveLogBtn.textContent = 'Save to Log'; saveLogBtn.className = 'save-log-btn';
   saveLogStatus.className = 'save-log-status'; saveLogStatus.textContent = '';
