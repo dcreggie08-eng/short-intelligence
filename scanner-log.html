@@ -1000,13 +1000,15 @@ function calcVwapExt(id) {
 
 function calcGivebackPreview(id) {
   var pmHod = parseFloat(document.getElementById('pmHod-'+id).value) || 0;
+  var omHod = parseFloat(document.getElementById('omHod-'+id) ? document.getElementById('omHod-'+id).value : 0) || 0;
+  var trueHod = Math.max(pmHod, omHod) || 0;
   var exit = parseFloat(document.getElementById('exitPrice-'+id).value) || 0;
   var preview = document.getElementById('givebackPreview-'+id);
   if (!preview) return;
-  if (pmHod > 0 && exit > 0 && pmHod > exit) {
-    var pct = Math.round(((pmHod - exit) / pmHod) * 100);
+  if (trueHod > 0 && exit > 0 && trueHod > exit) {
+    var pct = Math.round(((trueHod - exit) / trueHod) * 100);
     preview.textContent = pct + '%';
-    preview.style.color = 'var(--go)';
+    preview.style.color = pct >= 50 ? 'var(--go)' : pct >= 20 ? 'var(--caution)' : 'var(--text-dim)';
   } else {
     preview.textContent = '—';
     preview.style.color = 'var(--accent)';
@@ -1077,8 +1079,8 @@ async function saveReview(id) {
     var res = await sbFetch('scanner_log?id=eq.'+id, 'PATCH', payload);
     if (!res.ok) throw new Error('Scanner log save failed');
 
-    // Step 2 — if traded, derive did_fade and write to trade_outcomes (first time only)
-    if (didTrade === true && !tradeWasRecorded[id]) {
+    // Step 2 — if traded, derive did_fade and write/update trade_outcomes
+    if (didTrade === true) {
       // Fetch the full scanner log entry to get ticker, verdict, grade, droppiness
       var entryRes = await sbFetch('scanner_log?id=eq.'+id+'&select=*');
       var entryData = await entryRes.json();
@@ -1086,10 +1088,6 @@ async function saveReview(id) {
 
       if (entry) {
         // Derive did_fade from verdict + gatekeeper_correct
-        // GO/CAUTION + YES = faded (gatekeeper was right to say trade)
-        // NO TRADE/NO GO + YES = did NOT fade (gatekeeper was right to block)
-        // NO TRADE/NO GO + NO = faded (gatekeeper was wrong to block)
-        // PARTIAL = treat as faded
         var isBlockVerdict = entry.verdict === 'NO TRADE' || entry.verdict === 'NO GO';
         var didFade;
         if (gkCorrect === 'YES') {
@@ -1097,36 +1095,43 @@ async function saveReview(id) {
         } else if (gkCorrect === 'NO') {
           didFade = isBlockVerdict ? true : false;
         } else {
-          // PARTIAL or unknown — treat as faded
           didFade = true;
         }
 
-        // Calculate giveback % from PM HOD vs exit price
+        // Calculate giveback % using TRUE HOD (whichever of PM/OM is higher)
         var givebackPct = null;
-        if (pmHod && exitPrice && pmHod > exitPrice) {
-          givebackPct = Math.round(((pmHod - exitPrice) / pmHod) * 100);
+        var trueHodForGiveback = Math.max(pmHod || 0, omHod || 0) || null;
+        if (trueHodForGiveback && exitPrice && trueHodForGiveback > exitPrice) {
+          givebackPct = Math.round(((trueHodForGiveback - exitPrice) / trueHodForGiveback) * 100);
         }
 
-        await fetch(SUPABASE_URL + '/rest/v1/trade_outcomes', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'apikey': SUPABASE_KEY,
-            'Authorization': 'Bearer ' + SUPABASE_KEY,
-            'Prefer': 'return=minimal'
-          },
-          body: JSON.stringify({
-            ticker: entry.ticker || null,
-            analysis_id: null,
-            verdict: entry.verdict || null,
-            catalyst_grade: entry.catalyst_grade || null,
-            droppiness_score: entry.droppiness_score ? parseFloat(entry.droppiness_score) : null,
-            did_fade: didFade,
-            hod_giveback_pct: givebackPct,
-            note: note || null
-          })
-        });
-        tradeWasRecorded[id] = true;
+        var tradePayload = {
+          ticker: entry.ticker || null,
+          analysis_id: null,
+          verdict: entry.verdict || null,
+          catalyst_grade: entry.catalyst_grade || null,
+          droppiness_score: entry.droppiness_score ? parseFloat(entry.droppiness_score) : null,
+          did_fade: didFade,
+          hod_giveback_pct: givebackPct,
+          note: note || null
+        };
+
+        if (!tradeWasRecorded[id]) {
+          // First time — INSERT
+          await fetch(SUPABASE_URL + '/rest/v1/trade_outcomes', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Prefer': 'return=minimal' },
+            body: JSON.stringify(tradePayload)
+          });
+          tradeWasRecorded[id] = true;
+        } else {
+          // Re-save — PATCH the most recent matching row
+          await fetch(SUPABASE_URL + '/rest/v1/trade_outcomes?ticker=eq.' + encodeURIComponent(entry.ticker || '') + '&order=created_at.desc&limit=1', {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Prefer': 'return=minimal' },
+            body: JSON.stringify({ did_fade: didFade, hod_giveback_pct: givebackPct })
+          });
+        }
       }
     }
 
