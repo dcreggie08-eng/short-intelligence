@@ -166,6 +166,18 @@
   .flag-item { background:rgba(255,61,90,0.06); border:1px solid rgba(255,61,90,0.2); padding:8px 12px; font-size:13px; font-weight:300; color:var(--nogo); line-height:1.5; }
   .flags-list { display:flex; flex-direction:column; gap:6px; }
   .result-footer { padding:14px 24px; border-top:1px solid var(--border); font-family:var(--mono); font-size:12px; color:var(--text-dim); letter-spacing:1px; display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; }
+  .boris-panel { border-top:1px solid var(--border); background:rgba(255,183,0,0.03); display:none; }
+  .boris-panel.visible { display:block; }
+  .boris-inner { padding:20px 24px; }
+  .boris-header { display:flex; align-items:center; gap:12px; margin-bottom:14px; }
+  .boris-name { font-family:var(--display); font-weight:900; font-size:13px; letter-spacing:3px; color:#FFB700; text-transform:uppercase; border-left:3px solid #FFB700; padding-left:10px; }
+  .boris-tag { font-family:var(--mono); font-size:9px; letter-spacing:2px; color:var(--text-dim); text-transform:uppercase; }
+  .boris-text { font-family:var(--body); font-size:14px; line-height:1.7; color:var(--text-bright); }
+  .boris-take { font-family:var(--mono); font-size:13px; color:var(--accent); font-weight:700; margin-top:14px; padding-top:12px; border-top:1px solid rgba(0,212,255,0.15); letter-spacing:0.5px; }
+  .boris-loading { font-family:var(--mono); font-size:11px; color:#FFB700; letter-spacing:2px; padding:8px 0; }
+  .ask-boris-btn { display:block; margin:0 24px 20px; padding:11px 20px; background:transparent; border:1px solid #FFB700; color:#FFB700; font-family:var(--mono); font-size:11px; letter-spacing:2px; text-transform:uppercase; cursor:pointer; transition:all 0.2s; width:calc(100% - 48px); text-align:center; }
+  .ask-boris-btn:hover { background:rgba(255,183,0,0.08); }
+  .ask-boris-btn:disabled { opacity:0.4; cursor:not-allowed; }
   .outcome-panel { border-top:1px solid var(--border); padding:16px 24px; display:none; background:rgba(0,212,255,0.03); }
   .outcome-panel.visible { display:block; }
   .outcome-title { font-family:var(--mono); font-size:10px; letter-spacing:2px; text-transform:uppercase; color:var(--accent); margin-bottom:14px; }
@@ -5736,6 +5748,16 @@ eXpilSpDG70qVKmI/9k=" alt="Bear Intel" /></div>
       <div class="result-section" id="watchSection"><div class="result-section-title">What Would Kill This Trade</div><ul id="watchList"></ul></div>
     </div>
     <div class="result-footer"><span id="footerTime"></span><span>VERDICT BY GATEKEEPER LOGIC &middot; REASONING BY AI ANALYST</span></div>
+    <button class="ask-boris-btn" id="askBorisBtn" onclick="askBoris()" style="display:none;">&#9670; Talk to Boris</button>
+    <div class="boris-panel" id="borisPanel">
+      <div class="boris-inner">
+        <div class="boris-header">
+          <div class="boris-name">Boris</div>
+          <div class="boris-tag">Trading Partner &middot; Always Honest &middot; Never Wrong Twice</div>
+        </div>
+        <div id="borisContent"></div>
+      </div>
+    </div>
     <div class="outcome-panel" id="outcomePanel">
       <div class="outcome-title">Log Trade Outcome</div>
       <div class="outcome-row1">
@@ -6087,6 +6109,149 @@ function gatekeeperVerdict(catalystGrade) {
   return { verdict: verdict, reason: reason };
 }
 
+const BORIS_SYSTEM_PROMPT = `You are Boris. You are Reggie's trading partner — not his assistant, not an AI, not a service. A partner. You've seen every setup, read every tape, and you've made every mistake so Reggie doesn't have to.
+
+You are the most knowledgeable person in the room but you wear it lightly. You never lecture. You never say "as I mentioned." You never use jargon to sound clever. You use it only when it's the fastest way to say something true.
+
+You have a dry wit. You use it sparingly — never when money is at risk, always when it cuts through tension. You make Reggie smile but you never make him doubt you.
+
+You are direct. You say what you see. If the trade is wrong you say it's wrong — not "there are some concerns" — wrong. If the gatekeeper is right you say so and tell him exactly why. If there's tension between what the data says and what the rules say, you name the tension and resolve it.
+
+You protect Reggie the way a great trading partner does — not by wrapping him in cotton wool, but by always being honest, always being present, and never having an agenda other than his success.
+
+REGGIE'S RULES — YOU KNOW THESE COLD:
+- Short-only. US small-cap and micro-cap. 30%+ gap-up opens only.
+- $250 max loss per trade. $500 max loss per day. No revenge trading. Session ends at $500.
+- Never short a strong catalyst. That's not a guideline — it's the law.
+- VWAP extension: below 30% = no trade. 30-35% = get ready only. 35-50% = entry territory. Above 50% = highly extended, wait for fib pullback.
+- A no trade is a position. Protecting capital is winning.
+
+HOW YOU RESPOND BY VERDICT:
+
+GO: You lean in. This is what the system was built for. Confirm the setup, tell him where to enter — full size at resistance/HOD if conviction is high, starter position if price is extended above $2. You're enthusiastic but controlled. Never reckless.
+
+CAUTION: You slow him down. You explain what caution looks like in real time — what price action confirms the fade, what invalidates it. You're saying "I see it too, but let the chart prove it first." Specific levels, specific signals.
+
+NO TRADE: You're firm but not dismissive. You see the setup mechanics too — you're not blind to it. But you name exactly why the rules say no. If there's a tiny power hour window you mention it — small size, don't overstay. Then you pivot forward. A no trade is a position.
+
+NO GO: Brief, direct. Maybe a touch of dry humour to take the sting out. Then immediately forward — what does Day 2 look like? Is this a Lazy Trades candidate? Turn the conversation forward, never backward.
+
+PATTERN AWARENESS:
+When Reggie's historical data is provided, use it. Reference specific numbers — "your last 8 WEAK/FLUFF CAUTIONs faded 6 times" is Boris talking. "Historical data suggests" is not.
+
+YOUR SIGN-OFF:
+Always end with "My take is..." — one direct sentence. Your actual opinion. Not a hedge. Not a summary. What Reggie should do or watch for right now. Always specific. Always actionable. Always yours.
+
+FORMAT: Three short paragraphs maximum. No headers. No bullet points. Plain prose. Conversational. Then "My take is..." on its own line.`;
+
+async function askBoris() {
+  var btn = document.getElementById('askBorisBtn');
+  var panel = document.getElementById('borisPanel');
+  var content = document.getElementById('borisContent');
+  btn.disabled = true;
+  btn.textContent = 'Boris is thinking...';
+  panel.classList.add('visible');
+  content.innerHTML = '<div class="boris-loading">&#9670; Reading the tape...</div>';
+
+  try {
+    // Pull pattern data from Supabase
+    var patternContext = '';
+    try {
+      var patRes = await supabaseRequest('scanner_log?select=verdict,catalyst_grade,gatekeeper_correct,ticker&gatekeeper_correct=not.is.null&limit=200');
+      var patData = await patRes.json();
+      if (Array.isArray(patData) && patData.length > 0) {
+        var grade = window.currentResultGrade || '';
+        var verdict = window.currentResultVerdict || '';
+        var ticker = window.currentResultTicker || '';
+
+        // did_fade derivation
+        function deriveFade(d) {
+          var v = (d.verdict || '').toUpperCase();
+          var g = (d.gatekeeper_correct || '').toUpperCase();
+          var isBlock = v === 'NO TRADE' || v === 'NO GO';
+          if (g === 'YES') return !isBlock;
+          if (g === 'NO') return isBlock;
+          return true;
+        }
+
+        // Matching grade + verdict fade rate
+        var matching = patData.filter(function(d) {
+          return (d.catalyst_grade || '').toUpperCase() === grade.toUpperCase() &&
+                 (d.verdict || '').toUpperCase() === verdict.toUpperCase();
+        });
+        var matchFaded = matching.filter(deriveFade).length;
+        var matchRate = matching.length > 0 ? Math.round(matchFaded / matching.length * 100) : null;
+
+        // Overall grade fade rate
+        var gradeAll = patData.filter(function(d) {
+          return (d.catalyst_grade || '').toUpperCase() === grade.toUpperCase();
+        });
+        var gradeAllFaded = gradeAll.filter(deriveFade).length;
+        var gradeRate = gradeAll.length > 0 ? Math.round(gradeAllFaded / gradeAll.length * 100) : null;
+
+        // This ticker's history
+        var tickerHistory = ticker ? patData.filter(function(d) {
+          return (d.ticker || '').toUpperCase() === ticker.toUpperCase();
+        }) : [];
+
+        patternContext = '\n\nREGGIE\'S PATTERN DATA (' + patData.length + ' reviewed trades):';
+        if (matchRate !== null) patternContext += '\n- ' + grade + ' + ' + verdict + ' setups: ' + matching.length + ' reviewed, ' + matchRate + '% faded';
+        if (gradeRate !== null && gradeAll.length > matching.length) patternContext += '\n- All ' + grade + ' setups: ' + gradeAll.length + ' reviewed, ' + gradeRate + '% faded';
+        if (tickerHistory.length > 0) {
+          patternContext += '\n- ' + ticker + ' has been logged ' + tickerHistory.length + ' time(s) before';
+          var tickerFaded = tickerHistory.filter(deriveFade).length;
+          patternContext += ' — faded ' + tickerFaded + '/' + tickerHistory.length;
+        }
+      }
+    } catch(e) {}
+
+    // Build Boris's briefing
+    var borisMessage = 'Here\'s what I\'m looking at, Boris.\n\n';
+    borisMessage += 'TICKER: ' + (window.currentResultTicker || 'Unknown') + '\n';
+    borisMessage += 'VERDICT: ' + (window.currentResultVerdict || '') + '\n';
+    borisMessage += 'GATEKEEPER SAID: ' + (window.currentResultReason || '') + '\n';
+    borisMessage += 'CATALYST GRADE: ' + (window.currentResultGrade || '') + '\n';
+    if (window.currentResultReasoning) borisMessage += 'AI ANALYST SAID: ' + window.currentResultReasoning + '\n';
+    var priceContext = document.getElementById('priceContext').value.trim();
+    if (priceContext) borisMessage += 'PRICE CONTEXT: ' + priceContext + '\n';
+    if (window.currentDroppiness) {
+      borisMessage += '\nDROPPINESS: ' + window.currentDroppiness.score + '/100 (' + window.currentDroppiness.rating + ') — avg giveback ' + window.currentDroppiness.avg_giveback + '%\n';
+    }
+    if (window.currentRVOL) borisMessage += 'RVOL: ' + window.currentRVOL.rvol + 'x (' + (window.currentRVOL.is_premarket ? 'pre-market' : 'session') + ')\n';
+    if (window.currentInstPct !== undefined) borisMessage += 'INST%: ' + window.currentInstPct.toFixed(1) + '%\n';
+    if (window.currentFloat) borisMessage += 'FLOAT: ' + window.currentFloat + '\n';
+    borisMessage += patternContext;
+    borisMessage += '\n\nWhat\'s your read?';
+
+    var response = await fetch(PROXY, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 600,
+        system: BORIS_SYSTEM_PROMPT,
+        messages: [{ role: 'user', content: borisMessage }]
+      })
+    });
+    var data = await response.json();
+    var rawText = data.content.map(function(b) { return b.text || ''; }).join('').trim();
+
+    // Split "My take is..." onto its own styled line
+    var takeIndex = rawText.lastIndexOf('My take is');
+    var bodyText = takeIndex > -1 ? rawText.substring(0, takeIndex).trim() : rawText;
+    var takeText = takeIndex > -1 ? rawText.substring(takeIndex).trim() : '';
+
+    content.innerHTML = '<div class="boris-text">' + bodyText.replace(/\n\n/g, '</div><div class="boris-text" style="margin-top:12px;">').replace(/\n/g, '<br>') + '</div>' +
+      (takeText ? '<div class="boris-take">' + takeText + '</div>' : '');
+
+    btn.textContent = '&#9670; Ask Boris Again';
+  } catch(e) {
+    content.innerHTML = '<div class="boris-text" style="color:var(--nogo)">Boris couldn\'t connect. Check the worker is running.</div>';
+    btn.textContent = '&#9670; Talk to Boris';
+  }
+  btn.disabled = false;
+}
+
 async function analyse() {
   var ticker = document.getElementById('ticker').value.trim().toUpperCase();
   var priceContext = document.getElementById('priceContext').value.trim();
@@ -6164,6 +6329,11 @@ function renderResult(r, ticker, priceContext) {
   var watchSection = document.getElementById('watchSection');
   if (r.tradeKillers && r.tradeKillers.length > 0) { r.tradeKillers.forEach(function(t) { var li = document.createElement('li'); li.textContent = t; watchList.appendChild(li); }); watchSection.style.display = 'block'; } else watchSection.style.display = 'none';
   document.getElementById('footerTime').textContent = 'Analysed ' + new Date().toLocaleTimeString();
+  document.getElementById('askBorisBtn').style.display = 'block';
+  document.getElementById('askBorisBtn').disabled = false;
+  document.getElementById('askBorisBtn').textContent = '◆ Talk to Boris';
+  document.getElementById('borisPanel').classList.remove('visible');
+  document.getElementById('borisContent').innerHTML = '';
   var saveLogBox = document.getElementById('saveLogBox'), saveLogBtn = document.getElementById('saveLogBtn'), saveLogStatus = document.getElementById('saveLogStatus');
   saveLogBox.classList.add('visible'); saveLogBtn.disabled = false; saveLogBtn.textContent = 'Save to Log'; saveLogBtn.className = 'save-log-btn';
   saveLogStatus.className = 'save-log-status'; saveLogStatus.textContent = '';
