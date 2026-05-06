@@ -6263,7 +6263,8 @@ async function analyse() {
   var btnText = btn.querySelector('.btn-text');
   var errorMsg = document.getElementById('errorMsg');
   var saveIndicator = document.getElementById('saveIndicator');
-  errorMsg.classList.remove('visible');
+  document.getElementById('errorMsg').classList.remove('visible');
+  document.getElementById('errorMsg').textContent = '';
   saveIndicator.className = 'save-indicator';
   if (!newsText) { showError('Paste some news first.'); return; }
   btn.disabled = true; btn.classList.add('loading'); btnText.textContent = 'Scanning...';
