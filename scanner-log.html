@@ -1193,13 +1193,13 @@ async function loadAnalytics() {
     var trueFaded = derivedSet.filter(function(d){return derivedDidFade(d) === true;}).length;
     var trueFadeRate = derivedSet.length>0?Math.round(trueFaded/derivedSet.length*100):null;
 
-    // Discipline metrics
-    var blockSet = data.filter(function(d){return (d.verdict==='NO TRADE'||d.verdict==='NO GO') && d.did_trade;});
-    var notTraded = blockSet.filter(function(d){return d.did_trade==='NO' || d.did_trade===false;}).length;
+    // Discipline metrics — did_trade stored as boolean true/false; null/undefined means unanswered
+    var blockSet = data.filter(function(d){return (d.verdict==='NO TRADE'||d.verdict==='NO GO') && (d.did_trade===true || d.did_trade===false || d.did_trade==='YES' || d.did_trade==='NO');});
+    var notTraded = blockSet.filter(function(d){return d.did_trade===false || d.did_trade==='NO';}).length;
     var adherence = blockSet.length>0?Math.round(notTraded/blockSet.length*100):null;
 
-    var goSet = data.filter(function(d){return (d.verdict==='GO'||d.verdict==='CAUTION') && d.did_trade;});
-    var traded = goSet.filter(function(d){return d.did_trade==='YES' || d.did_trade===true;}).length;
+    var goSet = data.filter(function(d){return (d.verdict==='GO'||d.verdict==='CAUTION') && (d.did_trade===true || d.did_trade===false || d.did_trade==='YES' || d.did_trade==='NO');});
+    var traded = goSet.filter(function(d){return d.did_trade===true || d.did_trade==='YES';}).length;
     var engagement = goSet.length>0?Math.round(traded/goSet.length*100):null;
 
     document.getElementById('statTotal').textContent=total;
