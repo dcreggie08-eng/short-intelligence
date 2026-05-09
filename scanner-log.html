@@ -118,6 +118,9 @@
   .btn-option.sel-same { border-color:var(--text-dim); color:var(--text-dim); background:rgba(90,106,122,0.1); }
   .review-row-full { display:flex; flex-direction:column; gap:6px; margin-bottom:16px; }
   .review-actions { display:flex; align-items:center; gap:12px; margin-top:4px; }
+  .delete-entry-btn { font-family:var(--mono); font-size:11px; letter-spacing:1.5px; text-transform:uppercase; padding:8px 14px; background:transparent; border:1px solid rgba(255,61,90,0.35); color:var(--nogo); cursor:pointer; transition:all 0.15s; margin-left:auto; }
+  .delete-entry-btn:hover { background:rgba(255,61,90,0.08); border-color:var(--nogo); }
+  .delete-entry-btn:disabled { opacity:0.4; cursor:not-allowed; }
   .save-review-btn { font-family:var(--display); font-weight:700; font-size:15px; letter-spacing:2px; text-transform:uppercase; padding:10px 24px; background:rgba(255,255,255,0.85); color:#0a0a0a; border:none; cursor:pointer; transition:all 0.2s; }
   .save-review-btn:hover:not(:disabled) { background:#fff; }
   .save-review-btn:disabled { background:rgba(255,255,255,0.2); cursor:not-allowed; }
@@ -217,7 +220,8 @@
   .stat-cards { display:grid; grid-template-columns:repeat(5,1fr); gap:12px; margin-bottom:16px; }
   .discipline-cards { display:grid; grid-template-columns:repeat(2,1fr); gap:12px; margin-bottom:32px; }
   .stat-card { background:var(--surface); border:1px solid var(--border); padding:16px; }
-  .stat-card.discipline { border-color:rgba(0,212,255,0.25); background:rgba(0,212,255,0.04); }
+  .stat-card.discipline { border-color:rgba(181,123,255,0.35); background:rgba(181,123,255,0.05); }
+  .stat-card.discipline .stat-card-value { color:#B57BFF; }
   .stat-card-label { font-family:var(--mono); font-size:11px; letter-spacing:2px; text-transform:uppercase; color:var(--text-dim); margin-bottom:8px; }
   .stat-card-value { font-family:var(--display); font-weight:900; font-size:32px; letter-spacing:1px; color:var(--accent); line-height:1; }
   .stat-card-sub { font-family:var(--mono); font-size:12px; color:var(--text-dim); margin-top:4px; }
@@ -886,7 +890,7 @@ function buildReviewForm(entry) {
     '</div>' +
     '<div class="review-row-full"><div class="review-label">Note</div><input type="text" class="review-input" id="note-'+id+'" placeholder="One line — what happened, why, what you noticed" maxlength="200" value="'+note.replace(/"/g,'&quot;')+'" /></div>' +
     '<div class="review-row-full">' + buildTagChips(id, entry) + '</div>' +
-    '<div class="review-actions"><button class="'+btnClass+'" id="saveBtn-'+id+'" onclick="saveReview(\''+id+'\')">'+btnText+'</button><div class="review-save-msg" id="saveMsg-'+id+'"></div></div>';
+    '<div class="review-actions"><button class="'+btnClass+'" id="saveBtn-'+id+'" onclick="saveReview(\''+id+'\')">'+btnText+'</button><button class="delete-entry-btn" onclick="deleteEntry(\''+id+'\',\''+(entry.ticker||'').replace(/\'/g,'\\\'')+'\')">Delete Entry</button><div class="review-save-msg" id="saveMsg-'+id+'"></div></div>';
 }
 
 var hodSel={}, gkSel={}, tradeSel={}, tagSel={}, backsideSel={}, tradeWasRecorded={}, tradeOutcomeId={};
@@ -1172,6 +1176,36 @@ async function saveReview(id) {
     btn.disabled=false; btn.textContent='Save Review';
     msg.className='review-save-msg visible'; msg.style.color='var(--nogo)'; msg.textContent='Could not save — try again';
     console.error('saveReview error:', e);
+  }
+}
+
+async function deleteEntry(id, ticker) {
+  var confirmMsg = 'Delete this ' + (ticker || 'entry') + ' entry permanently?\n\nThis cannot be undone. Both the scanner log row and any matching journal entry will be removed.';
+  if (!confirm(confirmMsg)) return;
+  var btn = event.target;
+  btn.disabled = true;
+  btn.textContent = 'Deleting...';
+  try {
+    // Cascade: delete trade_outcomes row first if it exists for this analysis_id
+    await sbFetch('trade_outcomes?analysis_id=eq.' + id, 'DELETE');
+    // Then delete the scanner_log row
+    var res = await sbFetch('scanner_log?id=eq.' + id, 'DELETE');
+    if (res.ok || res.status === 204) {
+      // Remove the card from DOM immediately
+      var card = document.getElementById('card-' + id);
+      if (card) card.remove();
+      // Reload analytics to reflect new totals
+      if (typeof loadAnalytics === 'function') loadAnalytics();
+    } else {
+      btn.disabled = false;
+      btn.textContent = 'Delete Entry';
+      alert('Could not delete — try again.');
+    }
+  } catch(e) {
+    btn.disabled = false;
+    btn.textContent = 'Delete Entry';
+    alert('Delete error: ' + e.message);
+    console.error('deleteEntry error:', e);
   }
 }
 
