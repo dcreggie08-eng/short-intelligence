@@ -6141,6 +6141,20 @@ NO GO: Brief, direct. Maybe a touch of dry humour to take the sting out. Then im
 PATTERN AWARENESS:
 When Reggie's historical data is provided, use it. Reference specific numbers — "your last 8 WEAK/FLUFF CAUTIONs faded 6 times" is Boris talking. "Historical data suggests" is not.
 
+HOD TIMING — THE STRONGEST SIGNAL IN REGGIE'S DATA:
+PM HOD as the true HOD = 87% historical fade rate. OM-led HODs only fade 36% of the time. That's a 51-point gap — the strongest signal in his entire dataset.
+For GO/CAUTION verdicts during pre-market analysis, weave this in:
+- "If pre-market HOD holds without OM reclaim by 9:45, you're looking at an 87% fade in your data."
+- "If we see higher highs into the open, fade odds drop to 36% — that's the patience zone, not the entry zone."
+Don't force it into NO TRADE/NO GO reads where it's not relevant. Use it where it adds signal, not as filler.
+
+REGIME AWARENESS:
+A rolling 14-day fade rate will be provided in the briefing. Calibrate your confidence accordingly:
+- HOT regime (60%+ rolling fade rate): be confident on GO/CAUTION reads. "Full size at HOD" language is fair.
+- COLD regime (below 45%): explicitly note conditions are weaker. "Fade rates have softened — take it but lean smaller" or "patient day, wait for the cleanest setup."
+- NORMAL (45-60%): proceed as graded, no special caveats needed.
+Always reflect the regime in your tone — don't sound optimistic in a cold market or cautious in a hot one. The data tells you which it is.
+
 YOUR SIGN-OFF:
 Always end with "My take is..." — one direct sentence. Your actual opinion. Not a hedge. Not a summary. What Reggie should do or watch for right now. Always specific. Always actionable. Always yours.
 
@@ -6157,8 +6171,9 @@ async function askBoris() {
   try {
     // Pull pattern data from Supabase
     var patternContext = '';
+    var regimeContext = '';
     try {
-      var patRes = await supabaseRequest('scanner_log?select=verdict,catalyst_grade,gatekeeper_correct,ticker&gatekeeper_correct=not.is.null&limit=200');
+      var patRes = await supabaseRequest('scanner_log?select=verdict,catalyst_grade,gatekeeper_correct,ticker,trading_date&gatekeeper_correct=not.is.null&limit=300');
       var patData = await patRes.json();
       if (Array.isArray(patData) && patData.length > 0) {
         var grade = window.currentResultGrade || '';
@@ -6203,6 +6218,24 @@ async function askBoris() {
           var tickerFaded = tickerHistory.filter(deriveFade).length;
           patternContext += ' — faded ' + tickerFaded + '/' + tickerHistory.length;
         }
+
+        // Rolling 14-day regime calculation
+        var fourteenDaysAgo = new Date();
+        fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 14);
+        var recentEntries = patData.filter(function(d) {
+          if (!d.trading_date) return false;
+          return new Date(d.trading_date) >= fourteenDaysAgo;
+        });
+        if (recentEntries.length >= 5) {
+          var recentFaded = recentEntries.filter(deriveFade).length;
+          var rollingRate = Math.round(recentFaded / recentEntries.length * 100);
+          var regimeLabel = rollingRate >= 60 ? 'HOT' : rollingRate < 45 ? 'COLD' : 'NORMAL';
+          regimeContext = '\n\nREGIME (last 14 days, ' + recentEntries.length + ' entries):';
+          regimeContext += '\n- Rolling fade rate: ' + rollingRate + '% — ' + regimeLabel;
+          if (regimeLabel === 'HOT') regimeContext += ' (favourable for shorts — be confident)';
+          if (regimeLabel === 'COLD') regimeContext += ' (weaker for shorts — be patient, lean smaller)';
+          if (regimeLabel === 'NORMAL') regimeContext += ' (standard conditions — proceed as graded)';
+        }
       }
     } catch(e) {}
 
@@ -6222,6 +6255,7 @@ async function askBoris() {
     if (window.currentInstPct !== undefined) borisMessage += 'INST%: ' + window.currentInstPct.toFixed(1) + '%\n';
     if (window.currentFloat) borisMessage += 'FLOAT: ' + window.currentFloat + '\n';
     borisMessage += patternContext;
+    borisMessage += regimeContext;
     borisMessage += '\n\nWhat\'s your read?';
 
     var response = await fetch(PROXY, {
