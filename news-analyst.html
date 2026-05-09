@@ -225,6 +225,7 @@
   .dilution-panel.visible { display:block; }
   .dilution-badges { display:flex; flex-wrap:wrap; gap:8px; }
   .badge { display:flex; flex-direction:column; gap:4px; padding:8px 12px; border:1px solid var(--border-bright); min-width:120px; flex:1; }
+  .badge.key-badge { border-width:3px; padding:6px 10px; }
   .badge-label { font-family:var(--mono); font-size:9px; letter-spacing:1.5px; text-transform:uppercase; color:rgba(200,212,224,0.75); }
   .badge-value { font-family:var(--display); font-weight:700; font-size:15px; letter-spacing:2px; text-transform:uppercase; }
   .badge.high { border-color:rgba(255,61,90,0.4); background:rgba(255,61,90,0.06); }
@@ -5897,15 +5898,16 @@ function renderDilutionBadges(data) {
   var badgesEl = document.getElementById('dilutionBadges');
   var source = document.getElementById('dilutionSource');
   var fields = [
-    { key: 'overall_offering_risk', label: 'Overall Risk' }, { key: 'dilution', label: 'Dilution Risk' },
-    { key: 'offering_frequency', label: 'Offering Freq' }, { key: 'cash_need', label: 'Cash Need' },
+    { key: 'overall_offering_risk', label: 'Overall Risk' }, { key: 'dilution', label: 'Dilution Risk', highlight: true },
+    { key: 'offering_frequency', label: 'Offering Freq' }, { key: 'cash_need', label: 'Cash Need', highlight: true },
     { key: 'warrant_exercise', label: 'Warrant Exercise' }, { key: 'nasdaq_compliance', label: 'Nasdaq Compliance' }
   ];
   var r = (data.results && data.results.length > 0) ? data.results[0] : (data.result || data.data || data);
   badgesEl.innerHTML = fields.map(function(f) {
     var val = r[f.key] || 'N/A';
     var cls = badgeClass(val);
-    return '<div class="badge ' + cls + '"><span class="badge-label">' + f.label + '</span><span class="badge-value">' + val.toString().toUpperCase() + '</span></div>';
+    var keyCls = f.highlight ? ' key-badge' : '';
+    return '<div class="badge ' + cls + keyCls + '"><span class="badge-label">' + f.label + '</span><span class="badge-value">' + val.toString().toUpperCase() + '</span></div>';
   }).join('');
   currentDilution = r;
   source.textContent = 'via Ask Edgar';
