@@ -214,8 +214,10 @@
     .lazy-data-grid { grid-template-columns:1fr; }
     .itt-grid { grid-template-columns:1fr 1fr; }
   }
-  .stat-cards { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:32px; }
+  .stat-cards { display:grid; grid-template-columns:repeat(5,1fr); gap:12px; margin-bottom:16px; }
+  .discipline-cards { display:grid; grid-template-columns:repeat(2,1fr); gap:12px; margin-bottom:32px; }
   .stat-card { background:var(--surface); border:1px solid var(--border); padding:16px; }
+  .stat-card.discipline { border-color:rgba(0,212,255,0.25); background:rgba(0,212,255,0.04); }
   .stat-card-label { font-family:var(--mono); font-size:11px; letter-spacing:2px; text-transform:uppercase; color:var(--text-dim); margin-bottom:8px; }
   .stat-card-value { font-family:var(--display); font-weight:900; font-size:32px; letter-spacing:1px; color:var(--accent); line-height:1; }
   .stat-card-sub { font-family:var(--mono); font-size:12px; color:var(--text-dim); margin-top:4px; }
@@ -275,6 +277,7 @@
   .tag-chip.selected.thesis { border-color:var(--go); color:var(--go); background:var(--go-dim); }
   @media (max-width:640px) {
     .stat-cards { grid-template-columns:1fr 1fr; }
+    .discipline-cards { grid-template-columns:1fr; }
     .review-grid { grid-template-columns:1fr; }
     .logo-area h1 { font-size:28px; }
   }
@@ -425,8 +428,13 @@
     <div class="stat-cards">
       <div class="stat-card"><div class="stat-card-label">Total Logged</div><div class="stat-card-value" id="statTotal">—</div><div class="stat-card-sub">all time</div></div>
       <div class="stat-card"><div class="stat-card-label">Reviewed</div><div class="stat-card-value" id="statReviewed">—</div><div class="stat-card-sub">with outcomes</div></div>
-      <div class="stat-card"><div class="stat-card-label">Fade Rate</div><div class="stat-card-value" id="statFadeRate">—</div><div class="stat-card-sub">gatekeeper was right</div></div>
+      <div class="stat-card"><div class="stat-card-label">Gatekeeper Correct</div><div class="stat-card-value" id="statFadeRate">—</div><div class="stat-card-sub">verdict matched outcome</div></div>
+      <div class="stat-card"><div class="stat-card-label">True Fade Rate</div><div class="stat-card-value" id="statTrueFade">—</div><div class="stat-card-sub">stocks that actually faded</div></div>
       <div class="stat-card"><div class="stat-card-label">GO Accuracy</div><div class="stat-card-value" id="statGoAccuracy">—</div><div class="stat-card-sub">GO calls that faded</div></div>
+    </div>
+    <div class="discipline-cards">
+      <div class="stat-card discipline"><div class="stat-card-label">NO TRADE/NO GO Adherence</div><div class="stat-card-value" id="statAdherence">—</div><div class="stat-card-sub">you didn't trade when system said no</div></div>
+      <div class="stat-card discipline"><div class="stat-card-label">GO/CAUTION Engagement</div><div class="stat-card-value" id="statEngagement">—</div><div class="stat-card-sub">you traded when system said yes</div></div>
     </div>
     <div id="bestSetupLoading" class="best-setup-loading" style="display:none;">Scanning combinations...</div>
     <div class="best-setup-grid" id="bestSetupGrid"></div>
@@ -1179,10 +1187,29 @@ async function loadAnalytics() {
     var goCalls = data.filter(function(d){return d.verdict==='GO'&&d.gatekeeper_correct;});
     var goCorrect = goCalls.filter(function(d){return d.gatekeeper_correct==='YES';}).length;
     var goAcc = goCalls.length>0?Math.round(goCorrect/goCalls.length*100):null;
+
+    // True fade rate using did_fade derivation (verdict + gatekeeper_correct → actual outcome)
+    var derivedSet = data.filter(function(d){return d.gatekeeper_correct;});
+    var trueFaded = derivedSet.filter(function(d){return derivedDidFade(d) === true;}).length;
+    var trueFadeRate = derivedSet.length>0?Math.round(trueFaded/derivedSet.length*100):null;
+
+    // Discipline metrics
+    var blockSet = data.filter(function(d){return (d.verdict==='NO TRADE'||d.verdict==='NO GO') && d.did_trade;});
+    var notTraded = blockSet.filter(function(d){return d.did_trade==='NO' || d.did_trade===false;}).length;
+    var adherence = blockSet.length>0?Math.round(notTraded/blockSet.length*100):null;
+
+    var goSet = data.filter(function(d){return (d.verdict==='GO'||d.verdict==='CAUTION') && d.did_trade;});
+    var traded = goSet.filter(function(d){return d.did_trade==='YES' || d.did_trade===true;}).length;
+    var engagement = goSet.length>0?Math.round(traded/goSet.length*100):null;
+
     document.getElementById('statTotal').textContent=total;
     document.getElementById('statReviewed').textContent=reviewed;
     document.getElementById('statFadeRate').textContent=fadeRate!==null?fadeRate+'%':'—';
+    document.getElementById('statTrueFade').textContent=trueFadeRate!==null?trueFadeRate+'%':'—';
     document.getElementById('statGoAccuracy').textContent=goAcc!==null?goAcc+'%':'—';
+    document.getElementById('statAdherence').textContent=adherence!==null?adherence+'%':'—';
+    document.getElementById('statEngagement').textContent=engagement!==null?engagement+'%':'—';
+
     renderDropTable(data); renderVerdictTable(data); renderVwapTable(data); renderHODTable(data); renderFadeDestTable(data);
     renderPermCatDilCash(data); renderPermCatDilDrop(data); renderPermVerdictVwapDrop(data);
     renderPermInstCat(data); renderPermFloatCatCash(data); renderPermSerialDiluter(data);
@@ -1602,12 +1629,12 @@ function renderKeySummary(data) {
   verdicts.forEach(function(v){var g=revVerd.filter(function(d){return d.verdict===v;});if(g.length<MIN)return;var c=g.filter(function(d){return d.gatekeeper_correct==='YES';}).length;var p=Math.round(c/g.length*100);if(!bestVerd||p>bestVerd.pct)bestVerd={label:v,pct:p,n:g.length};});
   rows.push(findingRow('Verdict', bestVerd ? bestVerd.label + ' is your most reliable verdict at ' + bestVerd.pct + '% correct from ' + bestVerd.n + ' entries' : 'Need 5+ entries per verdict type.', bestVerd?strength(bestVerd.pct):'dim'));
 
-  // VWAP
+  // VWAP — show only best zone (no "avoid" language; the metric being shown is gatekeeper-correct, not true fade rate)
   var vwapBands2 = [{label:'50%+ above VWAP',f:function(d){return d.vwap_extension_pct>=50;}},{label:'30-50% above VWAP',f:function(d){return d.vwap_extension_pct>=30&&d.vwap_extension_pct<50;}},{label:'20-30% above VWAP',f:function(d){return d.vwap_extension_pct>=20&&d.vwap_extension_pct<30;}},{label:'Below 20%',f:function(d){return d.vwap_extension_pct!==null&&d.vwap_extension_pct<20;}}];
   var revVwap = data.filter(function(d){return d.vwap_extension_pct!==null&&d.gatekeeper_correct;});
-  var bestVwap = null, worstVwap = null;
-  vwapBands2.forEach(function(b){var g=revVwap.filter(b.f);if(g.length<MIN)return;var c=g.filter(function(d){return d.gatekeeper_correct==='YES';}).length;var p=Math.round(c/g.length*100);if(!bestVwap||p>bestVwap.pct)bestVwap={label:b.label,pct:p,n:g.length};if(!worstVwap||p<worstVwap.pct)worstVwap={label:b.label,pct:p,n:g.length};});
-  var vwapText = bestVwap ? bestVwap.label + ' fades ' + bestVwap.pct + '% of the time' + (worstVwap&&worstVwap.label!==bestVwap.label?' — avoid the ' + worstVwap.label + ' zone (' + worstVwap.pct + '%)':'') : 'Need VWAP data in evening reviews.';
+  var bestVwap = null;
+  vwapBands2.forEach(function(b){var g=revVwap.filter(b.f);if(g.length<MIN)return;var c=g.filter(function(d){return d.gatekeeper_correct==='YES';}).length;var p=Math.round(c/g.length*100);if(!bestVwap||p>bestVwap.pct)bestVwap={label:b.label,pct:p,n:g.length};});
+  var vwapText = bestVwap ? bestVwap.label + ' has highest gatekeeper-correct rate at ' + bestVwap.pct + '%' : 'Need VWAP data in evening reviews.';
   rows.push(findingRow('VWAP Extension', vwapText, bestVwap?strength(bestVwap.pct):'dim'));
 
   // HOD
