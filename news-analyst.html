@@ -13,6 +13,7 @@
     --go: #00e676; --go-dim: rgba(0,230,118,0.1);
     --nogo: #ff3d5a; --nogo-dim: rgba(255,61,90,0.1);
     --caution: #ffb300; --caution-dim: rgba(255,179,0,0.1);
+    --no-trade: #9333ea; --no-trade-dim: rgba(147,51,234,0.1);
     --mono: 'Share Tech Mono', monospace; --display: 'Barlow Condensed', sans-serif; --body: 'Barlow', sans-serif;
   }
   * { margin:0; padding:0; box-sizing:border-box; }
@@ -124,18 +125,18 @@
   .verdict-banner.go { background:var(--go-dim); border-left:4px solid var(--go); }
   .verdict-banner.nogo { background:var(--nogo-dim); border-left:4px solid var(--nogo); }
   .verdict-banner.caution { background:var(--caution-dim); border-left:4px solid var(--caution); }
-  .verdict-banner.notrade { background:var(--nogo-dim); border-left:4px solid var(--nogo); }
+  .verdict-banner.notrade { background:var(--no-trade-dim); border-left:4px solid var(--no-trade); }
   .verdict-label { font-family:var(--display); font-weight:900; font-size:36px; letter-spacing:4px; text-transform:uppercase; line-height:1; }
   .verdict-banner.go .verdict-label { color:var(--go); }
   .verdict-banner.nogo .verdict-label { color:var(--nogo); }
   .verdict-banner.caution .verdict-label { color:var(--caution); }
-  .verdict-banner.notrade .verdict-label { color:var(--nogo); }
+  .verdict-banner.notrade .verdict-label { color:var(--no-trade); }
   .verdict-left { display:flex; flex-direction:column; gap:6px; }
   .verdict-state { font-family:var(--mono); font-size:10px; letter-spacing:2px; text-transform:uppercase; padding:3px 10px; border:1px solid; display:inline-block; align-self:flex-start; }
   .verdict-banner.go .verdict-state { color:var(--go); border-color:var(--go); }
   .verdict-banner.caution .verdict-state { color:var(--caution); border-color:var(--caution); }
   .verdict-banner.nogo .verdict-state { color:var(--nogo); border-color:var(--nogo); }
-  .verdict-banner.notrade .verdict-state { color:var(--nogo); border-color:var(--nogo); }
+  .verdict-banner.notrade .verdict-state { color:var(--no-trade); border-color:var(--no-trade); }
   .gatekeeper-reason { font-family:var(--mono); font-size:11px; letter-spacing:1px; color:var(--text); line-height:1.5; max-width:480px; opacity:0.85; }
   .gatekeeper-tag { font-family:var(--mono); font-size:9px; letter-spacing:2px; text-transform:uppercase; color:var(--text-dim); border:1px solid var(--border-bright); padding:3px 8px; text-align:center; }
   .verdict-meta { display:flex; flex-direction:column; align-items:flex-end; gap:6px; }
@@ -143,7 +144,7 @@
   .verdict-banner.go .catalyst-grade { color:var(--go); }
   .verdict-banner.nogo .catalyst-grade { color:var(--nogo); }
   .verdict-banner.caution .catalyst-grade { color:var(--caution); }
-  .verdict-banner.notrade .catalyst-grade { color:var(--nogo); }
+  .verdict-banner.notrade .catalyst-grade { color:var(--no-trade); }
   .ticker-display { font-family:var(--mono); font-size:13px; color:var(--text-dim); letter-spacing:1px; }
   .save-log-box { display:none; margin:0; padding:14px 24px; background:rgba(0,212,255,0.04); border-bottom:1px solid var(--border); border-left:2px solid var(--accent); }
   .save-log-box.visible { display:block; }
@@ -209,7 +210,7 @@
   .history-item { background:var(--surface); border:1px solid var(--border); padding:12px 16px; display:flex; align-items:center; gap:16px; cursor:pointer; transition:border-color 0.2s; }
   .history-item:hover { border-color:var(--border-bright); }
   .history-verdict { font-family:var(--display); font-weight:700; font-size:14px; letter-spacing:2px; text-transform:uppercase; min-width:70px; }
-  .history-verdict.go { color:var(--go); } .history-verdict.nogo { color:var(--nogo); } .history-verdict.notrade { color:var(--nogo); } .history-verdict.caution { color:var(--caution); }
+  .history-verdict.go { color:var(--go); } .history-verdict.nogo { color:var(--nogo); } .history-verdict.notrade { color:var(--no-trade); } .history-verdict.caution { color:var(--caution); }
   .history-ticker { font-family:var(--mono); font-size:12px; color:var(--accent); min-width:60px; }
   .history-grade { font-family:var(--mono); font-size:12px; color:var(--text-dim); letter-spacing:1px; flex:1; }
   .history-time { font-family:var(--mono); font-size:12px; color:var(--text-dim); letter-spacing:1px; }
@@ -5871,10 +5872,17 @@ function renderHistory(items) {
   if (!items || items.length === 0) { list.innerHTML = '<div class="history-empty">No analyses yet.</div>'; count.textContent = ''; return; }
   count.textContent = items.length + ' recent';
   list.innerHTML = items.map(function(item) {
-    var vc = item.verdict === 'GO' ? 'go' : item.verdict === 'NO GO' ? 'nogo' : item.verdict === 'NO TRADE' ? 'notrade' : 'caution';
+    // Internal verdict → CSS class + display label.
+    // CAUTION displays as STALK, NO GO as WALK AWAY. Database keeps internal values.
+    var vc, vLabel;
+    if (item.verdict === 'GO')           { vc = 'go';      vLabel = 'GO'; }
+    else if (item.verdict === 'CAUTION') { vc = 'caution'; vLabel = 'STALK'; }
+    else if (item.verdict === 'NO TRADE'){ vc = 'notrade'; vLabel = 'NO TRADE'; }
+    else if (item.verdict === 'NO GO')   { vc = 'nogo';    vLabel = 'WALK AWAY'; }
+    else                                 { vc = 'caution'; vLabel = item.verdict || '-'; }
     var time = new Date(item.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
     return '<div class="history-item" onclick="loadFromHistory(\'' + item.id + '\')">' +
-      '<div class="history-verdict ' + vc + '">' + (item.verdict || '-') + '</div>' +
+      '<div class="history-verdict ' + vc + '">' + vLabel + '</div>' +
       '<div class="history-ticker">' + (item.ticker || '-') + '</div>' +
       '<div class="history-grade">' + (item.catalyst_grade || '-') + '</div>' +
       '<div class="history-time">' + time + '</div></div>';
@@ -6160,13 +6168,63 @@ Always end with "My take is..." — one direct sentence. Your actual opinion. No
 
 FORMAT: Three short paragraphs maximum. No headers. No bullet points. Plain prose. Conversational. Then "My take is..." on its own line.`;
 
-async function askBoris() {
+// Render a cached Boris response (loaded from Supabase) into the panel without
+// firing a fresh API call. Used when reopening saved entries that already have
+// a boris_response on the analysis row. Includes "Re-read Boris" button setup.
+function renderCachedBoris(rawText, cachedAt) {
+  var btn = document.getElementById('askBorisBtn');
+  var panel = document.getElementById('borisPanel');
+  var content = document.getElementById('borisContent');
+  panel.classList.add('visible');
+
+  var takeIndex = rawText.lastIndexOf('My take is');
+  var bodyText = takeIndex > -1 ? rawText.substring(0, takeIndex).trim() : rawText;
+  var takeText = takeIndex > -1 ? rawText.substring(takeIndex).trim() : '';
+
+  var renderedHtml = '<div class="boris-text">' + bodyText.replace(/\n\n/g, '</div><div class="boris-text" style="margin-top:12px;">').replace(/\n/g, '<br>') + '</div>' +
+    (takeText ? '<div class="boris-take">' + takeText + '</div>' : '');
+
+  // Show "originally read on..." header if we have a timestamp
+  var headerHtml = '';
+  if (cachedAt) {
+    var d = new Date(cachedAt);
+    var dateStr = d.toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' });
+    headerHtml = '<div style="font-family:var(--mono);font-size:10px;letter-spacing:2px;color:var(--text-dim);text-transform:uppercase;margin-bottom:14px;">' +
+      '\u25C6 Originally read on ' + dateStr + ' &middot; cached</div>';
+  }
+  content.innerHTML = headerHtml + renderedHtml;
+
+  // Re-read button: fires a fresh Boris run that appends below the cached one
+  btn.style.display = 'block';
+  btn.textContent = '\u25C6 Re-read Boris';
+  btn.onclick = function() { askBoris({ appendMode: true, skipCacheWrite: true }); };
+  btn.disabled = false;
+}
+
+
+async function askBoris(opts) {
+  // opts.appendMode: when true, fresh response is appended below existing
+  //                  (cached) Boris response with timestamp+regime header.
+  //                  Default behaviour replaces content.
+  // opts.skipCacheWrite: when true (used for re-reads), don't overwrite the
+  //                      original boris_response cached on the analysis row.
+  opts = opts || {};
   var btn = document.getElementById('askBorisBtn');
   var panel = document.getElementById('borisPanel');
   var content = document.getElementById('borisContent');
   btn.disabled = true;
   panel.classList.add('visible');
-  content.innerHTML = '<div class="boris-loading">&#9670; Boris is reading the tape...</div>';
+  if (opts.appendMode) {
+    // Append a loading placeholder below the cached response
+    var loadingDiv = document.createElement('div');
+    loadingDiv.id = 'borisRereadLoading';
+    loadingDiv.className = 'boris-loading';
+    loadingDiv.style.cssText = 'margin-top:20px;padding-top:16px;border-top:1px solid rgba(255,183,0,0.2);';
+    loadingDiv.innerHTML = '\u25C6 Boris is re-reading the tape...';
+    content.appendChild(loadingDiv);
+  } else {
+    content.innerHTML = '<div class="boris-loading">\u25C6 Boris is reading the tape...</div>';
+  }
 
   try {
     // Pull pattern data from Supabase
@@ -6230,6 +6288,7 @@ async function askBoris() {
           var recentFaded = recentEntries.filter(deriveFade).length;
           var rollingRate = Math.round(recentFaded / recentEntries.length * 100);
           var regimeLabel = rollingRate >= 60 ? 'HOT' : rollingRate < 45 ? 'COLD' : 'NORMAL';
+          window.currentRegime = regimeLabel;  // exposed for Re-read header
           regimeContext = '\n\nREGIME (last 14 days, ' + recentEntries.length + ' entries):';
           regimeContext += '\n- Rolling fade rate: ' + rollingRate + '% — ' + regimeLabel;
           if (regimeLabel === 'HOT') regimeContext += ' (favourable for shorts — be confident)';
@@ -6276,14 +6335,55 @@ async function askBoris() {
     var bodyText = takeIndex > -1 ? rawText.substring(0, takeIndex).trim() : rawText;
     var takeText = takeIndex > -1 ? rawText.substring(takeIndex).trim() : '';
 
-    content.innerHTML = '<div class="boris-text">' + bodyText.replace(/\n\n/g, '</div><div class="boris-text" style="margin-top:12px;">').replace(/\n/g, '<br>') + '</div>' +
+    var renderedHtml = '<div class="boris-text">' + bodyText.replace(/\n\n/g, '</div><div class="boris-text" style="margin-top:12px;">').replace(/\n/g, '<br>') + '</div>' +
       (takeText ? '<div class="boris-take">' + takeText + '</div>' : '');
+
+    if (opts.appendMode) {
+      // Re-read mode: remove the loading placeholder, append a divider + header + new response
+      var loadingDiv = document.getElementById('borisRereadLoading');
+      if (loadingDiv) loadingDiv.remove();
+      var nowStr = new Date().toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' });
+      var regime = window.currentRegime || 'NORMAL';
+      var rereadWrap = document.createElement('div');
+      rereadWrap.className = 'boris-reread';
+      rereadWrap.style.cssText = 'margin-top:24px;padding-top:18px;border-top:1px dashed rgba(255,183,0,0.35);';
+      rereadWrap.innerHTML =
+        '<div style="font-family:var(--mono);font-size:10px;letter-spacing:2px;color:#FFB700;text-transform:uppercase;margin-bottom:12px;opacity:0.85;">' +
+        '\u25C6 Boris re-read on ' + nowStr + ' &middot; regime: ' + regime + '</div>' +
+        renderedHtml;
+      content.appendChild(rereadWrap);
+    } else {
+      content.innerHTML = renderedHtml;
+      // Cache write: persist this Boris response on the news_analyses row.
+      // Only writes when an analysis ID is known and skipCacheWrite isn't set.
+      if (currentAnalysisId && !opts.skipCacheWrite) {
+        try {
+          await supabaseRequest('news_analyses?id=eq.' + currentAnalysisId, 'PATCH', {
+            boris_response: rawText,
+            boris_cached_at: new Date().toISOString()
+          });
+        } catch (cacheErr) {
+          // Cache failures are non-fatal — Boris still rendered for the user.
+          console.warn('Boris cache write failed:', cacheErr);
+        }
+      }
+    }
 
     btn.style.display = 'block';
     btn.textContent = '\u25C6 Ask Boris Again';
     btn.onclick = function() { askBoris(); };
   } catch(e) {
-    content.innerHTML = '<div class="boris-text" style="color:var(--nogo)">Boris couldn\'t connect. Check the worker is running.</div>';
+    var loadingDiv = document.getElementById('borisRereadLoading');
+    if (loadingDiv) loadingDiv.remove();
+    if (opts.appendMode) {
+      var errDiv = document.createElement('div');
+      errDiv.className = 'boris-text';
+      errDiv.style.cssText = 'color:var(--nogo);margin-top:16px;';
+      errDiv.textContent = "Boris couldn't connect for the re-read. Check the worker is running.";
+      content.appendChild(errDiv);
+    } else {
+      content.innerHTML = '<div class="boris-text" style="color:var(--nogo)">Boris couldn\'t connect. Check the worker is running.</div>';
+    }
     btn.style.display = 'block';
     btn.textContent = '\u25C6 Ask Boris Again';
     btn.onclick = function() { askBoris(); };
@@ -6350,7 +6450,12 @@ function renderResult(r, ticker, priceContext) {
   var panel = document.getElementById('resultPanel');
   var banner = document.getElementById('verdictBanner');
   banner.className = 'verdict-banner ' + (r.verdict === 'NO GO' ? 'nogo' : r.verdict === 'NO TRADE' ? 'notrade' : r.verdict === 'CAUTION' ? 'caution' : 'go');
-  document.getElementById('verdictLabel').textContent = r.verdict;
+  // Display-layer translation: internal CAUTION → STALK, NO GO → WALK AWAY for visual clarity.
+  // Database keeps internal values unchanged for analytics integrity.
+  var displayLabel = r.verdict;
+  if (r.verdict === 'CAUTION') displayLabel = 'STALK';
+  else if (r.verdict === 'NO GO') displayLabel = 'WALK AWAY';
+  document.getElementById('verdictLabel').textContent = displayLabel;
   var stateMap = { 'GO': 'STATE: TRADE ALLOWED', 'CAUTION': 'STATE: WATCH \u00b7 NO TRADE YET', 'NO GO': 'STATE: BLOCKED', 'NO TRADE': 'STATE: BLOCKED' };
   document.getElementById('verdictState').textContent = stateMap[r.verdict] || '';
   document.getElementById('catalystGrade').textContent = r.catalystGrade;
@@ -6371,8 +6476,19 @@ function renderResult(r, ticker, priceContext) {
   document.getElementById('footerTime').textContent = 'Analysed ' + new Date().toLocaleTimeString();
   document.getElementById('borisPanel').classList.remove('visible');
   document.getElementById('borisContent').innerHTML = '';
-  // Auto-fire Boris
-  setTimeout(function() { askBoris(); }, 300);
+  // Boris auto-fire — cache-aware:
+  // If a cached Boris response was loaded from history (window.cachedBorisResponse),
+  // render it directly without an API call. Otherwise fire fresh. The cached flag
+  // is consumed once and cleared so subsequent flows fire normally.
+  setTimeout(function() {
+    if (window.cachedBorisResponse) {
+      renderCachedBoris(window.cachedBorisResponse, window.cachedBorisAt);
+      window.cachedBorisResponse = null;
+      window.cachedBorisAt = null;
+    } else {
+      askBoris();
+    }
+  }, 300);
   var saveLogBox = document.getElementById('saveLogBox'), saveLogBtn = document.getElementById('saveLogBtn'), saveLogStatus = document.getElementById('saveLogStatus');
   saveLogBox.classList.add('visible'); saveLogBtn.disabled = false; saveLogBtn.textContent = 'Save to Log'; saveLogBtn.className = 'save-log-btn';
   saveLogStatus.className = 'save-log-status'; saveLogStatus.textContent = '';
@@ -6441,6 +6557,11 @@ async function loadFromHistory(id) {
     var data = await res.json();
     if (data && data[0]) {
       var item = data[0];
+      // Set the analysis ID so re-reads PATCH the right row.
+      // Set cached Boris flags so renderResult's auto-fire renders cache instead of firing.
+      currentAnalysisId = item.id;
+      window.cachedBorisResponse = item.boris_response || null;
+      window.cachedBorisAt = item.boris_cached_at || null;
       document.getElementById('ticker').value = item.ticker || '';
       document.getElementById('priceContext').value = item.price_context || '';
       document.getElementById('newsInput').value = item.news_text || '';
