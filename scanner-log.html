@@ -22,6 +22,8 @@
     --nogo-dim: rgba(255,61,90,0.1);
     --caution: #ffb300;
     --caution-dim: rgba(255,179,0,0.1);
+    --no-trade: #9333ea;
+    --no-trade-dim: rgba(147,51,234,0.1);
     --mono: 'Share Tech Mono', monospace;
     --display: 'Barlow Condensed', sans-serif;
     --body: 'Barlow', sans-serif;
@@ -81,7 +83,8 @@
   .entry-verdict { font-family:var(--display); font-weight:700; font-size:17px; letter-spacing:2px; text-transform:uppercase; min-width:85px; }
   .entry-verdict.go { color:var(--go); }
   .entry-verdict.caution { color:var(--caution); }
-  .entry-verdict.nogo, .entry-verdict.notrade { color:var(--nogo); }
+  .entry-verdict.nogo { color:var(--nogo); }
+  .entry-verdict.notrade { color:var(--no-trade); }
   .entry-ticker { font-family:var(--mono); font-size:16px; color:var(--accent); font-weight:700; min-width:60px; }
   .entry-grade { font-family:var(--mono); font-size:12px; letter-spacing:1px; color:var(--text-dim); padding:2px 8px; border:1px solid var(--border-bright); }
   .entry-drop { font-family:var(--mono); font-size:13px; color:var(--text-dim); }
@@ -709,6 +712,16 @@ function verdictClass(v) {
   return u==='GO'?'go':u==='NO GO'?'nogo':u==='NO TRADE'?'notrade':'caution';
 }
 
+// Display-layer translation: internal CAUTION → STALK, NO GO → WALK AWAY.
+// Database keeps internal values unchanged. Used only for visual rendering.
+function verdictDisplayLabel(v) {
+  if (!v) return '—';
+  var u = v.toUpperCase();
+  if (u === 'CAUTION') return 'STALK';
+  if (u === 'NO GO') return 'WALK AWAY';
+  return u;  // GO and NO TRADE display unchanged
+}
+
 function badgeClass(val) {
   if (!val) return 'unknown';
   var v = val.toString().toLowerCase();
@@ -753,7 +766,7 @@ function buildEntryCard(entry) {
   var savedBadge = hasReview ? '<span class="entry-saved-indicator">✓ Reviewed</span>' : '';
   card.innerHTML =
     '<div class="entry-header" onclick="toggleCard(\'' + entry.id + '\')">' +
-      '<div class="entry-verdict ' + verdictClass(entry.verdict) + '">' + (entry.verdict||'—') + '</div>' +
+      '<div class="entry-verdict ' + verdictClass(entry.verdict) + '">' + verdictDisplayLabel(entry.verdict) + '</div>' +
       '<div class="entry-ticker">' + (entry.ticker||'—') + '</div>' +
       '<div class="entry-grade">' + (entry.catalyst_grade||'—') + '</div>' +
       (entry.droppiness_score ? '<div class="entry-drop">Drop: <span>' + dropScore + ' ' + (entry.droppiness_rating||'') + '</span></div>' : '') +
