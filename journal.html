@@ -13,6 +13,7 @@
     --go: #00e676; --go-dim: rgba(0,230,118,0.1);
     --nogo: #ff3d5a; --nogo-dim: rgba(255,61,90,0.1);
     --caution: #ffb300; --caution-dim: rgba(255,179,0,0.1);
+    --no-trade: #9333ea; --no-trade-dim: rgba(147,51,234,0.1);
     --mono: 'Share Tech Mono', monospace;
     --display: 'Barlow Condensed', sans-serif;
     --body: 'Barlow', sans-serif;
@@ -54,6 +55,7 @@
   .verdict-pill.go { color: var(--go); }
   .verdict-pill.caution { color: var(--caution); }
   .verdict-pill.nogo { color: var(--nogo); }
+  .verdict-pill.notrade { color: var(--no-trade); }
   .fade-yes { color: var(--go); font-weight: 700; }
   .fade-no { color: var(--nogo); font-weight: 700; }
   .ticker-cell { color: var(--accent); font-weight: 700; font-size: 13px; }
@@ -184,13 +186,21 @@ function renderTable(outcomes) {
     '<tbody>' +
     filtered.map(function(o) {
       var date = new Date(o.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
-      var vc = o.verdict === 'GO' ? 'go' : (o.verdict === 'NO TRADE' || o.verdict === 'NO GO') ? 'nogo' : 'caution';
+      // Translate internal verdict to display label and CSS class.
+      // Internal values stay 'GO' / 'CAUTION' / 'NO TRADE' / 'NO GO' in the database;
+      // display swaps CAUTION → STALK and NO GO → WALK AWAY for visual clarity.
+      var vc, vLabel;
+      if (o.verdict === 'GO')           { vc = 'go';       vLabel = 'GO'; }
+      else if (o.verdict === 'CAUTION') { vc = 'caution';  vLabel = 'STALK'; }
+      else if (o.verdict === 'NO TRADE'){ vc = 'notrade';  vLabel = 'NO TRADE'; }
+      else if (o.verdict === 'NO GO')   { vc = 'nogo';     vLabel = 'WALK AWAY'; }
+      else                              { vc = 'caution';  vLabel = o.verdict || '—'; }
       // Fixed: thresholds now match rest of system — 67+ High, 50-66 Medium, below 50 Low
       var dropRating = o.droppiness_score >= 67 ? '🟢 ' : o.droppiness_score >= 50 ? '🟡 ' : o.droppiness_score ? '🔴 ' : '';
       return '<tr>' +
         '<td style="color:var(--text-dim)">' + date + '</td>' +
         '<td class="ticker-cell">' + (o.ticker || '—') + '</td>' +
-        '<td><span class="verdict-pill ' + vc + '">' + (o.verdict || '—') + '</span></td>' +
+        '<td><span class="verdict-pill ' + vc + '">' + vLabel + '</span></td>' +
         '<td style="color:var(--text-dim)">' + (o.catalyst_grade || '—') + '</td>' +
         '<td>' + (o.droppiness_score ? dropRating + o.droppiness_score : '—') + '</td>' +
         '<td class="' + (o.did_fade ? 'fade-yes' : 'fade-no') + '">' + (o.did_fade ? '✓ Yes' : '✗ No') + '</td>' +
