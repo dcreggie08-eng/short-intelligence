@@ -6433,14 +6433,38 @@ async function analyse() {
     var result = JSON.parse(clean);
     var gk = gatekeeperVerdict(result.catalystGrade);
     result.verdict = gk.verdict; result.gatekeeperReason = gk.reason;
-    renderResult(result, ticker, priceContext);
     saveIndicator.className = 'save-indicator saving'; saveIndicator.textContent = 'Saving to database...';
-    var saveRes = await supabaseRequest('news_analyses', 'POST', { ticker: ticker || null, news_text: newsText, price_context: priceContext || null, verdict: result.verdict, catalyst_grade: result.catalystGrade, reasoning: result.reasoning, setup_notes: JSON.stringify(result.setupNotes), red_flags: JSON.stringify(result.redFlags), trade_killers: JSON.stringify(result.tradeKillers) });
+    // Save FIRST and request the inserted row back inline so we get the new id
+    // immediately. This must happen BEFORE renderResult() because renderResult
+    // schedules Boris's auto-fire on a 300ms timer, and Boris's cache write
+    // requires currentAnalysisId to be set.
+    var savePayload = { ticker: ticker || null, news_text: newsText, price_context: priceContext || null, verdict: result.verdict, catalyst_grade: result.catalystGrade, reasoning: result.reasoning, setup_notes: JSON.stringify(result.setupNotes), red_flags: JSON.stringify(result.redFlags), trade_killers: JSON.stringify(result.tradeKillers) };
+    var saveRes = await fetch(SUPABASE_URL + '/rest/v1/news_analyses', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': SUPABASE_KEY,
+        'Authorization': 'Bearer ' + SUPABASE_KEY,
+        'Prefer': 'return=representation'
+      },
+      body: JSON.stringify(savePayload)
+    });
     if (saveRes.status === 201 || saveRes.ok) {
       saveIndicator.className = 'save-indicator saved'; saveIndicator.textContent = 'Saved to database';
-      try { var sd = await supabaseRequest('news_analyses?select=id&order=created_at.desc&limit=1'); var sj = await sd.json(); if (sj && sj[0]) currentAnalysisId = sj[0].id; } catch(e) {}
+      try {
+        var inserted = await saveRes.json();
+        if (Array.isArray(inserted) && inserted[0] && inserted[0].id) {
+          currentAnalysisId = inserted[0].id;
+        }
+      } catch(e) { /* if the body parse fails, currentAnalysisId stays null and Boris cache write will skip — non-fatal */ }
       loadHistory();
-    } else { saveIndicator.className = 'save-indicator save-error'; saveIndicator.textContent = 'Analysis complete \u2014 not saved'; }
+    } else {
+      saveIndicator.className = 'save-indicator save-error'; saveIndicator.textContent = 'Analysis complete \u2014 not saved';
+      currentAnalysisId = null;
+    }
+    // Now render — Boris will auto-fire 300ms later with currentAnalysisId already set,
+    // so the cache write inside askBoris() will land on the correct row.
+    renderResult(result, ticker, priceContext);
   } catch(e) { showError('Something went wrong: ' + e.message); }
   finally { btn.disabled = false; btn.classList.remove('loading'); btnText.textContent = 'Analyse';
   syncFloatBtn(false, false); }
