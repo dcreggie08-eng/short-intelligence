@@ -6361,20 +6361,16 @@ async function askBoris(opts) {
       if (!opts.skipCacheWrite) {
         try {
           var cacheId = currentAnalysisId;
-          console.log('[Boris cache] currentAnalysisId at write time:', cacheId);
           if (!cacheId && window.currentResultTicker) {
-            console.log('[Boris cache] Falling back to ticker lookup for:', window.currentResultTicker);
             var bLookup = await supabaseRequest('news_analyses?ticker=eq.' + encodeURIComponent(window.currentResultTicker) + '&order=created_at.desc&limit=1&select=id');
             var bLookupData = await bLookup.json();
-            console.log('[Boris cache] Ticker lookup result:', bLookupData);
             if (Array.isArray(bLookupData) && bLookupData[0] && bLookupData[0].id) {
               cacheId = bLookupData[0].id;
               currentAnalysisId = cacheId;
             }
           }
-          console.log('[Boris cache] Final cacheId before PATCH:', cacheId);
           if (cacheId) {
-            var patchRes = await fetch(SUPABASE_URL + '/rest/v1/news_analyses?id=eq.' + cacheId, {
+            await fetch(SUPABASE_URL + '/rest/v1/news_analyses?id=eq.' + cacheId, {
               method: 'PATCH',
               headers: {
                 'Content-Type': 'application/json',
@@ -6384,12 +6380,9 @@ async function askBoris(opts) {
               },
               body: JSON.stringify({ boris_response: rawText, boris_cached_at: new Date().toISOString() })
             });
-            console.log('[Boris cache] PATCH status:', patchRes.status);
-          } else {
-            console.warn('[Boris cache] No cacheId found — write skipped.');
           }
         } catch (cacheErr) {
-          console.warn('[Boris cache] Exception during write:', cacheErr);
+          console.warn('Boris cache write failed:', cacheErr);
         }
       }
     }
