@@ -6356,27 +6356,40 @@ async function askBoris(opts) {
     } else {
       content.innerHTML = renderedHtml;
       // Cache write: persist this Boris response on the news_analyses row.
-      // Uses currentAnalysisId if set; falls back to a ticker lookup if the
-      // return=representation parse failed and currentAnalysisId is still null.
+      // Uses currentAnalysisId if set; falls back to ticker lookup if null.
+      // Direct fetch (not supabaseRequest) so we can check response status.
       if (!opts.skipCacheWrite) {
         try {
           var cacheId = currentAnalysisId;
+          console.log('[Boris cache] currentAnalysisId at write time:', cacheId);
           if (!cacheId && window.currentResultTicker) {
+            console.log('[Boris cache] Falling back to ticker lookup for:', window.currentResultTicker);
             var bLookup = await supabaseRequest('news_analyses?ticker=eq.' + encodeURIComponent(window.currentResultTicker) + '&order=created_at.desc&limit=1&select=id');
             var bLookupData = await bLookup.json();
+            console.log('[Boris cache] Ticker lookup result:', bLookupData);
             if (Array.isArray(bLookupData) && bLookupData[0] && bLookupData[0].id) {
               cacheId = bLookupData[0].id;
               currentAnalysisId = cacheId;
             }
           }
+          console.log('[Boris cache] Final cacheId before PATCH:', cacheId);
           if (cacheId) {
-            await supabaseRequest('news_analyses?id=eq.' + cacheId, 'PATCH', {
-              boris_response: rawText,
-              boris_cached_at: new Date().toISOString()
+            var patchRes = await fetch(SUPABASE_URL + '/rest/v1/news_analyses?id=eq.' + cacheId, {
+              method: 'PATCH',
+              headers: {
+                'Content-Type': 'application/json',
+                'apikey': SUPABASE_KEY,
+                'Authorization': 'Bearer ' + SUPABASE_KEY,
+                'Prefer': 'return=minimal'
+              },
+              body: JSON.stringify({ boris_response: rawText, boris_cached_at: new Date().toISOString() })
             });
+            console.log('[Boris cache] PATCH status:', patchRes.status);
+          } else {
+            console.warn('[Boris cache] No cacheId found — write skipped.');
           }
         } catch (cacheErr) {
-          console.warn('Boris cache write failed:', cacheErr);
+          console.warn('[Boris cache] Exception during write:', cacheErr);
         }
       }
     }
