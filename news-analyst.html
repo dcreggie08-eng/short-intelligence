@@ -161,6 +161,7 @@
   .result-section { border-left:2px solid var(--border-bright); padding-left:16px; }
   .result-section-title { font-family:var(--mono); font-size:10px; letter-spacing:2px; text-transform:uppercase; color:var(--accent); margin-bottom:10px; }
   .result-section p { font-size:14px; line-height:1.75; font-weight:300; color:var(--text); }
+  #reasoningText { font-weight:700; color:#FFB700; }
   .result-section ul { list-style:none; display:flex; flex-direction:column; gap:8px; }
   .result-section ul li { font-size:13px; line-height:1.6; font-weight:300; color:var(--text); padding-left:16px; position:relative; }
   .result-section ul li::before { content:'▸'; position:absolute; left:0; color:var(--accent); font-size:10px; top:3px; }
@@ -6355,15 +6356,26 @@ async function askBoris(opts) {
     } else {
       content.innerHTML = renderedHtml;
       // Cache write: persist this Boris response on the news_analyses row.
-      // Only writes when an analysis ID is known and skipCacheWrite isn't set.
-      if (currentAnalysisId && !opts.skipCacheWrite) {
+      // Uses currentAnalysisId if set; falls back to a ticker lookup if the
+      // return=representation parse failed and currentAnalysisId is still null.
+      if (!opts.skipCacheWrite) {
         try {
-          await supabaseRequest('news_analyses?id=eq.' + currentAnalysisId, 'PATCH', {
-            boris_response: rawText,
-            boris_cached_at: new Date().toISOString()
-          });
+          var cacheId = currentAnalysisId;
+          if (!cacheId && window.currentResultTicker) {
+            var bLookup = await supabaseRequest('news_analyses?ticker=eq.' + encodeURIComponent(window.currentResultTicker) + '&order=created_at.desc&limit=1&select=id');
+            var bLookupData = await bLookup.json();
+            if (Array.isArray(bLookupData) && bLookupData[0] && bLookupData[0].id) {
+              cacheId = bLookupData[0].id;
+              currentAnalysisId = cacheId;
+            }
+          }
+          if (cacheId) {
+            await supabaseRequest('news_analyses?id=eq.' + cacheId, 'PATCH', {
+              boris_response: rawText,
+              boris_cached_at: new Date().toISOString()
+            });
+          }
         } catch (cacheErr) {
-          // Cache failures are non-fatal — Boris still rendered for the user.
           console.warn('Boris cache write failed:', cacheErr);
         }
       }
