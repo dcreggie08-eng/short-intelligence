@@ -903,7 +903,7 @@ function buildReviewForm(entry) {
     '</div>' +
     '<div class="review-row-full"><div class="review-label">Note</div><input type="text" class="review-input" id="note-'+id+'" placeholder="One line — what happened, why, what you noticed" maxlength="200" value="'+note.replace(/"/g,'&quot;')+'" /></div>' +
     '<div class="review-row-full">' + buildTagChips(id, entry) + '</div>' +
-    '<div class="review-actions"><button class="'+btnClass+'" id="saveBtn-'+id+'" onclick="saveReview(\''+id+'\')">'+btnText+'</button><button class="delete-entry-btn" onclick="deleteEntry(\''+id+'\',\''+(entry.ticker||'').replace(/\'/g,'\\\'')+'\')">Delete Entry</button><div class="review-save-msg" id="saveMsg-'+id+'"></div></div>';
+    '<div class="review-actions"><button class="'+btnClass+'" id="saveBtn-'+id+'" onclick="saveReview(\''+id+'\')">'+btnText+'</button><button class="delete-entry-btn" onclick="deleteEntry(\''+id+'\',\''+(entry.ticker||'').replace(/\'/g,'\\\'')+'\',\''+entry.trading_date+'\')">Delete Entry</button><div class="review-save-msg" id="saveMsg-'+id+'"></div></div>';
 }
 
 var hodSel={}, gkSel={}, tradeSel={}, tagSel={}, backsideSel={}, tradeWasRecorded={}, tradeOutcomeId={};
@@ -1192,22 +1192,36 @@ async function saveReview(id) {
   }
 }
 
-async function deleteEntry(id, ticker) {
-  var confirmMsg = 'Delete this ' + (ticker || 'entry') + ' entry permanently?\n\nThis cannot be undone. Both the scanner log row and any matching journal entry will be removed.';
+async function deleteEntry(id, ticker, tradingDate) {
+  var confirmMsg = 'Delete this ' + (ticker || 'entry') + ' entry permanently?\n\nThis cannot be undone. The scanner log entry, any journal record, and the original analysis will all be removed.';
   if (!confirm(confirmMsg)) return;
   var btn = event.target;
   btn.disabled = true;
   btn.textContent = 'Deleting...';
   try {
-    // Cascade: delete trade_outcomes row first if it exists for this analysis_id
-    await sbFetch('trade_outcomes?analysis_id=eq.' + id, 'DELETE');
-    // Then delete the scanner_log row
+    // Build date scope for cascade deletes — covers full UTC day of the trading date
+    var nextDay = '';
+    if (tradingDate) {
+      var d = new Date(tradingDate + 'T00:00:00Z');
+      d.setUTCDate(d.getUTCDate() + 1);
+      nextDay = d.toISOString().split('T')[0];
+    }
+    var dateScope = tradingDate && nextDay
+      ? '&created_at=gte.' + tradingDate + 'T00:00:00&created_at=lt.' + nextDay + 'T00:00:00'
+      : '';
+    // 1. Delete matching trade_outcomes row (scoped by ticker + date)
+    if (ticker) {
+      await sbFetch('trade_outcomes?ticker=eq.' + encodeURIComponent(ticker) + dateScope, 'DELETE');
+    }
+    // 2. Delete matching news_analyses row (scoped by ticker + date)
+    if (ticker) {
+      await sbFetch('news_analyses?ticker=eq.' + encodeURIComponent(ticker) + dateScope, 'DELETE');
+    }
+    // 3. Delete the scanner_log row itself
     var res = await sbFetch('scanner_log?id=eq.' + id, 'DELETE');
     if (res.ok || res.status === 204) {
-      // Remove the card from DOM immediately
       var card = document.getElementById('card-' + id);
       if (card) card.remove();
-      // Reload analytics to reflect new totals
       if (typeof loadAnalytics === 'function') loadAnalytics();
     } else {
       btn.disabled = false;
