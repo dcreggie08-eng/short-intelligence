@@ -59,7 +59,50 @@
   .fade-yes { color: var(--go); font-weight: 700; }
   .fade-no { color: var(--nogo); font-weight: 700; }
   .ticker-cell { color: var(--accent); font-weight: 700; font-size: 13px; }
-  .note-cell { color: var(--text-dim); font-size: 10px; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .note-cell { color: var(--text-dim); font-size: 10px; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; position: relative; }
+
+  /* Show-original icon for spell-corrected notes */
+  .note-original-icon {
+    display: inline-block;
+    margin-left: 6px;
+    color: var(--accent);
+    cursor: help;
+    font-size: 10px;
+    opacity: 0.5;
+    transition: opacity 0.2s;
+    position: relative;
+  }
+  .note-original-icon:hover { opacity: 1; }
+  .note-original-icon .tooltip {
+    visibility: hidden;
+    opacity: 0;
+    position: absolute;
+    right: 0;
+    bottom: calc(100% + 6px);
+    background: var(--surface);
+    border: 1px solid var(--accent);
+    color: var(--text-bright);
+    padding: 8px 12px;
+    font-family: var(--mono);
+    font-size: 10px;
+    line-height: 1.5;
+    white-space: normal;
+    width: 260px;
+    z-index: 100;
+    transition: opacity 0.15s;
+    pointer-events: none;
+    text-align: left;
+  }
+  .note-original-icon .tooltip::before {
+    content: 'ORIGINAL';
+    display: block;
+    font-size: 8px;
+    letter-spacing: 2px;
+    color: var(--text-dim);
+    margin-bottom: 4px;
+  }
+  .note-original-icon:hover .tooltip { visibility: visible; opacity: 1; }
+
   .empty-state { font-family: var(--mono); font-size: 12px; color: var(--text-dim); text-align: center; padding: 48px; letter-spacing: 1px; line-height: 2; border: 1px solid var(--border); }
   .loading-state { font-family: var(--mono); font-size: 11px; color: var(--accent); text-align: center; padding: 32px; letter-spacing: 1px; }
 
@@ -170,6 +213,17 @@ function getFiltered(outcomes) {
   return outcomes;
 }
 
+// Escape HTML to safely inject raw note text into tooltip without breaking layout
+function escapeHtml(s) {
+  if (s === null || s === undefined) return '';
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 function renderTable(outcomes) {
   var filtered = getFiltered(outcomes);
   var content = document.getElementById('journalContent');
@@ -185,7 +239,14 @@ function renderTable(outcomes) {
     '</tr></thead>' +
     '<tbody>' +
     filtered.map(function(o) {
-      var date = new Date(o.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+      // Prefer trading_date (actual trade day) over created_at (DB insert timestamp).
+      // Fall back to created_at if trading_date is missing for any reason.
+      var date;
+      if (o.trading_date) {
+        date = new Date(o.trading_date + 'T00:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+      } else {
+        date = new Date(o.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+      }
       // Translate internal verdict to display label and CSS class.
       // Internal values stay 'GO' / 'CAUTION' / 'NO TRADE' / 'NO GO' in the database;
       // display swaps CAUTION → STALK and NO GO → WALK AWAY for visual clarity.
@@ -197,6 +258,16 @@ function renderTable(outcomes) {
       else                              { vc = 'caution';  vLabel = o.verdict || '—'; }
       // Fixed: thresholds now match rest of system — 67+ High, 50-66 Medium, below 50 Low
       var dropRating = o.droppiness_score >= 67 ? '🟢 ' : o.droppiness_score >= 50 ? '🟡 ' : o.droppiness_score ? '🔴 ' : '';
+
+      // Note cell with "show original" icon — only when note_raw exists AND differs from note.
+      // For the 15 pre-recovery rows, note_raw is NULL so the icon never shows. Correct behaviour.
+      var noteHtml = escapeHtml(o.note || '');
+      if (o.note_raw && o.note && o.note_raw !== o.note) {
+        noteHtml += '<span class="note-original-icon" title="Show original">ⓘ' +
+                    '<span class="tooltip">' + escapeHtml(o.note_raw) + '</span>' +
+                    '</span>';
+      }
+
       return '<tr>' +
         '<td style="color:var(--text-dim)">' + date + '</td>' +
         '<td class="ticker-cell">' + (o.ticker || '—') + '</td>' +
@@ -205,7 +276,7 @@ function renderTable(outcomes) {
         '<td>' + (o.droppiness_score ? dropRating + o.droppiness_score : '—') + '</td>' +
         '<td class="' + (o.did_fade ? 'fade-yes' : 'fade-no') + '">' + (o.did_fade ? '✓ Yes' : '✗ No') + '</td>' +
         '<td>' + (o.hod_giveback_pct ? o.hod_giveback_pct + '%' : '—') + '</td>' +
-        '<td class="note-cell">' + (o.note || '') + '</td>' +
+        '<td class="note-cell">' + noteHtml + '</td>' +
         '</tr>';
     }).join('') +
     '</tbody></table>';
@@ -276,7 +347,10 @@ function renderInsights(outcomes) {
 
 async function loadJournal() {
   try {
-    var data = await supabaseGet('trade_outcomes?select=*&order=created_at.desc&limit=200');
+    // Order primarily by trading_date (the actual trade day).
+    // nullslast keeps any null trading_date rows at the bottom rather than the top.
+    // Secondary sort on created_at preserves chronological order within same-date groups.
+    var data = await supabaseGet('trade_outcomes?select=*&order=trading_date.desc.nullslast,created_at.desc&limit=200');
     allOutcomes = Array.isArray(data) ? data : [];
     renderStats(allOutcomes);
     renderTable(allOutcomes);
