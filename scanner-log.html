@@ -106,6 +106,50 @@
   .review-field { display:flex; flex-direction:column; gap:6px; }
   .review-label { font-family:var(--mono); font-size:11px; letter-spacing:2px; text-transform:uppercase; color:var(--accent); }
   .review-label.green { color:var(--go); }
+
+  /* Show-original icon for spell-corrected notes — mirrors journal.html styling */
+  .note-original-icon {
+    display: inline-block;
+    margin-left: 8px;
+    color: var(--accent);
+    cursor: help;
+    font-size: 10px;
+    opacity: 0.5;
+    transition: opacity 0.2s;
+    position: relative;
+  }
+  .note-original-icon:hover { opacity: 1; }
+  .note-original-icon .tooltip {
+    visibility: hidden;
+    opacity: 0;
+    position: absolute;
+    left: 0;
+    top: calc(100% + 6px);
+    background: var(--surface);
+    border: 1px solid var(--accent);
+    color: var(--text-bright);
+    padding: 8px 12px;
+    font-family: var(--mono);
+    font-size: 11px;
+    line-height: 1.5;
+    white-space: normal;
+    width: 320px;
+    z-index: 100;
+    transition: opacity 0.15s;
+    pointer-events: none;
+    text-align: left;
+    text-transform: none;
+    letter-spacing: 0;
+  }
+  .note-original-icon .tooltip::before {
+    content: 'ORIGINAL';
+    display: block;
+    font-size: 9px;
+    letter-spacing: 2px;
+    color: var(--text-dim);
+    margin-bottom: 4px;
+  }
+  .note-original-icon:hover .tooltip { visibility: visible; opacity: 1; }
   .review-input { background:var(--bg); border:1px solid var(--border); color:var(--text-bright); font-family:var(--mono); font-size:14px; padding:9px 12px; outline:none; width:100%; }
   .review-input:focus { border-color:var(--accent); }
   .review-select { background:var(--bg); border:1px solid var(--border); color:var(--text-bright); font-family:var(--mono); font-size:14px; padding:9px 12px; outline:none; width:100%; cursor:pointer; appearance:none; }
@@ -612,6 +656,18 @@ async function sbFetch(path, method, body) {
 // ONLY, do not touch grammar/capitalisation/punctuation/structure or "improve"
 // anything. Raw note is preserved alongside the corrected one so the journal
 // can show the original on hover.
+
+// Escape HTML for safe injection into tooltip attributes / innerHTML
+function escapeHtmlSafe(s) {
+  if (s === null || s === undefined) return '';
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 const NOTE_CORRECTION_PROMPT =
   'Fix only obvious misspellings in this short-side day-trader note. Rules:\n' +
   '- Fix spelling errors only\n' +
@@ -860,6 +916,8 @@ function buildReviewForm(entry) {
   var didTrade = entry.did_trade;
   var actualExit = entry.actual_exit_level || '';
   var note = entry.note || '';
+  var noteRaw = entry.note_raw || '';
+  var noteWasCorrected = !!(noteRaw && note && noteRaw !== note);
   var vwapExt = entry.vwap_extension_pct || '';
   var marketContext = entry.market_context || '';
   var backsideSqueeze = entry.backside_squeeze_risk || '';
@@ -957,7 +1015,7 @@ function buildReviewForm(entry) {
         '</div>' +
       '</div>' +
     '</div>' +
-    '<div class="review-row-full"><div class="review-label">Note</div><input type="text" class="review-input" id="note-'+id+'" placeholder="One line — what happened, why, what you noticed" maxlength="200" value="'+note.replace(/"/g,'&quot;')+'" /></div>' +
+    '<div class="review-row-full"><div class="review-label">Note<span id="noteIcon-'+id+'">' + (noteWasCorrected ? ' <span class="note-original-icon" title="Show original">ⓘ<span class="tooltip">' + escapeHtmlSafe(noteRaw) + '</span></span>' : '') + '</span></div><input type="text" class="review-input" id="note-'+id+'" placeholder="One line — what happened, why, what you noticed" maxlength="200" value="'+note.replace(/"/g,'&quot;')+'" /></div>' +
     '<div class="review-row-full">' + buildTagChips(id, entry) + '</div>' +
     '<div class="review-actions"><button class="'+btnClass+'" id="saveBtn-'+id+'" onclick="saveReview(\''+id+'\')">'+btnText+'</button><button class="delete-entry-btn" onclick="deleteEntry(\''+id+'\',\''+(entry.ticker||'').replace(/\'/g,'\\\'')+'\',\''+entry.trading_date+'\')">Delete Entry</button><div class="review-save-msg" id="saveMsg-'+id+'"></div></div>';
 }
@@ -1267,6 +1325,21 @@ async function saveReview(id) {
     }
     var toggle = document.getElementById('toggle-'+id);
     if (toggle) toggle.classList.add('reviewed');
+
+    // ─── REFRESH NOTE FIELD + ICON ─────────────────────────────────
+    // If correction changed the text, update the textarea to show the corrected
+    // version, and inject (or update) the ⓘ icon next to the Note label so the
+    // user can hover to see what they originally typed.
+    if (noteResult && noteResult.corrected && noteResult.raw && noteResult.corrected !== noteResult.raw) {
+      var noteInput = document.getElementById('note-' + id);
+      if (noteInput) noteInput.value = noteResult.corrected;
+      var iconSpan = document.getElementById('noteIcon-' + id);
+      if (iconSpan) {
+        iconSpan.innerHTML = ' <span class="note-original-icon" title="Show original">ⓘ<span class="tooltip">' +
+                             escapeHtmlSafe(noteResult.raw) + '</span></span>';
+      }
+    }
+    // ───────────────────────────────────────────────────────────────
 
   } catch(e) {
     btn.disabled=false; btn.textContent='Save Review';
