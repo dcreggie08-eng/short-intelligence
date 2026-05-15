@@ -604,6 +604,62 @@ async function sbFetch(path, method, body) {
   return fetch(SUPABASE_URL + '/rest/v1/' + path, opts);
 }
 
+// ─────────────────────────────────────────────
+// NOTE SPELL-CORRECTION (write-time, fail-soft)
+// ─────────────────────────────────────────────
+// Reggie is dyslexic. Notes are corrected for spelling at save-time via the
+// anthropic-proxy Worker. Prompt is intentionally conservative — fix spelling
+// ONLY, do not touch grammar/capitalisation/punctuation/structure or "improve"
+// anything. Raw note is preserved alongside the corrected one so the journal
+// can show the original on hover.
+const NOTE_CORRECTION_PROMPT =
+  'Fix only obvious misspellings in this short-side day-trader note. Rules:\n' +
+  '- Fix spelling errors only\n' +
+  '- DO NOT change grammar, capitalisation, punctuation, or sentence structure\n' +
+  '- DO NOT formalise the language or "improve" anything\n' +
+  '- Preserve trading vocabulary unchanged: VWAP, MMP, HOD, LOD, PM, OM, fib, MP, RVOL, "took off", "Fat finger", "fade", "gap up", "grinder", "drop"\n' +
+  '- If a word is already a real word, leave it alone even if it seems unusual\n' +
+  '- If unsure whether something is a misspelling, leave it as-is\n' +
+  'Return ONLY the corrected text. No commentary.\n\n' +
+  'Note:\n';
+
+// correctNote(rawNote) — returns { corrected, raw, succeeded }.
+// Always resolves; never throws. Save flow can trust the return value without try/catch.
+// Empty / null input: immediate return, no API call, succeeded=true.
+// API success: corrected text + raw + succeeded=true.
+// API failure / timeout / empty response: raw note in both fields + succeeded=false.
+async function correctNote(rawNote) {
+  if (!rawNote || String(rawNote).trim().length === 0) {
+    return { corrected: rawNote, raw: rawNote, succeeded: true };
+  }
+  var PROXY_URL = 'https://anthropic-proxy.dcreggie08.workers.dev';
+  var TIMEOUT_MS = 8000;
+  try {
+    var controller = new AbortController();
+    var timeoutHandle = setTimeout(function() { controller.abort(); }, TIMEOUT_MS);
+    var res = await fetch(PROXY_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 500,
+        messages: [{ role: 'user', content: NOTE_CORRECTION_PROMPT + rawNote }]
+      }),
+      signal: controller.signal
+    });
+    clearTimeout(timeoutHandle);
+    if (!res.ok) throw new Error('Proxy returned HTTP ' + res.status);
+    var data = await res.json();
+    var corrected = (data && data.content && data.content[0] && data.content[0].text || '').trim();
+    if (!corrected) throw new Error('Empty correction response');
+    return { corrected: corrected, raw: rawNote, succeeded: true };
+  } catch (err) {
+    console.warn('Note correction failed, saving raw note:', err.message);
+    return { corrected: rawNote, raw: rawNote, succeeded: false };
+  }
+}
+// ─────────────────────────────────────────────
+
 function switchTab(tab) {
   document.querySelectorAll('.tab').forEach(function(t, i) {
     t.classList.toggle('active', (i===0&&tab==='log')||(i===1&&tab==='analytics')||(i===2&&tab==='lazy'));
@@ -1062,6 +1118,21 @@ async function saveReview(id) {
   var fadeDest = document.getElementById('fadeDest-'+id).value||null;
   var exitLevel = document.getElementById('exitLevel-'+id).value||null;
   var note = document.getElementById('note-'+id).value.trim()||null;
+
+  // ─── NOTE SPELL-CORRECTION ─────────────────────────────────────
+  // Run the user's note through anthropic-proxy for spelling correction.
+  // Typically 1-3s. If anthropic-proxy fails or times out (8s), saves the raw
+  // note with note_corrected=false. Save NEVER blocks on a correction failure.
+  var noteResult;
+  if (note) {
+    btn.textContent = 'Correcting note...';
+    noteResult = await correctNote(note);
+    btn.textContent = 'Saving...';
+  } else {
+    noteResult = { corrected: null, raw: null, succeeded: true };
+  }
+  // ───────────────────────────────────────────────────────────────
+
   var hodHigher = hodSel[id]||null;
   var gkCorrect = gkSel[id]||null;
   var didTrade = tradeSel[id]!==undefined?tradeSel[id]:null;
@@ -1089,7 +1160,9 @@ async function saveReview(id) {
     actual_exit_level: exitLevel,
     entry_price: entryPrice,
     exit_price: exitPrice,
-    note: note,
+    note: noteResult.corrected,
+    note_raw: noteResult.raw,
+    note_corrected: noteResult.succeeded,
     trade_tags: JSON.stringify(tagSel[id] || []),
     market_context: marketContext,
     backside_squeeze_risk: backsideRisk,
@@ -1133,12 +1206,15 @@ async function saveReview(id) {
         var tradePayload = {
           ticker: entry.ticker || null,
           analysis_id: null,
+          trading_date: entry.trading_date || null,
           verdict: entry.verdict || null,
           catalyst_grade: entry.catalyst_grade || null,
           droppiness_score: entry.droppiness_score ? parseFloat(entry.droppiness_score) : null,
           did_fade: didFade,
           hod_giveback_pct: givebackPct,
-          note: note || null
+          note: noteResult.corrected || null,
+          note_raw: noteResult.raw || null,
+          note_corrected: noteResult.succeeded
         };
 
         if (!tradeWasRecorded[id]) {
@@ -1164,7 +1240,14 @@ async function saveReview(id) {
             await fetch(SUPABASE_URL + '/rest/v1/trade_outcomes?id=eq.' + rowId, {
               method: 'PATCH',
               headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Prefer': 'return=minimal' },
-              body: JSON.stringify({ did_fade: didFade, hod_giveback_pct: givebackPct })
+              body: JSON.stringify({
+                did_fade: didFade,
+                hod_giveback_pct: givebackPct,
+                note: noteResult.corrected || null,
+                note_raw: noteResult.raw || null,
+                note_corrected: noteResult.succeeded,
+                trading_date: entry.trading_date || null
+              })
             });
           }
         }
