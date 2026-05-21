@@ -6104,7 +6104,7 @@ function gatekeeperVerdict(catalystGrade) {
     } else if (isHighDil && isMedCash) { verdict = 'CAUTION'; reason = 'Weak catalyst + high dilution but only medium cash need. Setup partially there \u2014 wait for price action to confirm.'; }
     else if (isHighDil && isLowCash) { verdict = 'NO TRADE'; reason = 'Weak catalyst + high dilution but low cash need. No immediate financial pressure \u2014 nothing to fuel a sustained drop.'; }
     else if (isMedDil) { verdict = 'CAUTION'; reason = 'Weak catalyst but only medium dilution. Incomplete setup \u2014 watch but do not commit.'; }
-    else if (isLowDil && isLowCash) { verdict = 'NO TRADE'; reason = 'Weak catalyst + low dilution + low cash need. No financial stress present \u2014 short thesis has no fuel.'; }
+    else if (isLowDil && isLowCash) { verdict = 'CAUTION'; reason = 'Weak catalyst + low dilution + low cash need. Logged data shows this cohort fades on pump exhaustion, not balance-sheet pressure (rule revised 21 May 2026).'; }
     else if (isLowDil) { verdict = 'CAUTION'; reason = 'Weak catalyst but low dilution risk. Fundamental support for the short is weak.'; }
     else { verdict = 'CAUTION'; reason = 'Weak catalyst but dilution data is incomplete. Run Fetch News first for a full verdict.'; }
   } else if (grade === 'MID') {
@@ -6456,7 +6456,7 @@ async function analyse() {
     // immediately. This must happen BEFORE renderResult() because renderResult
     // schedules Boris's auto-fire on a 300ms timer, and Boris's cache write
     // requires currentAnalysisId to be set.
-    var savePayload = { ticker: ticker || null, news_text: newsText, price_context: priceContext || null, verdict: result.verdict, catalyst_grade: result.catalystGrade, reasoning: result.reasoning, setup_notes: JSON.stringify(result.setupNotes), red_flags: JSON.stringify(result.redFlags), trade_killers: JSON.stringify(result.tradeKillers) };
+    var savePayload = { ticker: ticker || null, news_text: newsText, price_context: priceContext || null, verdict: result.verdict, catalyst_grade: result.catalystGrade, reasoning: result.reasoning, setup_notes: JSON.stringify(result.setupNotes), red_flags: JSON.stringify(result.redFlags), trade_killers: JSON.stringify(result.tradeKillers), rvol: (window.currentRVOL && typeof window.currentRVOL.rvol === 'number') ? window.currentRVOL.rvol : null };
     var saveRes = await fetch(SUPABASE_URL + '/rest/v1/news_analyses', {
       method: 'POST',
       headers: {
