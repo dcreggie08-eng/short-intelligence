@@ -6119,7 +6119,7 @@ function gatekeeperVerdict(catalystGrade) {
       else if (dropLow) { verdict = 'CAUTION'; reason = 'Weak catalyst + high dilution + high cash need but stock does not reliably fade (droppiness ' + droppiness + '). Reduce size or wait.'; }
       else { verdict = 'CAUTION'; reason = 'Weak catalyst + high dilution + high cash need. No droppiness data \u2014 trade with caution.'; }
     } else if (isHighDil && isMedCash) { verdict = 'CAUTION'; reason = 'Weak catalyst + high dilution but only medium cash need. Setup partially there \u2014 wait for price action to confirm.'; }
-    else if (isHighDil && isLowCash) { verdict = 'NO TRADE'; reason = 'Weak catalyst + high dilution but low cash need. No immediate financial pressure \u2014 nothing to fuel a sustained drop.'; }
+    else if (isHighDil && isLowCash) { verdict = 'CAUTION'; reason = 'Weak catalyst + high dilution but low cash need. Logged data shows this cohort fades on pump exhaustion regardless of immediate cash pressure — shelf alone provides structural overhang (rule revised 21 May 2026).'; }
     else if (isMedDil) { verdict = 'CAUTION'; reason = 'Weak catalyst but only medium dilution. Incomplete setup \u2014 watch but do not commit.'; }
     else if (isLowDil && isLowCash) { verdict = 'CAUTION'; reason = 'Weak catalyst + low dilution + low cash need. Logged data shows this cohort fades on pump exhaustion, not balance-sheet pressure (rule revised 21 May 2026).'; }
     else if (isLowDil) { verdict = 'CAUTION'; reason = 'Weak catalyst but low dilution risk. Fundamental support for the short is weak.'; }
