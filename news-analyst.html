@@ -6012,6 +6012,23 @@ async function fetchRVOL(ticker) {
   } catch(e) { window.currentRVOL = null; }
 }
 
+// v28: Renders a SAVED rvol value into the info bar on the history-reload path.
+// Mirrors fetchRVOL's span structure but uses the captured-at-analysis-time value
+// from news_analyses.rvol — more honest than refetching live /rvol (the live value
+// may differ hours later or be null after-hours).
+function renderSavedRVOL(rvolValue) {
+  var infoBar = document.getElementById('stockInfoBar');
+  if (!infoBar || typeof rvolValue !== 'number') return;
+  var existing = infoBar.querySelector('#rvolSpan');
+  if (existing) existing.remove();
+  window.currentRVOL = { rvol: rvolValue, is_premarket: false };
+  var rvolSpan = document.createElement('span');
+  rvolSpan.id = 'rvolSpan';
+  var rvolColor = rvolValue >= 5 ? 'var(--go)' : rvolValue >= 2 ? 'var(--accent)' : 'var(--text-dim)';
+  rvolSpan.innerHTML = '<span style="color:var(--text-bright);font-weight:700">RVOL: <span style="color:' + rvolColor + '">' + rvolValue + 'x</span> <span style="color:var(--text-dim);font-size:10px">(captured)</span></span>';
+  infoBar.appendChild(rvolSpan);
+}
+
 function applyFetchedData(cached, ticker) {
   var newsData = cached.newsData, dilutionData = cached.dilutionData, floatData = cached.floatData, tldrData = cached.tldrData;
   var newsSource = document.getElementById('newsSource');
@@ -6613,10 +6630,10 @@ async function loadFromHistory(id) {
         window.currentDroppiness = null;
         document.getElementById('droppinessPanel').className = 'droppiness-panel';
         document.getElementById('droppinessScore').textContent = '\u2014'; document.getElementById('droppinessStats').innerHTML = '';
-        if (fetchCache[ticker]) { applyFetchedData(fetchCache[ticker], ticker); document.getElementById('dilutionSource').textContent = 'via Ask Edgar (cached)'; }
+        if (fetchCache[ticker]) { applyFetchedData(fetchCache[ticker], ticker); renderSavedRVOL(item.rvol); document.getElementById('dilutionSource').textContent = 'via Ask Edgar (cached)'; }
         else {
           Promise.all([fetch(PROXY + '/askedgar/v1/dilution-rating?ticker=' + ticker).then(r => r.json()), fetch(PROXY + '/askedgar/v1/float-outstanding?ticker=' + ticker).then(r => r.json()), fetch(PROXY + '/askedgar/v1/research-reports-tldr?ticker=' + ticker + '&limit=1').then(r => r.json())])
-          .then(function(results) { var fakeCache = { newsData: { status: 'success', results: [{ summary: item.news_text, filed_at: item.created_at }] }, dilutionData: results[0], floatData: results[1], tldrData: results[2] }; fetchCache[ticker] = fakeCache; applyFetchedData(fakeCache, ticker); })
+          .then(function(results) { var fakeCache = { newsData: { status: 'success', results: [{ summary: item.news_text, filed_at: item.created_at }] }, dilutionData: results[0], floatData: results[1], tldrData: results[2] }; fetchCache[ticker] = fakeCache; applyFetchedData(fakeCache, ticker); renderSavedRVOL(item.rvol); })
           .catch(function(e) { console.error('Could not reload ticker data', e); });
         }
         fetchDroppiness(ticker);
