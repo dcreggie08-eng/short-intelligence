@@ -5767,7 +5767,7 @@ eXpilSpDG70qVKmI/9k=" alt="Bear Intel" /></div>
         <div class="outcome-fade-btns"><button class="fade-btn" id="fadeYes" onclick="selectFade(true)">&#10003; Faded</button><button class="fade-btn" id="fadeNo" onclick="selectFade(false)">&#10007; Did Not Fade</button></div>
         <div class="outcome-price-fields">
           <div class="outcome-price-group"><label class="outcome-price-label">HOD $</label><input type="number" class="outcome-input outcome-price" id="hodPrice" placeholder="0.00" min="0" step="0.01" oninput="calcGiveback()" /></div>
-          <div class="outcome-price-group"><label class="outcome-price-label">Entry $</label><input type="number" class="outcome-input outcome-price" id="entryPrice" placeholder="0.00" min="0" step="0.01" oninput="calcGiveback()" /></div>
+          <div class="outcome-price-group"><label class="outcome-price-label">Entry $</label><input type="number" class="outcome-input outcome-price" id="entryPrice" placeholder="0.00" min="0" step="0.01" /></div>
           <div class="outcome-price-group"><label class="outcome-price-label">Exit $</label><input type="number" class="outcome-input outcome-price" id="exitPrice" placeholder="0.00" min="0" step="0.01" oninput="calcGiveback()" /></div>
           <div class="outcome-calc" id="outcomeCalc">&mdash;</div>
         </div>
@@ -5806,14 +5806,17 @@ DILUTION PROFILE (when provided)
 - You may receive a dilution profile from Ask Edgar with 6 badges: Overall Risk, Dilution Risk, Offering Frequency, Cash Need, Warrant Exercise, Nasdaq Compliance
 - Each is rated Low, Medium, or High
 
-VERDICT MATRIX:
-- STRONG catalyst + any dilution = NO GO (strong news kills the short thesis regardless)
-- WEAK/FLUFF or MID catalyst + HIGH Cash Need + HIGH Dilution = GO
-- WEAK/FLUFF or MID catalyst + MEDIUM dilution scores = CAUTION
-- WEAK/FLUFF or MID catalyst + LOW dilution scores = CAUTION
+VERDICT MATRIX (the deterministic gatekeeper has the final say — these are guidelines for your reasoning so your narrative matches the verdict the user will see):
+- STRONG catalyst = NO GO regardless of anything else
+- WEAK/FLUFF + HIGH Dilution + HIGH Cash Need + HIGH Droppiness (67+) = GO
+- ALL OTHER WEAK/FLUFF combinations = CAUTION (data shows pump-exhaustion fades don't need balance-sheet pressure — rule revised 21 May 2026)
+- MID + HIGH Dilution + HIGH Cash Need + HIGH Droppiness = CAUTION (best case for MID; everything else is NO TRADE)
+- ALL OTHER MID combinations = NO TRADE
+- Institutional ownership above 50% = NO TRADE (overrides everything except STRONG which stays NO GO)
+- Institutional ownership 20-50% = downgrade any GO to CAUTION
 - No dilution data provided = grade on catalyst alone
 
-IMPORTANT: NO GO should only come from a STRONG catalyst. Low dilution on weak news = CAUTION, not NO GO.
+IMPORTANT: NO GO comes only from STRONG catalyst. Low/medium dilution on weak news = CAUTION, not NO GO.
 
 DROPPINESS SCORE (when provided)
 - Score out of 100 based on 12 months of 4hr candle data
@@ -5955,8 +5958,17 @@ async function fetchNews() {
     var dilutionData = await dilutionRes.json();
     var floatData = await floatRes.json();
     var tldrData = await tldrRes.json();
-    fetchCache[ticker] = { newsData, dilutionData, floatData, tldrData };
-    applyFetchedData(fetchCache[ticker], ticker);
+    // v29: only cache if no top-level error and at least one core endpoint
+    // returned usable results. Prevents the cache from serving stale error
+    // responses on retry (caller would get bad data without realising).
+    var anyError = (newsData && newsData.error) || (dilutionData && dilutionData.error) || (floatData && floatData.error);
+    var anyResults = (newsData && newsData.results && newsData.results.length > 0) ||
+                     (dilutionData && dilutionData.results && dilutionData.results.length > 0) ||
+                     (floatData && floatData.results && floatData.results.length > 0);
+    if (!anyError && anyResults) {
+      fetchCache[ticker] = { newsData, dilutionData, floatData, tldrData };
+    }
+    applyFetchedData({ newsData, dilutionData, floatData, tldrData }, ticker);
     fetchDroppiness(ticker);
     fetchRVOL(ticker);
   } catch(e) {
@@ -5996,7 +6008,7 @@ async function fetchRVOL(ticker) {
   try {
     var res = await fetch(PROXY + '/rvol?ticker=' + ticker);
     var data = await res.json();
-    if (data.error || data.rvol === null) { window.currentRVOL = null; return; }
+    if (data.error || data.rvol === null || data.rvol === 0) { window.currentRVOL = null; return; }
     window.currentRVOL = data;
     var infoBar = document.getElementById('stockInfoBar');
     if (!infoBar) return;
@@ -6018,7 +6030,7 @@ async function fetchRVOL(ticker) {
 // may differ hours later or be null after-hours).
 function renderSavedRVOL(rvolValue) {
   var infoBar = document.getElementById('stockInfoBar');
-  if (!infoBar || typeof rvolValue !== 'number') return;
+  if (!infoBar || typeof rvolValue !== 'number' || rvolValue === 0) return;
   var existing = infoBar.querySelector('#rvolSpan');
   if (existing) existing.remove();
   window.currentRVOL = { rvol: rvolValue, is_premarket: false };
@@ -6249,7 +6261,7 @@ async function askBoris(opts) {
     var patternContext = '';
     var regimeContext = '';
     try {
-      var patRes = await supabaseRequest('scanner_log?select=verdict,catalyst_grade,gatekeeper_correct,ticker,trading_date&gatekeeper_correct=not.is.null&limit=300');
+      var patRes = await supabaseRequest('scanner_log?select=verdict,catalyst_grade,gatekeeper_correct,ticker,trading_date&gatekeeper_correct=not.is.null&order=trading_date.desc&limit=300');
       var patData = await patRes.json();
       if (Array.isArray(patData) && patData.length > 0) {
         var grade = window.currentResultGrade || '';
@@ -6597,6 +6609,12 @@ function clearAll() {
   window.currentDroppiness = null;
   window.currentResultTicker = null; window.currentResultVerdict = null;
   window.currentResultGrade = null; window.currentResultReason = null; window.currentResultReasoning = null;
+  // v29: clear cache flags and analysis ID so a subsequent fresh analyse() doesn't
+  // accidentally render a stale Boris response from a previously-loaded history entry,
+  // or write Boris cache to the wrong row.
+  window.cachedBorisResponse = null; window.cachedBorisAt = null;
+  window.currentRVOL = null; window.currentRegime = null;
+  currentAnalysisId = null;
   var dp = document.getElementById('droppinessPanel'); dp.className = 'droppiness-panel';
   document.getElementById('droppinessScore').textContent = '\u2014'; document.getElementById('droppinessStats').innerHTML = '';
   document.getElementById('errorMsg').classList.remove('visible');
@@ -6696,7 +6714,9 @@ async function logOutcome() {
   var exitPrice = parseFloat(document.getElementById('exitPrice').value) || null;
   var note = document.getElementById('outcomeNote').value.trim();
   var ticker = document.getElementById('ticker').value.trim().toUpperCase();
-  var verdict = document.getElementById('verdictLabel').textContent;
+  // v29: use internal verdict value (GO/CAUTION/NO TRADE/NO GO) not the display label
+  // (which translates to STALK/WALK AWAY). DB stores internal values for join consistency.
+  var verdict = window.currentResultVerdict || document.getElementById('verdictLabel').textContent;
   var catalystGrade = document.getElementById('catalystGrade').textContent;
   var droppinessScore = window.currentDroppiness ? window.currentDroppiness.score : null;
   var givebackPct = null;
@@ -6706,12 +6726,25 @@ async function logOutcome() {
     var payload = { ticker: ticker || null, analysis_id: currentAnalysisId || null, verdict: verdict || null, catalyst_grade: catalystGrade || null, droppiness_score: droppinessScore ? parseFloat(droppinessScore) : null, did_fade: currentFadeSelection, hod_giveback_pct: givebackPct, note: note || null };
 
     // Upsert: if a trade_outcomes row already exists for this analysis_id, PATCH it; otherwise POST.
+    // v29: PATCH uses direct fetch() with explicit Prefer: return=minimal because
+    // supabaseRequest sends Prefer:'' on non-POST methods, which is the silent-fail
+    // pattern from v23 (Supabase returns 204 even when RLS blocks). Boris cache write
+    // already uses direct fetch for the same reason — logOutcome now matches.
     var res;
     if (currentAnalysisId) {
       var existingCheck = await supabaseRequest('trade_outcomes?analysis_id=eq.' + currentAnalysisId + '&select=id');
       var existingRows = await existingCheck.json();
       if (existingRows && existingRows.length > 0) {
-        res = await supabaseRequest('trade_outcomes?analysis_id=eq.' + currentAnalysisId, 'PATCH', payload);
+        res = await fetch(SUPABASE_URL + '/rest/v1/trade_outcomes?analysis_id=eq.' + currentAnalysisId, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': SUPABASE_KEY,
+            'Authorization': 'Bearer ' + SUPABASE_KEY,
+            'Prefer': 'return=minimal'
+          },
+          body: JSON.stringify(payload)
+        });
       } else {
         res = await supabaseRequest('trade_outcomes', 'POST', payload);
       }
