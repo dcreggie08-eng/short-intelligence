@@ -165,6 +165,13 @@
   .btn-option.sel-same { border-color:var(--text-dim); color:var(--text-dim); background:rgba(90,106,122,0.1); }
   .review-row-full { display:flex; flex-direction:column; gap:6px; margin-bottom:16px; }
   .review-actions { display:flex; align-items:center; gap:12px; margin-top:4px; }
+  /* v30 — PM/OM split review sections: visually grouped boxes */
+  .pm-om-section { border:1px solid rgba(255,255,255,0.08); border-radius:6px; padding:14px 14px 2px; margin-bottom:14px; background:rgba(255,255,255,0.015); }
+  .pm-om-section.pm-section { border-left:3px solid var(--go); }
+  .pm-om-section.om-section { border-left:3px solid var(--accent); }
+  .pm-om-section-title { font-family:var(--mono); font-size:11px; letter-spacing:2px; text-transform:uppercase; color:var(--text-dim); margin-bottom:14px; }
+  .pm-om-section.pm-section .pm-om-section-title { color:var(--go); }
+  .pm-om-section.om-section .pm-om-section-title { color:var(--accent); }
   .delete-entry-btn { font-family:var(--mono); font-size:11px; letter-spacing:1.5px; text-transform:uppercase; padding:8px 14px; background:transparent; border:1px solid rgba(255,61,90,0.35); color:var(--nogo); cursor:pointer; transition:all 0.15s; margin-left:auto; }
   .delete-entry-btn:hover { background:rgba(255,61,90,0.08); border-color:var(--nogo); }
   .delete-entry-btn:disabled { opacity:0.4; cursor:not-allowed; }
@@ -479,7 +486,8 @@
     <div class="stat-cards">
       <div class="stat-card"><div class="stat-card-label">Total Logged</div><div class="stat-card-value" id="statTotal">—</div><div class="stat-card-sub">all time</div></div>
       <div class="stat-card"><div class="stat-card-label">Reviewed</div><div class="stat-card-value" id="statReviewed">—</div><div class="stat-card-sub">with outcomes</div></div>
-      <div class="stat-card"><div class="stat-card-label">Gatekeeper Correct</div><div class="stat-card-value" id="statFadeRate">—</div><div class="stat-card-sub">verdict matched outcome</div></div>
+      <div class="stat-card"><div class="stat-card-label">PM Correct %</div><div class="stat-card-value" id="statPmCorrect">—</div><div class="stat-card-sub">gatekeeper right in pre-market</div></div>
+      <div class="stat-card"><div class="stat-card-label">OM Correct %</div><div class="stat-card-value" id="statOmCorrect">—</div><div class="stat-card-sub">gatekeeper right in open market</div></div>
       <div class="stat-card"><div class="stat-card-label">True Fade Rate</div><div class="stat-card-value" id="statTrueFade">—</div><div class="stat-card-sub">stocks that actually faded</div></div>
       <div class="stat-card"><div class="stat-card-label">GO Accuracy</div><div class="stat-card-value" id="statGoAccuracy">—</div><div class="stat-card-sub">GO calls that faded</div></div>
     </div>
@@ -643,7 +651,12 @@ const SUPABASE_KEY = 'sb_publishable_6gz5N7Txd7FbmgwKMep-PQ_V3F5XIrd';
 
 async function sbFetch(path, method, body) {
   method = method || 'GET';
-  var opts = { method: method, headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Prefer': method === 'PATCH' ? 'return=minimal' : '' } };
+  // v30: only set Content-Type when actually sending a body; only set Prefer on PATCH.
+  // The previous `Prefer: ''` empty-string pattern caused silent PATCH failures (v23 root cause on news-analyst).
+  var headers = { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY };
+  if (body) headers['Content-Type'] = 'application/json';
+  if (method === 'PATCH') headers['Prefer'] = 'return=minimal';
+  var opts = { method: method, headers: headers };
   if (body) opts.body = JSON.stringify(body);
   return fetch(SUPABASE_URL + '/rest/v1/' + path, opts);
 }
@@ -911,9 +924,19 @@ function buildReviewForm(entry) {
   // but new entries write to pm_vwap / om_vwap going forward.
   var legacyVwap = entry.vwap_at_analysis || '';
   var hodHigher = entry.hod_which_higher || '';
+  // ─── LEGACY combined-review fields (pre v30) — read for display on historic entries,
+  // not written by the new save path. New entries leave these NULL.
   var fadeDest = entry.fade_destination || '';
   var gkCorrect = entry.gatekeeper_correct || '';
   var didTrade = entry.did_trade;
+  // ─── v30 PM/OM split fields ────────────────────────────────────
+  var pmGkCorrect = entry.pm_gatekeeper_correct || '';
+  var pmFadeDest  = entry.pm_fade_destination   || '';
+  var pmDidTrade  = entry.pm_did_trade;
+  var omGkCorrect = entry.om_gatekeeper_correct || '';
+  var omFadeDest  = entry.om_fade_destination   || '';
+  var omDidTrade  = entry.om_did_trade;
+  // ───────────────────────────────────────────────────────────────
   var actualExit = entry.actual_exit_level || '';
   var note = entry.note || '';
   var noteRaw = entry.note_raw || '';
@@ -930,21 +953,36 @@ function buildReviewForm(entry) {
   if (gkCorrect) gkSel[id] = gkCorrect;
   if (didTrade !== null && didTrade !== undefined) tradeSel[id] = didTrade;
   if (backsideSqueeze) backsideSel[id] = backsideSqueeze;
-  tradeWasRecorded[id] = (entry.did_trade === true && !!entry.entry_price);
+  // v30 PM/OM state pre-population
+  if (pmGkCorrect) pmGkSel[id] = pmGkCorrect;
+  if (omGkCorrect) omGkSel[id] = omGkCorrect;
+  if (pmDidTrade !== null && pmDidTrade !== undefined) pmTradeSel[id] = pmDidTrade;
+  if (omDidTrade !== null && omDidTrade !== undefined) omTradeSel[id] = omDidTrade;
+  tradeWasRecorded[id] = ((entry.pm_did_trade === true || entry.om_did_trade === true || entry.did_trade === true) && !!entry.entry_price);
 
-  var alreadyReviewed = !!(entry.fade_destination || entry.gatekeeper_correct || entry.premarket_hod);
+  // "Reviewed" gate now also looks at the v30 fields so new entries flip the flag
+  var alreadyReviewed = !!(entry.fade_destination || entry.gatekeeper_correct || entry.premarket_hod || entry.pm_gatekeeper_correct || entry.om_gatekeeper_correct);
   var btnClass = alreadyReviewed ? 'save-review-btn saved' : 'save-review-btn';
   var btnText = alreadyReviewed ? '✓ Reviewed — Save Changes' : 'Save Review';
 
   function hodSl(v) { return hodHigher===v?'sel-'+(v==='PM'?'pm':v==='OM'?'om':'same'):''; }
+  // Legacy selectors — kept for any historic-entry display paths
   function gkSl(v) { return gkCorrect===v?(v==='YES'?'sel-yes':v==='NO'?'sel-no':'sel-partial'):''; }
   function tradSl(v) { return (v==='YES'&&didTrade===true)||(v==='NO'&&didTrade===false)?(v==='YES'?'sel-yes':'sel-no'):''; }
+  // v30 per-session selectors
+  function pmGkSl(v) { return pmGkCorrect===v?(v==='YES'?'sel-yes':v==='NO'?'sel-no':'sel-partial'):''; }
+  function omGkSl(v) { return omGkCorrect===v?(v==='YES'?'sel-yes':v==='NO'?'sel-no':'sel-partial'):''; }
+  function pmTradSl(v) { return (v==='YES'&&pmDidTrade===true)||(v==='NO'&&pmDidTrade===false)?(v==='YES'?'sel-yes':'sel-no'):''; }
+  function omTradSl(v) { return (v==='YES'&&omDidTrade===true)||(v==='NO'&&omDidTrade===false)?(v==='YES'?'sel-yes':'sel-no'):''; }
 
   var fadeOpts = ['VWAP','Ghost Pivot','100% Fib','76% Fib','61% Fib','50% Fib','38% Fib','Below VWAP','Did Not Fade'];
   var exitOpts = ['VWAP','Ghost Pivot','100% Fib','76% Fib','61% Fib','50% Fib','38% Fib','Below VWAP','Stopped Out','Held O/N'];
 
-  var fadeSelect = '<select class="review-select" id="fadeDest-' + id + '"><option value="">Select destination...</option>' +
-    fadeOpts.map(function(o){return '<option value="'+o+'"'+(fadeDest===o?' selected':'')+'>'+o+'</option>';}).join('') + '</select>';
+  // v30: legacy single fadeSelect removed (replaced by pmFadeSelect / omFadeSelect above).
+  var pmFadeSelect = '<select class="review-select" id="pmFadeDest-' + id + '"><option value="">Select destination...</option>' +
+    fadeOpts.map(function(o){return '<option value="'+o+'"'+(pmFadeDest===o?' selected':'')+'>'+o+'</option>';}).join('') + '</select>';
+  var omFadeSelect = '<select class="review-select" id="omFadeDest-' + id + '"><option value="">Select destination...</option>' +
+    fadeOpts.map(function(o){return '<option value="'+o+'"'+(omFadeDest===o?' selected':'')+'>'+o+'</option>';}).join('') + '</select>';
   var exitSelect = '<select class="review-select" id="exitLevel-' + id + '"><option value="">Select exit...</option>' +
     exitOpts.map(function(o){return '<option value="'+o+'"'+(actualExit===o?' selected':'')+'>'+o+'</option>';}).join('') + '</select>';
 
@@ -985,17 +1023,35 @@ function buildReviewForm(entry) {
       '<button class="btn-option '+hodSl('OM')+'" onclick="selectHOD(\''+id+'\',\'OM\')">Open Market</button>' +
       '<button class="btn-option '+hodSl('Same')+'" onclick="selectHOD(\''+id+'\',\'Same\')">Same / Close</button>' +
     '</div></div>' +
-    '<div class="review-row-full"><div class="review-label">Where Did It Fade To?</div>' + fadeSelect + '</div>' +
-    '<div class="review-row-full"><div class="review-label">Was the Gatekeeper Correct?</div><div class="btn-group">' +
-      '<button class="btn-option '+gkSl('YES')+'" onclick="selectGK(\''+id+'\',\'YES\')">✓ Yes</button>' +
-      '<button class="btn-option '+gkSl('NO')+'" onclick="selectGK(\''+id+'\',\'NO\')">✗ No</button>' +
-      '<button class="btn-option '+gkSl('PARTIAL')+'" onclick="selectGK(\''+id+'\',\'PARTIAL\')">~ Partial</button>' +
-    '</div></div>' +
-    '<div class="review-row-full"><div class="review-label">Did You Trade It?</div><div class="btn-group">' +
-      '<button class="btn-option '+tradSl('YES')+'" onclick="selectTrade(\''+id+'\',true)">Yes</button>' +
-      '<button class="btn-option '+tradSl('NO')+'" onclick="selectTrade(\''+id+'\',false)">No</button>' +
-    '</div></div>' +
-    '<div class="review-row-full trade-prices-row" id="tradePrices-'+id+'" style="display:'+(didTrade?'flex':'none')+';flex-direction:column;gap:6px;">' +
+    // ─── v30 PM/OM split review sections ───────────────────────────
+    '<div class="pm-om-section pm-section">' +
+      '<div class="pm-om-section-title">Pre-Market Review</div>' +
+      '<div class="review-row-full"><div class="review-label">Was the Gatekeeper Correct in PM?</div><div class="btn-group">' +
+        '<button class="btn-option '+pmGkSl('YES')+'" onclick="selectPmGK(\''+id+'\',\'YES\')">✓ Yes</button>' +
+        '<button class="btn-option '+pmGkSl('NO')+'" onclick="selectPmGK(\''+id+'\',\'NO\')">✗ No</button>' +
+        '<button class="btn-option '+pmGkSl('PARTIAL')+'" onclick="selectPmGK(\''+id+'\',\'PARTIAL\')">~ Partial</button>' +
+      '</div></div>' +
+      '<div class="review-row-full"><div class="review-label">Where Did It Fade To in PM?</div>' + pmFadeSelect + '</div>' +
+      '<div class="review-row-full"><div class="review-label">Did You Trade in PM?</div><div class="btn-group">' +
+        '<button class="btn-option '+pmTradSl('YES')+'" onclick="selectPmTrade(\''+id+'\',true)">Yes</button>' +
+        '<button class="btn-option '+pmTradSl('NO')+'" onclick="selectPmTrade(\''+id+'\',false)">No</button>' +
+      '</div></div>' +
+    '</div>' +
+    '<div class="pm-om-section om-section">' +
+      '<div class="pm-om-section-title">Open Market Review</div>' +
+      '<div class="review-row-full"><div class="review-label">Was the Gatekeeper Correct in OM?</div><div class="btn-group">' +
+        '<button class="btn-option '+omGkSl('YES')+'" onclick="selectOmGK(\''+id+'\',\'YES\')">✓ Yes</button>' +
+        '<button class="btn-option '+omGkSl('NO')+'" onclick="selectOmGK(\''+id+'\',\'NO\')">✗ No</button>' +
+        '<button class="btn-option '+omGkSl('PARTIAL')+'" onclick="selectOmGK(\''+id+'\',\'PARTIAL\')">~ Partial</button>' +
+      '</div></div>' +
+      '<div class="review-row-full"><div class="review-label">Where Did It Fade To in OM?</div>' + omFadeSelect + '</div>' +
+      '<div class="review-row-full"><div class="review-label">Did You Trade in OM?</div><div class="btn-group">' +
+        '<button class="btn-option '+omTradSl('YES')+'" onclick="selectOmTrade(\''+id+'\',true)">Yes</button>' +
+        '<button class="btn-option '+omTradSl('NO')+'" onclick="selectOmTrade(\''+id+'\',false)">No</button>' +
+      '</div></div>' +
+    '</div>' +
+    // ───────────────────────────────────────────────────────────────
+    '<div class="review-row-full trade-prices-row" id="tradePrices-'+id+'" style="display:'+((pmDidTrade===true||omDidTrade===true)?'flex':'none')+';flex-direction:column;gap:6px;">' +
       '<div class="review-label">Your Actual Exit Level</div>' + exitSelect +
       '<div class="review-label" style="margin-top:10px;">Trade Prices — for Journal</div>' +
       '<div style="display:flex;gap:12px;flex-wrap:wrap;">' +
@@ -1021,6 +1077,8 @@ function buildReviewForm(entry) {
 }
 
 var hodSel={}, gkSel={}, tradeSel={}, tagSel={}, backsideSel={}, tradeWasRecorded={}, tradeOutcomeId={};
+// v30 — PM/OM split selection state
+var pmGkSel={}, omGkSel={}, pmTradeSel={}, omTradeSel={};
 
 function toggleOmVwapBelow(id) {
   var cb = document.getElementById('omVwapBelowVwap-'+id);
@@ -1090,6 +1148,48 @@ function selectTrade(id, val) {
   var priceRow = document.getElementById('tradePrices-'+id);
   if (priceRow) priceRow.style.display = val === true ? 'flex' : 'none';
 }
+
+// ─── v30 — PM/OM split selection handlers ───────────────────────
+// btn-group positional indices in the new markup:
+//   [0] HOD higher  [1] PM gk  [2] PM trade  [3] OM gk  [4] OM trade
+// Backside Squeeze has its own id and is not positional.
+
+function selectPmGK(id, val) {
+  pmGkSel[id] = val;
+  var opts=['YES','NO','PARTIAL'], map={'YES':'sel-yes','NO':'sel-no','PARTIAL':'sel-partial'};
+  var g = document.querySelectorAll('#form-'+id+' .btn-group')[1];
+  if (g) g.querySelectorAll('.btn-option').forEach(function(b,i){b.className='btn-option'+(opts[i]===val?' '+map[opts[i]]:'');});
+}
+
+function selectPmTrade(id, val) {
+  pmTradeSel[id] = val;
+  var g = document.querySelectorAll('#form-'+id+' .btn-group')[2];
+  if (g) g.querySelectorAll('.btn-option').forEach(function(b,i){var m=(i===0&&val===true)||(i===1&&val===false);b.className='btn-option'+(m?(i===0?' sel-yes':' sel-no'):'');});
+  updateTradePriceVisibility(id);
+}
+
+function selectOmGK(id, val) {
+  omGkSel[id] = val;
+  var opts=['YES','NO','PARTIAL'], map={'YES':'sel-yes','NO':'sel-no','PARTIAL':'sel-partial'};
+  var g = document.querySelectorAll('#form-'+id+' .btn-group')[3];
+  if (g) g.querySelectorAll('.btn-option').forEach(function(b,i){b.className='btn-option'+(opts[i]===val?' '+map[opts[i]]:'');});
+}
+
+function selectOmTrade(id, val) {
+  omTradeSel[id] = val;
+  var g = document.querySelectorAll('#form-'+id+' .btn-group')[4];
+  if (g) g.querySelectorAll('.btn-option').forEach(function(b,i){var m=(i===0&&val===true)||(i===1&&val===false);b.className='btn-option'+(m?(i===0?' sel-yes':' sel-no'):'');});
+  updateTradePriceVisibility(id);
+}
+
+// Trade-price row shows when EITHER session was traded.
+function updateTradePriceVisibility(id) {
+  var priceRow = document.getElementById('tradePrices-'+id);
+  if (!priceRow) return;
+  var anyTrade = pmTradeSel[id] === true || omTradeSel[id] === true;
+  priceRow.style.display = anyTrade ? 'flex' : 'none';
+}
+// ────────────────────────────────────────────────────────────────
 
 function selectBackside(id, val) {
   backsideSel[id] = val;
@@ -1173,8 +1273,10 @@ async function saveReview(id) {
   }
   var vwapExtPct = (trueHod && matchedVwap) ? calcExtPct(trueHod, matchedVwap) : null;
 
-  var fadeDest = document.getElementById('fadeDest-'+id).value||null;
-  var exitLevel = document.getElementById('exitLevel-'+id).value||null;
+  // v30: legacy single fadeDest select removed (replaced by pmFadeDest / omFadeDest).
+  // exitLevel still exists inside the trade-prices row (one exit level per entry,
+  // session-agnostic), so read it defensively here.
+  var exitLevel = document.getElementById('exitLevel-'+id) ? (document.getElementById('exitLevel-'+id).value || null) : null;
   var note = document.getElementById('note-'+id).value.trim()||null;
 
   // ─── NOTE SPELL-CORRECTION ─────────────────────────────────────
@@ -1192,8 +1294,19 @@ async function saveReview(id) {
   // ───────────────────────────────────────────────────────────────
 
   var hodHigher = hodSel[id]||null;
+  // ─── LEGACY — gkSel/tradeSel/fadeDest no longer driven by UI (v30 split).
+  // Reads kept as null-safe but values stay null on new entries; preserved for any
+  // historic interactions that might re-fire selectGK/selectTrade.
   var gkCorrect = gkSel[id]||null;
   var didTrade = tradeSel[id]!==undefined?tradeSel[id]:null;
+  // ─── v30 PM/OM split reads ────────────────────────────────────
+  var pmGkCorrect = pmGkSel[id]||null;
+  var omGkCorrect = omGkSel[id]||null;
+  var pmDidTrade  = pmTradeSel[id]!==undefined?pmTradeSel[id]:null;
+  var omDidTrade  = omTradeSel[id]!==undefined?omTradeSel[id]:null;
+  var pmFadeDest  = document.getElementById('pmFadeDest-'+id) ? (document.getElementById('pmFadeDest-'+id).value || null) : null;
+  var omFadeDest  = document.getElementById('omFadeDest-'+id) ? (document.getElementById('omFadeDest-'+id).value || null) : null;
+  // ───────────────────────────────────────────────────────────────
   var entryPrice = parseFloat(document.getElementById('entryPrice-'+id) && document.getElementById('entryPrice-'+id).value)||null;
   var exitPrice = parseFloat(document.getElementById('exitPrice-'+id) && document.getElementById('exitPrice-'+id).value)||null;
   var marketContext = document.getElementById('marketContext-'+id) ? (document.getElementById('marketContext-'+id).value.trim() || null) : null;
@@ -1212,9 +1325,9 @@ async function saveReview(id) {
     om_vwap: omVwap,
     vwap_extension_pct: vwapExtPct,
     hod_which_higher: hodHigher,
-    fade_destination: fadeDest,
-    gatekeeper_correct: gkCorrect,
-    did_trade: didTrade,
+    // v30: legacy combined fields no longer written on new saves.
+    // Existing historic values stay in place (PATCH doesn't null them out
+    // unless we send null) — we simply omit them from the payload.
     actual_exit_level: exitLevel,
     entry_price: entryPrice,
     exit_price: exitPrice,
@@ -1227,7 +1340,14 @@ async function saveReview(id) {
     market_strength_rating: marketStrengthRating,
     pm_hod_time: pmHodTime,
     om_hod_time: omHodTime,
-    om_vwap_below_vwap: omVwapBelowVwap
+    om_vwap_below_vwap: omVwapBelowVwap,
+    // v30 PM/OM split fields
+    pm_gatekeeper_correct: pmGkCorrect,
+    pm_fade_destination:   pmFadeDest,
+    pm_did_trade:          pmDidTrade,
+    om_gatekeeper_correct: omGkCorrect,
+    om_fade_destination:   omFadeDest,
+    om_did_trade:          omDidTrade
   };
 
   try {
@@ -1235,89 +1355,102 @@ async function saveReview(id) {
     var res = await sbFetch('scanner_log?id=eq.'+id, 'PATCH', payload);
     if (!res.ok) throw new Error('Scanner log save failed');
 
-    // Step 2 — if traded, derive did_fade and write/update trade_outcomes
-    if (didTrade === true) {
+    // ─── v30 Step 2 — trade_outcomes upsert, per-session ──────────
+    // Item 1 fix: actually populate analysis_id (looked up from news_analyses
+    // by ticker+date), so the new composite-key (analysis_id, session)
+    // upsert resolves correctly. NULLs would silently produce duplicates.
+    if (pmDidTrade === true || omDidTrade === true) {
       // Fetch the full scanner log entry to get ticker, verdict, grade, droppiness
       var entryRes = await sbFetch('scanner_log?id=eq.'+id+'&select=*');
       var entryData = await entryRes.json();
       var entry = entryData && entryData[0];
 
       if (entry) {
-        // Derive did_fade from verdict + gatekeeper_correct
+        // Look up matching news_analyses row to populate analysis_id properly.
+        // Match by ticker + trading_date, most recent (handles same-ticker-same-day re-analysis).
+        var linkedAnalysisId = null;
+        try {
+          var naRes = await sbFetch('news_analyses?ticker=eq.' + encodeURIComponent(entry.ticker || '') + '&trading_date=eq.' + (entry.trading_date || '') + '&select=id&order=created_at.desc&limit=1');
+          var naData = await naRes.json();
+          if (naData && naData[0] && naData[0].id) linkedAnalysisId = naData[0].id;
+        } catch (lookupErr) {
+          console.warn('news_analyses analysis_id lookup failed:', lookupErr);
+        }
+
         var isBlockVerdict = entry.verdict === 'NO TRADE' || entry.verdict === 'NO GO';
-        var didFade;
-        if (gkCorrect === 'YES') {
-          didFade = !isBlockVerdict;
-        } else if (gkCorrect === 'NO') {
-          didFade = isBlockVerdict ? true : false;
-        } else {
-          didFade = true;
+
+        // Per-session did_fade derivation — each session's gatekeeper_correct
+        // judges that session's outcome.
+        function deriveSessionDidFade(sessionGk) {
+          if (sessionGk === 'YES') return !isBlockVerdict;
+          if (sessionGk === 'NO')  return isBlockVerdict ? true : false;
+          if (sessionGk === 'PARTIAL') return true;
+          return null;
         }
 
-        // Calculate giveback % using TRUE HOD (whichever of PM/OM is higher)
-        var givebackPct = null;
-        var trueHodForGiveback = Math.max(pmHod || 0, omHod || 0) || null;
-        if (trueHodForGiveback && exitPrice && trueHodForGiveback > exitPrice) {
-          givebackPct = Math.round(((trueHodForGiveback - exitPrice) / trueHodForGiveback) * 100);
+        // Per-session giveback — uses THAT session's HOD as the reference,
+        // not the combined max. Entry/exit prices are single values (Phase 2
+        // accepts this; per-session prices is a future refinement if needed).
+        function sessionGiveback(sessionHod) {
+          if (sessionHod && exitPrice && sessionHod > exitPrice) {
+            return Math.round(((sessionHod - exitPrice) / sessionHod) * 100);
+          }
+          return null;
         }
 
-        var tradePayload = {
-          ticker: entry.ticker || null,
-          analysis_id: null,
-          trading_date: entry.trading_date || null,
-          verdict: entry.verdict || null,
-          catalyst_grade: entry.catalyst_grade || null,
-          droppiness_score: entry.droppiness_score ? parseFloat(entry.droppiness_score) : null,
-          did_fade: didFade,
-          hod_giveback_pct: givebackPct,
-          note: noteResult.corrected || null,
-          note_raw: noteResult.raw || null,
-          note_corrected: noteResult.succeeded
-        };
-
-        if (!tradeWasRecorded[id]) {
-          // First time — INSERT and capture returned ID
-          var insertRes = await fetch(SUPABASE_URL + '/rest/v1/trade_outcomes', {
+        // Single session upsert function — POST with on_conflict resolution.
+        async function upsertSessionOutcome(session, sessionHod, sessionGk) {
+          var didFade = deriveSessionDidFade(sessionGk);
+          var givebackPct = sessionGiveback(sessionHod);
+          var payload = {
+            ticker: entry.ticker || null,
+            analysis_id: linkedAnalysisId,
+            session: session,
+            trading_date: entry.trading_date || null,
+            verdict: entry.verdict || null,
+            catalyst_grade: entry.catalyst_grade || null,
+            droppiness_score: entry.droppiness_score ? parseFloat(entry.droppiness_score) : null,
+            did_fade: didFade,
+            hod_giveback_pct: givebackPct,
+            note: noteResult.corrected || null,
+            note_raw: noteResult.raw || null,
+            note_corrected: noteResult.succeeded
+          };
+          // PostgREST upsert via on_conflict=analysis_id,session + merge-duplicates.
+          // The composite unique constraint trade_outcomes_analysis_session_unique
+          // (added in Phase 1) is what makes this idempotent on re-saves.
+          return fetch(SUPABASE_URL + '/rest/v1/trade_outcomes?on_conflict=analysis_id,session', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Prefer': 'return=representation' },
-            body: JSON.stringify(tradePayload)
+            headers: {
+              'Content-Type': 'application/json',
+              'apikey': SUPABASE_KEY,
+              'Authorization': 'Bearer ' + SUPABASE_KEY,
+              'Prefer': 'resolution=merge-duplicates,return=minimal'
+            },
+            body: JSON.stringify(payload)
           });
-          var insertData = await insertRes.json();
-          if (insertData && insertData[0] && insertData[0].id) {
-            tradeOutcomeId[id] = insertData[0].id;
-          }
-          tradeWasRecorded[id] = true;
-        } else {
-          // Re-save — look up most recent row for this ticker then PATCH by ID
-          var lookupRes = await fetch(SUPABASE_URL + '/rest/v1/trade_outcomes?ticker=eq.' + encodeURIComponent(entry.ticker || '') + '&order=created_at.desc&limit=1&select=id', {
-            headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY }
-          });
-          var lookupData = await lookupRes.json();
-          var rowId = (tradeOutcomeId[id]) || (lookupData && lookupData[0] && lookupData[0].id);
-          if (rowId) {
-            await fetch(SUPABASE_URL + '/rest/v1/trade_outcomes?id=eq.' + rowId, {
-              method: 'PATCH',
-              headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Prefer': 'return=minimal' },
-              body: JSON.stringify({
-                did_fade: didFade,
-                hod_giveback_pct: givebackPct,
-                note: noteResult.corrected || null,
-                note_raw: noteResult.raw || null,
-                note_corrected: noteResult.succeeded,
-                trading_date: entry.trading_date || null
-              })
-            });
-          }
         }
+
+        if (pmDidTrade === true) {
+          try { await upsertSessionOutcome('PM', pmHod, pmGkCorrect); }
+          catch (e) { console.error('PM trade_outcomes upsert failed:', e); }
+        }
+        if (omDidTrade === true) {
+          try { await upsertSessionOutcome('OM', omHod, omGkCorrect); }
+          catch (e) { console.error('OM trade_outcomes upsert failed:', e); }
+        }
+        tradeWasRecorded[id] = true;
       }
     }
+    // ───────────────────────────────────────────────────────────────
 
     // Step 3 — update UI
-    btn.textContent = didTrade ? '✓ Reviewed — Saved + Journal Updated' : '✓ Reviewed — Save Changes';
+    var anyTrade = (pmDidTrade === true) || (omDidTrade === true);
+    btn.textContent = anyTrade ? '✓ Reviewed — Saved + Journal Updated' : '✓ Reviewed — Save Changes';
     btn.className='save-review-btn saved';
     btn.disabled = false;
     msg.className='review-save-msg visible';
-    msg.textContent = didTrade ? '✓ Scanner log saved and trade written to Journal' : '✓ Review saved';
+    msg.textContent = anyTrade ? '✓ Scanner log saved and trade written to Journal' : '✓ Review saved';
     var h = document.querySelector('#card-'+id+' .entry-header');
     if (h && !h.querySelector('.entry-saved-indicator')) {
       var b=document.createElement('span'); b.className='entry-saved-indicator'; b.textContent='✓ Reviewed';
@@ -1398,30 +1531,59 @@ async function loadAnalytics() {
     var data = await res.json();
     if (!Array.isArray(data)) return;
     var total = data.length;
-    var reviewed = data.filter(function(d){return d.fade_destination||d.gatekeeper_correct;}).length;
-    var faded = data.filter(function(d){return d.gatekeeper_correct==='YES';}).length;
-    var fadeRate = reviewed>0?Math.round(faded/reviewed*100):null;
+    // v30: "Reviewed" now also counts entries reviewed via the PM/OM split fields,
+    // so new entries flip the gate even though they no longer touch legacy fields.
+    var reviewed = data.filter(function(d){
+      return d.fade_destination || d.gatekeeper_correct || d.pm_gatekeeper_correct || d.om_gatekeeper_correct;
+    }).length;
     var goCalls = data.filter(function(d){return d.verdict==='GO'&&d.gatekeeper_correct;});
     var goCorrect = goCalls.filter(function(d){return d.gatekeeper_correct==='YES';}).length;
     var goAcc = goCalls.length>0?Math.round(goCorrect/goCalls.length*100):null;
 
     // True fade rate using did_fade derivation (verdict + gatekeeper_correct → actual outcome)
+    // Phase 2 note: deeper analytics (this stat included) still ride the legacy field.
+    // Re-cut for the PM/OM split in a later phase once data accumulates.
     var derivedSet = data.filter(function(d){return d.gatekeeper_correct;});
     var trueFaded = derivedSet.filter(function(d){return derivedDidFade(d) === true;}).length;
     var trueFadeRate = derivedSet.length>0?Math.round(trueFaded/derivedSet.length*100):null;
 
-    // Discipline metrics — did_trade stored as boolean true/false; null/undefined means unanswered
-    var blockSet = data.filter(function(d){return (d.verdict==='NO TRADE'||d.verdict==='NO GO') && (d.did_trade===true || d.did_trade===false || d.did_trade==='YES' || d.did_trade==='NO');});
-    var notTraded = blockSet.filter(function(d){return d.did_trade===false || d.did_trade==='NO';}).length;
+    // ─── v30 PM/OM correctness stats ─────────────────────────────
+    // Each session's correctness counted independently, against entries where
+    // that session's gatekeeper_correct field is set (YES/NO/PARTIAL).
+    var pmReviewed = data.filter(function(d){return d.pm_gatekeeper_correct;});
+    var pmCorrect  = pmReviewed.filter(function(d){return d.pm_gatekeeper_correct === 'YES';}).length;
+    var pmCorrectPct = pmReviewed.length > 0 ? Math.round(pmCorrect / pmReviewed.length * 100) : null;
+
+    var omReviewed = data.filter(function(d){return d.om_gatekeeper_correct;});
+    var omCorrect  = omReviewed.filter(function(d){return d.om_gatekeeper_correct === 'YES';}).length;
+    var omCorrectPct = omReviewed.length > 0 ? Math.round(omCorrect / omReviewed.length * 100) : null;
+    // ─────────────────────────────────────────────────────────────
+
+    // Discipline metrics — counts entries that answered ANY trade question
+    // (legacy did_trade OR v30 pm_did_trade OR v30 om_did_trade).
+    function anyTradeAnswered(d) {
+      return d.did_trade === true || d.did_trade === false ||
+             d.did_trade === 'YES' || d.did_trade === 'NO' ||
+             d.pm_did_trade === true || d.pm_did_trade === false ||
+             d.om_did_trade === true || d.om_did_trade === false;
+    }
+    function anyTradeTaken(d) {
+      return d.did_trade === true || d.did_trade === 'YES' ||
+             d.pm_did_trade === true || d.om_did_trade === true;
+    }
+    var blockSet = data.filter(function(d){return (d.verdict==='NO TRADE'||d.verdict==='NO GO') && anyTradeAnswered(d);});
+    var notTraded = blockSet.filter(function(d){return !anyTradeTaken(d);}).length;
     var adherence = blockSet.length>0?Math.round(notTraded/blockSet.length*100):null;
 
-    var goSet = data.filter(function(d){return (d.verdict==='GO'||d.verdict==='CAUTION') && (d.did_trade===true || d.did_trade===false || d.did_trade==='YES' || d.did_trade==='NO');});
-    var traded = goSet.filter(function(d){return d.did_trade===true || d.did_trade==='YES';}).length;
+    var goSet = data.filter(function(d){return (d.verdict==='GO'||d.verdict==='CAUTION') && anyTradeAnswered(d);});
+    var traded = goSet.filter(function(d){return anyTradeTaken(d);}).length;
     var engagement = goSet.length>0?Math.round(traded/goSet.length*100):null;
 
     document.getElementById('statTotal').textContent=total;
     document.getElementById('statReviewed').textContent=reviewed;
-    document.getElementById('statFadeRate').textContent=fadeRate!==null?fadeRate+'%':'—';
+    // v30: split Gatekeeper Correct into two cards
+    document.getElementById('statPmCorrect').textContent = pmCorrectPct !== null ? pmCorrectPct + '%' : '—';
+    document.getElementById('statOmCorrect').textContent = omCorrectPct !== null ? omCorrectPct + '%' : '—';
     document.getElementById('statTrueFade').textContent=trueFadeRate!==null?trueFadeRate+'%':'—';
     document.getElementById('statGoAccuracy').textContent=goAcc!==null?goAcc+'%':'—';
     document.getElementById('statAdherence').textContent=adherence!==null?adherence+'%':'—';
