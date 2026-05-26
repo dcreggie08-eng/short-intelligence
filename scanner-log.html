@@ -174,6 +174,9 @@
   .pm-om-section-title { font-family:var(--mono); font-size:13px; font-weight:700; letter-spacing:2.5px; text-transform:uppercase; color:var(--text-dim); margin-bottom:14px; }
   .pm-om-section.pm-section .pm-om-section-title { color:var(--go); }
   .pm-om-section.om-section .pm-om-section-title { color:var(--accent); }
+  /* v30.2 — PM-section field labels in green to match PRE-MARKET HOD / VWAP labels
+     above; OM stays cyan (default --accent). Unifies the visual identity of each section. */
+  .pm-om-section.pm-section .review-label { color:var(--go); }
   .delete-entry-btn { font-family:var(--mono); font-size:11px; letter-spacing:1.5px; text-transform:uppercase; padding:8px 14px; background:transparent; border:1px solid rgba(255,61,90,0.35); color:var(--nogo); cursor:pointer; transition:all 0.15s; margin-left:auto; }
   .delete-entry-btn:hover { background:rgba(255,61,90,0.08); border-color:var(--nogo); }
   .delete-entry-btn:disabled { opacity:0.4; cursor:not-allowed; }
@@ -1369,10 +1372,13 @@ async function saveReview(id) {
 
       if (entry) {
         // Look up matching news_analyses row to populate analysis_id properly.
-        // Match by ticker + trading_date, most recent (handles same-ticker-same-day re-analysis).
+        // v30.2: news_analyses doesn't carry a trading_date column — only created_at.
+        // Match by ticker + most recent created_at, per the v23 Boris cache fallback pattern.
+        // Edge case: same ticker analysed on different days then evening-reviewed late could
+        // link to the wrong news_analyses row. Acceptable for now — same-day review is typical.
         var linkedAnalysisId = null;
         try {
-          var naRes = await sbFetch('news_analyses?ticker=eq.' + encodeURIComponent(entry.ticker || '') + '&trading_date=eq.' + (entry.trading_date || '') + '&select=id&order=created_at.desc&limit=1');
+          var naRes = await sbFetch('news_analyses?ticker=eq.' + encodeURIComponent(entry.ticker || '') + '&select=id&order=created_at.desc&limit=1');
           var naData = await naRes.json();
           if (naData && naData[0] && naData[0].id) linkedAnalysisId = naData[0].id;
         } catch (lookupErr) {
