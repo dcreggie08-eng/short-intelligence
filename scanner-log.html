@@ -915,7 +915,13 @@ function toggleCard(id) {
   var isOpen = form.classList.contains('open');
   form.classList.toggle('open', !isOpen);
   // When opening, refresh the VWAP extension line from current input values
-  if (!isOpen) { try { calcVwapExt(id); } catch(e) {} try { calcGivebackPreview(id); } catch(e) {} }
+  // and the v30.3 read-only gatekeeper-derived displays for both sessions.
+  if (!isOpen) {
+    try { calcVwapExt(id); } catch(e) {}
+    try { calcGivebackPreview(id); } catch(e) {}
+    try { updateGkDerived(id, 'pm'); } catch(e) {}
+    try { updateGkDerived(id, 'om'); } catch(e) {}
+  }
   toggle.textContent = isOpen ? '▼' : '▲';
 }
 
@@ -963,6 +969,8 @@ function buildReviewForm(entry) {
   if (omGkCorrect) omGkSel[id] = omGkCorrect;
   if (pmDidTrade !== null && pmDidTrade !== undefined) pmTradeSel[id] = pmDidTrade;
   if (omDidTrade !== null && omDidTrade !== undefined) omTradeSel[id] = omDidTrade;
+  // v30.3: stash this entry's verdict for the auto-derive gatekeeper display
+  entryVerdict[id] = entry.verdict || '';
   tradeWasRecorded[id] = ((entry.pm_did_trade === true || entry.om_did_trade === true || entry.did_trade === true) && !!entry.entry_price);
 
   // "Reviewed" gate now also looks at the v30 fields so new entries flip the flag
@@ -983,11 +991,9 @@ function buildReviewForm(entry) {
   var fadeOpts = ['VWAP','Ghost Pivot','100% Fib','76% Fib','61% Fib','50% Fib','38% Fib','Below VWAP','Did Not Fade'];
   var exitOpts = ['VWAP','Ghost Pivot','100% Fib','76% Fib','61% Fib','50% Fib','38% Fib','Below VWAP','Stopped Out','Held O/N'];
 
-  // v30: legacy single fadeSelect removed (replaced by pmFadeSelect / omFadeSelect above).
-  var pmFadeSelect = '<select class="review-select" id="pmFadeDest-' + id + '"><option value="">Select destination...</option>' +
-    fadeOpts.map(function(o){return '<option value="'+o+'"'+(pmFadeDest===o?' selected':'')+'>'+o+'</option>';}).join('') + '</select>';
-  var omFadeSelect = '<select class="review-select" id="omFadeDest-' + id + '"><option value="">Select destination...</option>' +
-    fadeOpts.map(function(o){return '<option value="'+o+'"'+(omFadeDest===o?' selected':'')+'>'+o+'</option>';}).join('') + '</select>';
+  // v30.3: pm/om fade selects are inlined directly in the markup below
+  // (each with an onchange handler that fires updateGkDerived to refresh the
+  // read-only derived gatekeeper_correct display under the dropdown).
   var exitSelect = '<select class="review-select" id="exitLevel-' + id + '"><option value="">Select exit...</option>' +
     exitOpts.map(function(o){return '<option value="'+o+'"'+(actualExit===o?' selected':'')+'>'+o+'</option>';}).join('') + '</select>';
 
@@ -1028,15 +1034,15 @@ function buildReviewForm(entry) {
       '<button class="btn-option '+hodSl('OM')+'" onclick="selectHOD(\''+id+'\',\'OM\')">Open Market</button>' +
       '<button class="btn-option '+hodSl('Same')+'" onclick="selectHOD(\''+id+'\',\'Same\')">Same / Close</button>' +
     '</div></div>' +
-    // ─── v30 PM/OM split review sections ───────────────────────────
+    // ─── v30 PM/OM split review sections (v30.3: gatekeeper_correct now derived from
+    // verdict + fade_destination per the 38% fib rule — no more manual YES/NO/PARTIAL clicks) ─
     '<div class="pm-om-section pm-section">' +
       '<div class="pm-om-section-title">Pre-Market Review</div>' +
-      '<div class="review-row-full"><div class="review-label">Was the Gatekeeper Correct in PM?</div><div class="btn-group">' +
-        '<button class="btn-option '+pmGkSl('YES')+'" onclick="selectPmGK(\''+id+'\',\'YES\')">✓ Yes</button>' +
-        '<button class="btn-option '+pmGkSl('NO')+'" onclick="selectPmGK(\''+id+'\',\'NO\')">✗ No</button>' +
-        '<button class="btn-option '+pmGkSl('PARTIAL')+'" onclick="selectPmGK(\''+id+'\',\'PARTIAL\')">~ Partial</button>' +
-      '</div></div>' +
-      '<div class="review-row-full"><div class="review-label">Where Did It Fade To in PM?</div>' + pmFadeSelect + '</div>' +
+      '<div class="review-row-full"><div class="review-label">Where Did It Fade To in PM?</div>' +
+        '<select class="review-select" id="pmFadeDest-' + id + '" onchange="updateGkDerived(\''+id+'\',\'pm\')"><option value="">Select destination...</option>' +
+        fadeOpts.map(function(o){return '<option value="'+o+'"'+(pmFadeDest===o?' selected':'')+'>'+o+'</option>';}).join('') + '</select>' +
+        '<div class="gk-derived-display" id="pmGkDerived-' + id + '" style="margin-top:6px;font-family:var(--mono);font-size:11px;min-height:14px;"></div>' +
+      '</div>' +
       '<div class="review-row-full"><div class="review-label">Did You Trade in PM?</div><div class="btn-group">' +
         '<button class="btn-option '+pmTradSl('YES')+'" onclick="selectPmTrade(\''+id+'\',true)">Yes</button>' +
         '<button class="btn-option '+pmTradSl('NO')+'" onclick="selectPmTrade(\''+id+'\',false)">No</button>' +
@@ -1044,12 +1050,11 @@ function buildReviewForm(entry) {
     '</div>' +
     '<div class="pm-om-section om-section">' +
       '<div class="pm-om-section-title">Open Market Review</div>' +
-      '<div class="review-row-full"><div class="review-label">Was the Gatekeeper Correct in OM?</div><div class="btn-group">' +
-        '<button class="btn-option '+omGkSl('YES')+'" onclick="selectOmGK(\''+id+'\',\'YES\')">✓ Yes</button>' +
-        '<button class="btn-option '+omGkSl('NO')+'" onclick="selectOmGK(\''+id+'\',\'NO\')">✗ No</button>' +
-        '<button class="btn-option '+omGkSl('PARTIAL')+'" onclick="selectOmGK(\''+id+'\',\'PARTIAL\')">~ Partial</button>' +
-      '</div></div>' +
-      '<div class="review-row-full"><div class="review-label">Where Did It Fade To in OM?</div>' + omFadeSelect + '</div>' +
+      '<div class="review-row-full"><div class="review-label">Where Did It Fade To in OM?</div>' +
+        '<select class="review-select" id="omFadeDest-' + id + '" onchange="updateGkDerived(\''+id+'\',\'om\')"><option value="">Select destination...</option>' +
+        fadeOpts.map(function(o){return '<option value="'+o+'"'+(omFadeDest===o?' selected':'')+'>'+o+'</option>';}).join('') + '</select>' +
+        '<div class="gk-derived-display" id="omGkDerived-' + id + '" style="margin-top:6px;font-family:var(--mono);font-size:11px;min-height:14px;"></div>' +
+      '</div>' +
       '<div class="review-row-full"><div class="review-label">Did You Trade in OM?</div><div class="btn-group">' +
         '<button class="btn-option '+omTradSl('YES')+'" onclick="selectOmTrade(\''+id+'\',true)">Yes</button>' +
         '<button class="btn-option '+omTradSl('NO')+'" onclick="selectOmTrade(\''+id+'\',false)">No</button>' +
@@ -1154,35 +1159,25 @@ function selectTrade(id, val) {
   if (priceRow) priceRow.style.display = val === true ? 'flex' : 'none';
 }
 
-// ─── v30 — PM/OM split selection handlers ───────────────────────
-// btn-group positional indices in the new markup:
-//   [0] HOD higher  [1] PM gk  [2] PM trade  [3] OM gk  [4] OM trade
-// Backside Squeeze has its own id and is not positional.
-
-function selectPmGK(id, val) {
-  pmGkSel[id] = val;
-  var opts=['YES','NO','PARTIAL'], map={'YES':'sel-yes','NO':'sel-no','PARTIAL':'sel-partial'};
-  var g = document.querySelectorAll('#form-'+id+' .btn-group')[1];
-  if (g) g.querySelectorAll('.btn-option').forEach(function(b,i){b.className='btn-option'+(opts[i]===val?' '+map[opts[i]]:'');});
-}
+// ─── v30.3 — PM/OM split selection handlers ─────────────────────
+// Gatekeeper_correct YES/NO/PARTIAL buttons retired in v30.3; correctness is now
+// derived automatically from verdict + fade_destination per the 38% Fib rule
+// (see deriveGatekeeperCorrect below and briefing Section 9 / v30.3 entry).
+//
+// btn-group positional indices in the v30.3 markup:
+//   [0] HOD higher   [1] PM trade   [2] OM trade
+// Backside Squeeze has its own id (bsqGroup-{id}) and is not positional.
 
 function selectPmTrade(id, val) {
   pmTradeSel[id] = val;
-  var g = document.querySelectorAll('#form-'+id+' .btn-group')[2];
+  var g = document.querySelectorAll('#form-'+id+' .btn-group')[1];
   if (g) g.querySelectorAll('.btn-option').forEach(function(b,i){var m=(i===0&&val===true)||(i===1&&val===false);b.className='btn-option'+(m?(i===0?' sel-yes':' sel-no'):'');});
   updateTradePriceVisibility(id);
 }
 
-function selectOmGK(id, val) {
-  omGkSel[id] = val;
-  var opts=['YES','NO','PARTIAL'], map={'YES':'sel-yes','NO':'sel-no','PARTIAL':'sel-partial'};
-  var g = document.querySelectorAll('#form-'+id+' .btn-group')[3];
-  if (g) g.querySelectorAll('.btn-option').forEach(function(b,i){b.className='btn-option'+(opts[i]===val?' '+map[opts[i]]:'');});
-}
-
 function selectOmTrade(id, val) {
   omTradeSel[id] = val;
-  var g = document.querySelectorAll('#form-'+id+' .btn-group')[4];
+  var g = document.querySelectorAll('#form-'+id+' .btn-group')[2];
   if (g) g.querySelectorAll('.btn-option').forEach(function(b,i){var m=(i===0&&val===true)||(i===1&&val===false);b.className='btn-option'+(m?(i===0?' sel-yes':' sel-no'):'');});
   updateTradePriceVisibility(id);
 }
@@ -1194,7 +1189,50 @@ function updateTradePriceVisibility(id) {
   var anyTrade = pmTradeSel[id] === true || omTradeSel[id] === true;
   priceRow.style.display = anyTrade ? 'flex' : 'none';
 }
-// ────────────────────────────────────────────────────────────────
+
+// ─── v30.3 — Gatekeeper correctness, AUTO-DERIVED ────────────────
+// THE RULE (per session, PM or OM independently):
+//
+//   | Verdict          | Fade in session       | Gatekeeper |
+//   |------------------|-----------------------|------------|
+//   | GO / CAUTION     | Faded past 38% Fib    | CORRECT    |
+//   | GO / CAUTION     | Did Not Fade          | WRONG      |
+//   | NO TRADE / NO GO | Did Not Fade          | CORRECT    |
+//   | NO TRADE / NO GO | Faded past 38% Fib    | WRONG      |
+//
+// "Did Not Fade" is the only fade_destination value that counts as no-fade.
+// Every other value (38% Fib, 50% Fib, 61% Fib, 76% Fib, 100% Fib, VWAP,
+// Below VWAP, Ghost Pivot) is treated as a meaningful fade past the threshold.
+// See briefing Section 9 + v30.3 entry.
+
+function deriveGatekeeperCorrect(verdict, fadeDestination) {
+  if (!fadeDestination) return null;                            // not yet reviewed for this session
+  var isBlock = verdict === 'NO TRADE' || verdict === 'NO GO';
+  var faded   = fadeDestination !== 'Did Not Fade';
+  if (!isBlock) return faded ? 'YES' : 'NO';                    // GO / CAUTION
+  return faded ? 'NO' : 'YES';                                  // NO TRADE / NO GO
+}
+
+// Verdict per entry id, populated at hydration so updateGkDerived can find it.
+var entryVerdict = {};
+
+// Refresh the read-only derived gatekeeper display under a session's fade dropdown.
+// Called: (a) onchange of the fade select, (b) once per session at initial render.
+function updateGkDerived(id, sessionKey) {
+  var fadeEl    = document.getElementById(sessionKey + 'FadeDest-' + id);
+  var displayEl = document.getElementById(sessionKey + 'GkDerived-' + id);
+  if (!fadeEl || !displayEl) return;
+  var fadeDest = fadeEl.value;
+  var verdict  = entryVerdict[id] || '';
+  if (!fadeDest) {
+    displayEl.innerHTML = '<span style="color:var(--text-dim)">— pick a fade destination to compute gatekeeper outcome</span>';
+    return;
+  }
+  var gk        = deriveGatekeeperCorrect(verdict, fadeDest);
+  var fadeLabel = fadeDest === 'Did Not Fade' ? 'no fade' : 'faded past 38%';
+  var color     = gk === 'YES' ? 'var(--go)' : 'var(--nogo)';
+  displayEl.innerHTML = '<span style="color:'+color+';font-weight:700">→ Gatekeeper ' + gk + '</span> <span style="color:var(--text-dim)">(' + (verdict || '?') + ' + ' + fadeLabel + ')</span>';
+}
 
 function selectBackside(id, val) {
   backsideSel[id] = val;
@@ -1299,18 +1337,22 @@ async function saveReview(id) {
   // ───────────────────────────────────────────────────────────────
 
   var hodHigher = hodSel[id]||null;
-  // ─── LEGACY — gkSel/tradeSel/fadeDest no longer driven by UI (v30 split).
+  // ─── LEGACY — gkSel/tradeSel no longer driven by UI (v30 split).
   // Reads kept as null-safe but values stay null on new entries; preserved for any
   // historic interactions that might re-fire selectGK/selectTrade.
   var gkCorrect = gkSel[id]||null;
   var didTrade = tradeSel[id]!==undefined?tradeSel[id]:null;
   // ─── v30 PM/OM split reads ────────────────────────────────────
-  var pmGkCorrect = pmGkSel[id]||null;
-  var omGkCorrect = omGkSel[id]||null;
   var pmDidTrade  = pmTradeSel[id]!==undefined?pmTradeSel[id]:null;
   var omDidTrade  = omTradeSel[id]!==undefined?omTradeSel[id]:null;
   var pmFadeDest  = document.getElementById('pmFadeDest-'+id) ? (document.getElementById('pmFadeDest-'+id).value || null) : null;
   var omFadeDest  = document.getElementById('omFadeDest-'+id) ? (document.getElementById('omFadeDest-'+id).value || null) : null;
+  // ─── v30.3 — gatekeeper_correct AUTO-DERIVED from verdict + fade_destination ─
+  // No more manual YES/NO/PARTIAL click. See deriveGatekeeperCorrect() rule table.
+  // Verdict is read from entryVerdict[id] (populated at hydration).
+  var verdictForDerive = entryVerdict[id] || '';
+  var pmGkCorrect = deriveGatekeeperCorrect(verdictForDerive, pmFadeDest);
+  var omGkCorrect = deriveGatekeeperCorrect(verdictForDerive, omFadeDest);
   // ───────────────────────────────────────────────────────────────
   var entryPrice = parseFloat(document.getElementById('entryPrice-'+id) && document.getElementById('entryPrice-'+id).value)||null;
   var exitPrice = parseFloat(document.getElementById('exitPrice-'+id) && document.getElementById('exitPrice-'+id).value)||null;
