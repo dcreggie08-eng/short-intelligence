@@ -855,7 +855,9 @@ function verdictDisplayLabel(v) {
 function badgeClass(val) {
   if (!val) return 'unknown';
   var v = val.toString().toLowerCase();
-  return v==='high'?'high':(v==='medium'||v==='moderate')?'medium':v==='low'?'low':'unknown';
+  // v30.5 — 'moderate' alias removed; data check 2026-05-26 confirmed only
+  // Low/Medium/High/Unknown ever appear in dilution_* columns.
+  return v==='high'?'high':v==='medium'?'medium':v==='low'?'low':'unknown';
 }
 
 async function loadEntries() {
@@ -1214,10 +1216,15 @@ function updateGkDerived(id, sessionKey) {
 function selectBackside(id, val) {
   backsideSel[id] = val;
   // Y = squeeze risk present (red); N = no squeeze (green)
+  // v30.5 — switched to positional indexing. Button order [0]=Y, [1]=N
+  // is set explicitly in buildReviewForm; safer than parsing button text.
   var g = document.getElementById('bsqGroup-'+id);
-  if (g) g.querySelectorAll('.btn-option').forEach(function(b){
-    var label = b.textContent.trim();
-    b.className = 'btn-option' + (label === val ? (val === 'Y' ? ' sel-no' : ' sel-yes') : '');
+  if (!g) return;
+  var btns = g.querySelectorAll('.btn-option');
+  btns.forEach(function(b, i) {
+    var btnVal = i === 0 ? 'Y' : 'N';
+    var sel = btnVal === val ? (val === 'Y' ? ' sel-no' : ' sel-yes') : '';
+    b.className = 'btn-option' + sel;
   });
 }
 
@@ -1682,7 +1689,10 @@ function normaliseVal(v) {
   if (!v) return null;
   var s = v.toString().toLowerCase().trim();
   if (s === 'high') return 'HIGH';
-  if (s === 'medium' || s === 'moderate' || s === 'med') return 'MED';
+  // v30.5 — 'moderate' alias removed; data check 2026-05-26 confirmed only
+  // Low/Medium/High/Unknown ever appear in dilution_* columns. 'med' kept as
+  // a defensive normalisation alias (not part of the data check scope).
+  if (s === 'medium' || s === 'med') return 'MED';
   if (s === 'low') return 'LOW';
   return v.toString().toUpperCase();
 }
