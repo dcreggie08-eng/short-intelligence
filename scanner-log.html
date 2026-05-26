@@ -169,7 +169,9 @@
   .pm-om-section { border:1px solid rgba(255,255,255,0.08); border-radius:6px; padding:14px 14px 2px; margin-bottom:14px; background:rgba(255,255,255,0.015); }
   .pm-om-section.pm-section { border-left:3px solid var(--go); }
   .pm-om-section.om-section { border-left:3px solid var(--accent); }
-  .pm-om-section-title { font-family:var(--mono); font-size:11px; letter-spacing:2px; text-transform:uppercase; color:var(--text-dim); margin-bottom:14px; }
+  /* v30.1 — bumped to 13px + bold so the OM title (which shares cyan with the field
+     labels below it) reads as a distinct section header, not a field label. */
+  .pm-om-section-title { font-family:var(--mono); font-size:13px; font-weight:700; letter-spacing:2.5px; text-transform:uppercase; color:var(--text-dim); margin-bottom:14px; }
   .pm-om-section.pm-section .pm-om-section-title { color:var(--go); }
   .pm-om-section.om-section .pm-om-section-title { color:var(--accent); }
   .delete-entry-btn { font-family:var(--mono); font-size:11px; letter-spacing:1.5px; text-transform:uppercase; padding:8px 14px; background:transparent; border:1px solid rgba(255,61,90,0.35); color:var(--nogo); cursor:pointer; transition:all 0.15s; margin-left:auto; }
@@ -1379,13 +1381,13 @@ async function saveReview(id) {
 
         var isBlockVerdict = entry.verdict === 'NO TRADE' || entry.verdict === 'NO GO';
 
-        // Per-session did_fade derivation — each session's gatekeeper_correct
-        // judges that session's outcome.
-        function deriveSessionDidFade(sessionGk) {
-          if (sessionGk === 'YES') return !isBlockVerdict;
-          if (sessionGk === 'NO')  return isBlockVerdict ? true : false;
-          if (sessionGk === 'PARTIAL') return true;
-          return null;
+        // v30.1 — derive did_fade from THIS session's fade_destination, not gatekeeper_correct.
+        // The fade destination dropdown is the user's explicit read of where the stock went.
+        // Decouples "did it fade?" (measured) from "was gatekeeper correct?" (judgement).
+        function deriveSessionDidFade(sessionFadeDest) {
+          if (!sessionFadeDest) return null;                       // unreviewed for this session
+          if (sessionFadeDest === 'Did Not Fade') return false;
+          return true;                                              // any specific destination = faded
         }
 
         // Per-session giveback — uses THAT session's HOD as the reference,
@@ -1399,8 +1401,10 @@ async function saveReview(id) {
         }
 
         // Single session upsert function — POST with on_conflict resolution.
-        async function upsertSessionOutcome(session, sessionHod, sessionGk) {
-          var didFade = deriveSessionDidFade(sessionGk);
+        // v30.1: takes sessionFadeDest (the explicit "where did it fade" answer) rather than
+        // gatekeeper_correct, so did_fade reflects measured reality.
+        async function upsertSessionOutcome(session, sessionHod, sessionFadeDest) {
+          var didFade = deriveSessionDidFade(sessionFadeDest);
           var givebackPct = sessionGiveback(sessionHod);
           var payload = {
             ticker: entry.ticker || null,
@@ -1432,11 +1436,11 @@ async function saveReview(id) {
         }
 
         if (pmDidTrade === true) {
-          try { await upsertSessionOutcome('PM', pmHod, pmGkCorrect); }
+          try { await upsertSessionOutcome('PM', pmHod, pmFadeDest); }
           catch (e) { console.error('PM trade_outcomes upsert failed:', e); }
         }
         if (omDidTrade === true) {
-          try { await upsertSessionOutcome('OM', omHod, omGkCorrect); }
+          try { await upsertSessionOutcome('OM', omHod, omFadeDest); }
           catch (e) { console.error('OM trade_outcomes upsert failed:', e); }
         }
         tradeWasRecorded[id] = true;
@@ -1602,15 +1606,17 @@ async function loadAnalytics() {
 }
 
 // ─────────────────────────────────────────────
-// HELPER: derive did_fade from verdict + gatekeeper_correct
+// HELPER: derive did_fade from fade_destination
 // ─────────────────────────────────────────────
+// v30.1 — switched source-of-truth from gatekeeper_correct to fade_destination.
+// Previous logic conflated "was the verdict's read correct?" with "did the stock fade?",
+// producing contradictions (e.g. CAUTION verdict + gk=NO derived did_fade=false even when
+// the user recorded fade_destination=61% Fib). The fade destination dropdown is the
+// explicit signal — using it directly removes the contradiction entirely.
 function derivedDidFade(d) {
-  if (!d.gatekeeper_correct) return null;
-  var isBlock = d.verdict === 'NO TRADE' || d.verdict === 'NO GO';
-  if (d.gatekeeper_correct === 'YES') return !isBlock;
-  if (d.gatekeeper_correct === 'NO') return isBlock ? true : false;
-  if (d.gatekeeper_correct === 'PARTIAL') return true;
-  return null;
+  if (!d.fade_destination) return null;
+  if (d.fade_destination === 'Did Not Fade') return false;
+  return true;
 }
 
 function dropBand(score) {
