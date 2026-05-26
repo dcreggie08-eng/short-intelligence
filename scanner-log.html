@@ -653,6 +653,7 @@
 <script>
 const SUPABASE_URL = 'https://xuvzhykopirgojwhtzlf.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_6gz5N7Txd7FbmgwKMep-PQ_V3F5XIrd';
+const WORKER_URL = 'https://anthropic-proxy.dcreggie08.workers.dev';
 
 async function sbFetch(path, method, body) {
   method = method || 'GET';
@@ -706,12 +707,11 @@ async function correctNote(rawNote) {
   if (!rawNote || String(rawNote).trim().length === 0) {
     return { corrected: rawNote, raw: rawNote, succeeded: true };
   }
-  var PROXY_URL = 'https://anthropic-proxy.dcreggie08.workers.dev';
   var TIMEOUT_MS = 8000;
   try {
     var controller = new AbortController();
     var timeoutHandle = setTimeout(function() { controller.abort(); }, TIMEOUT_MS);
-    var res = await fetch(PROXY_URL, {
+    var res = await fetch(WORKER_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -904,7 +904,7 @@ function buildEntryCard(entry) {
       savedBadge +
       '<div class="entry-toggle' + (hasReview ? ' reviewed' : '') + '" id="toggle-' + entry.id + '">▼</div>' +
     '</div>' +
-    (entry.verdict_reason ? '<div class="entry-reason">' + entry.verdict_reason + '</div>' : '') +
+    (entry.verdict_reason ? '<div class="entry-reason">' + escapeHtmlSafe(entry.verdict_reason) + '</div>' : '') +
     '<div class="review-form" id="form-' + entry.id + '">' + buildReviewForm(entry) + '</div>';
   return card;
 }
@@ -917,10 +917,10 @@ function toggleCard(id) {
   // When opening, refresh the VWAP extension line from current input values
   // and the v30.3 read-only gatekeeper-derived displays for both sessions.
   if (!isOpen) {
-    try { calcVwapExt(id); } catch(e) {}
-    try { calcGivebackPreview(id); } catch(e) {}
-    try { updateGkDerived(id, 'pm'); } catch(e) {}
-    try { updateGkDerived(id, 'om'); } catch(e) {}
+    try { calcVwapExt(id); } catch(e) { console.warn('calcVwapExt on card open failed:', e); }
+    try { calcGivebackPreview(id); } catch(e) { console.warn('calcGivebackPreview on card open failed:', e); }
+    try { updateGkDerived(id, 'pm'); } catch(e) { console.warn('updateGkDerived(pm) on card open failed:', e); }
+    try { updateGkDerived(id, 'om'); } catch(e) { console.warn('updateGkDerived(om) on card open failed:', e); }
   }
   toggle.textContent = isOpen ? '▼' : '▲';
 }
@@ -961,17 +961,12 @@ function buildReviewForm(entry) {
 
   // Pre-populate button state tracking from saved data
   if (hodHigher) hodSel[id] = hodHigher;
-  if (gkCorrect) gkSel[id] = gkCorrect;
-  if (didTrade !== null && didTrade !== undefined) tradeSel[id] = didTrade;
   if (backsideSqueeze) backsideSel[id] = backsideSqueeze;
   // v30 PM/OM state pre-population
-  if (pmGkCorrect) pmGkSel[id] = pmGkCorrect;
-  if (omGkCorrect) omGkSel[id] = omGkCorrect;
   if (pmDidTrade !== null && pmDidTrade !== undefined) pmTradeSel[id] = pmDidTrade;
   if (omDidTrade !== null && omDidTrade !== undefined) omTradeSel[id] = omDidTrade;
   // v30.3: stash this entry's verdict for the auto-derive gatekeeper display
   entryVerdict[id] = entry.verdict || '';
-  tradeWasRecorded[id] = ((entry.pm_did_trade === true || entry.om_did_trade === true || entry.did_trade === true) && !!entry.entry_price);
 
   // "Reviewed" gate now also looks at the v30 fields so new entries flip the flag
   var alreadyReviewed = !!(entry.fade_destination || entry.gatekeeper_correct || entry.premarket_hod || entry.pm_gatekeeper_correct || entry.om_gatekeeper_correct);
@@ -979,9 +974,6 @@ function buildReviewForm(entry) {
   var btnText = alreadyReviewed ? '✓ Reviewed — Save Changes' : 'Save Review';
 
   function hodSl(v) { return hodHigher===v?'sel-'+(v==='PM'?'pm':v==='OM'?'om':'same'):''; }
-  // Legacy selectors — kept for any historic-entry display paths
-  function gkSl(v) { return gkCorrect===v?(v==='YES'?'sel-yes':v==='NO'?'sel-no':'sel-partial'):''; }
-  function tradSl(v) { return (v==='YES'&&didTrade===true)||(v==='NO'&&didTrade===false)?(v==='YES'?'sel-yes':'sel-no'):''; }
   // v30 per-session selectors
   function pmGkSl(v) { return pmGkCorrect===v?(v==='YES'?'sel-yes':v==='NO'?'sel-no':'sel-partial'):''; }
   function omGkSl(v) { return omGkCorrect===v?(v==='YES'?'sel-yes':v==='NO'?'sel-no':'sel-partial'):''; }
@@ -1086,9 +1078,9 @@ function buildReviewForm(entry) {
     '<div class="review-actions"><button class="'+btnClass+'" id="saveBtn-'+id+'" onclick="saveReview(\''+id+'\')">'+btnText+'</button><button class="delete-entry-btn" onclick="deleteEntry(\''+id+'\',\''+(entry.ticker||'').replace(/\'/g,'\\\'')+'\',\''+entry.trading_date+'\')">Delete Entry</button><div class="review-save-msg" id="saveMsg-'+id+'"></div></div>';
 }
 
-var hodSel={}, gkSel={}, tradeSel={}, tagSel={}, backsideSel={}, tradeWasRecorded={}, tradeOutcomeId={};
-// v30 — PM/OM split selection state
-var pmGkSel={}, omGkSel={}, pmTradeSel={}, omTradeSel={};
+var hodSel={}, tagSel={}, backsideSel={};
+// v30 — PM/OM trade selection state (gatekeeper_correct is now auto-derived, not button-driven)
+var pmTradeSel={}, omTradeSel={};
 
 function toggleOmVwapBelow(id) {
   var cb = document.getElementById('omVwapBelowVwap-'+id);
@@ -1104,7 +1096,7 @@ var THESIS_TAGS        = ['Played Out As Expected','Played Out As Graded','Stron
 
 function buildTagChips(id, entry) {
   var saved = [];
-  try { saved = JSON.parse(entry.trade_tags || '[]'); } catch(e) {}
+  try { saved = JSON.parse(entry.trade_tags || '[]'); } catch(e) { console.warn('trade_tags JSON parse failed for entry', entry.id, ':', e); }
   tagSel[id] = saved.slice();
 
   function chipRow(tags, category) {
@@ -1143,22 +1135,6 @@ function selectHOD(id, val) {
   if (g) g.querySelectorAll('.btn-option').forEach(function(b,i){b.className='btn-option'+(opts[i]===val?' '+map[opts[i]]:'')+''});
 }
 
-function selectGK(id, val) {
-  gkSel[id] = val;
-  var opts=['YES','NO','PARTIAL'], map={'YES':'sel-yes','NO':'sel-no','PARTIAL':'sel-partial'};
-  var g = document.querySelectorAll('#form-'+id+' .btn-group')[1];
-  if (g) g.querySelectorAll('.btn-option').forEach(function(b,i){b.className='btn-option'+(opts[i]===val?' '+map[opts[i]]:'');});
-}
-
-function selectTrade(id, val) {
-  tradeSel[id] = val;
-  var g = document.querySelectorAll('#form-'+id+' .btn-group')[2];
-  if (g) g.querySelectorAll('.btn-option').forEach(function(b,i){var m=(i===0&&val===true)||(i===1&&val===false);b.className='btn-option'+(m?(i===0?' sel-yes':' sel-no'):'');});
-  // Show/hide trade price fields
-  var priceRow = document.getElementById('tradePrices-'+id);
-  if (priceRow) priceRow.style.display = val === true ? 'flex' : 'none';
-}
-
 // ─── v30.3 — PM/OM split selection handlers ─────────────────────
 // Gatekeeper_correct YES/NO/PARTIAL buttons retired in v30.3; correctness is now
 // derived automatically from verdict + fade_destination per the 38% Fib rule
@@ -1167,6 +1143,7 @@ function selectTrade(id, val) {
 // btn-group positional indices in the v30.3 markup:
 //   [0] HOD higher   [1] PM trade   [2] OM trade
 // Backside Squeeze has its own id (bsqGroup-{id}) and is not positional.
+// v30.4 — dead legacy selectGK/selectTrade functions removed.
 
 function selectPmTrade(id, val) {
   pmTradeSel[id] = val;
@@ -1337,11 +1314,6 @@ async function saveReview(id) {
   // ───────────────────────────────────────────────────────────────
 
   var hodHigher = hodSel[id]||null;
-  // ─── LEGACY — gkSel/tradeSel no longer driven by UI (v30 split).
-  // Reads kept as null-safe but values stay null on new entries; preserved for any
-  // historic interactions that might re-fire selectGK/selectTrade.
-  var gkCorrect = gkSel[id]||null;
-  var didTrade = tradeSel[id]!==undefined?tradeSel[id]:null;
   // ─── v30 PM/OM split reads ────────────────────────────────────
   var pmDidTrade  = pmTradeSel[id]!==undefined?pmTradeSel[id]:null;
   var omDidTrade  = omTradeSel[id]!==undefined?omTradeSel[id]:null;
@@ -1491,7 +1463,6 @@ async function saveReview(id) {
           try { await upsertSessionOutcome('OM', omHod, omFadeDest); }
           catch (e) { console.error('OM trade_outcomes upsert failed:', e); }
         }
-        tradeWasRecorded[id] = true;
       }
     }
     // ───────────────────────────────────────────────────────────────
@@ -1656,11 +1627,15 @@ async function loadAnalytics() {
 // ─────────────────────────────────────────────
 // HELPER: derive did_fade from fade_destination
 // ─────────────────────────────────────────────
-// v30.1 — switched source-of-truth from gatekeeper_correct to fade_destination.
-// Previous logic conflated "was the verdict's read correct?" with "did the stock fade?",
-// producing contradictions (e.g. CAUTION verdict + gk=NO derived did_fade=false even when
-// the user recorded fade_destination=61% Fib). The fade destination dropdown is the
-// explicit signal — using it directly removes the contradiction entirely.
+// v30.1 — read source for did_fade is fade_destination, not gatekeeper_correct.
+// Removed the conflation between "was the verdict's read correct?" and "did the
+// stock fade?" — the fade destination dropdown is the explicit signal.
+//
+// v30.4 note: scanner_log.fade_destination is a LEGACY column. New entries (v30+)
+// write to pm_fade_destination / om_fade_destination via the split review flow, not
+// to this column. So this helper effectively serves the frozen-analytics layer over
+// pre-v30 historic data. The deeper analytics rework — re-pointing the perm tables
+// and Best Setup at pm_/om_ fields — is a separate session (see brief Out-of-Scope).
 function derivedDidFade(d) {
   if (!d.fade_destination) return null;
   if (d.fade_destination === 'Did Not Fade') return false;
@@ -1941,7 +1916,10 @@ function renderTagTable(data, elId, tagList, category) {
   function didFade(d) {
     var v = (d.verdict || '').toUpperCase();
     var g = (d.gatekeeper_correct || '').toUpperCase();
-    if (v === 'PARTIAL') return true;
+    // v30.4 — PARTIAL is a gatekeeper_correct value (legacy/historic only since v30.3
+    // auto-derive). Per briefing §9: PARTIAL = faded. Prior typo (v === 'PARTIAL')
+    // could never fire and mis-classified historic PARTIAL rows as not-faded.
+    if (g === 'PARTIAL') return true;
     if ((v === 'GO' || v === 'CAUTION') && g === 'YES') return true;
     if ((v === 'NO TRADE' || v === 'NO GO') && g === 'NO') return true;
     return false;
@@ -1967,7 +1945,7 @@ function renderTagTable(data, elId, tagList, category) {
       : null;
 
     // Colour code fade rate
-    var rateColor = fadeRate >= 60 ? 'var(--go)' : fadeRate >= 40 ? 'var(--caution)' : '#FF4444';
+    var rateColor = fadeRate >= 60 ? 'var(--go)' : fadeRate >= 40 ? 'var(--caution)' : 'var(--nogo)';
 
     return {
       tag: tag,
@@ -2288,8 +2266,6 @@ function calcITT() {
 // ─────────────────────────────────────────────
 // LAZY TRADE ANALYSER
 // ─────────────────────────────────────────────
-var POLYGON_KEY = 'iz170hZwJjkiLavb9YM1f3zhDKTYkxHi';
-var WORKER_URL = 'https://anthropic-proxy.dcreggie08.workers.dev';
 
 function setLazyStatus(msg, color) {
   var el = document.getElementById('lazyStatus');
@@ -2541,37 +2517,6 @@ async function fetch4hrRSI(ticker) {
     if (data.error) { console.warn('RSI4hr error:', data.error); return { workerError: data.error }; }
     return data;
   } catch(e) { console.warn('RSI4hr fetch failed:', e); return null; }
-}
-
-function calcRSISeries(closes, period) {
-  if (closes.length < period + 2) return null;
-  var changes = [];
-  for (var i = 1; i < closes.length; i++) changes.push(closes[i] - closes[i-1]);
-  var avgGain = 0, avgLoss = 0;
-  for (var j = 0; j < period; j++) {
-    if (changes[j] > 0) avgGain += changes[j];
-    else avgLoss += Math.abs(changes[j]);
-  }
-  avgGain /= period; avgLoss /= period;
-  var rsiVals = [];
-  var rs0 = avgLoss === 0 ? Infinity : avgGain / avgLoss;
-  rsiVals.push(avgLoss === 0 ? 100 : 100 - (100 / (1 + rs0)));
-  for (var k = period; k < changes.length; k++) {
-    var gain = changes[k] > 0 ? changes[k] : 0;
-    var loss = changes[k] < 0 ? Math.abs(changes[k]) : 0;
-    avgGain = (avgGain * (period - 1) + gain) / period;
-    avgLoss = (avgLoss * (period - 1) + loss) / period;
-    var rs = avgLoss === 0 ? Infinity : avgGain / avgLoss;
-    rsiVals.push(avgLoss === 0 ? 100 : 100 - (100 / (1 + rs)));
-  }
-  var cur = rsiVals[rsiVals.length - 1];
-  var prev = rsiVals[rsiVals.length - 2];
-  return {
-    current: Math.round(cur * 10) / 10,
-    previous: Math.round(prev * 10) / 10,
-    crossedBelow70: prev >= 70 && cur < 70,
-    below70: cur < 70
-  };
 }
 
 // ─────────────────────────────────────────────
