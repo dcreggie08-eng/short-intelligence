@@ -770,7 +770,10 @@ function toggleSessionStrip() {
 async function loadSessionHistory() {
   try {
     // Get all distinct trading dates with counts
-    var res = await sbFetch('scanner_log?select=trading_date,gatekeeper_correct&order=trading_date.desc');
+    // v30.6 — SELECT now includes the v30 split fields so the chip "reviewed" tally
+    // counts entries reviewed via the PM/OM flow (the legacy gatekeeper_correct
+    // column stopped being written in v30).
+    var res = await sbFetch('scanner_log?select=trading_date,gatekeeper_correct,pm_gatekeeper_correct,om_gatekeeper_correct&order=trading_date.desc');
     var data = await res.json();
     if (!Array.isArray(data) || data.length === 0) return;
 
@@ -780,7 +783,7 @@ async function loadSessionHistory() {
       var d = row.trading_date;
       if (!dateMap[d]) dateMap[d] = { total: 0, reviewed: 0 };
       dateMap[d].total++;
-      if (row.gatekeeper_correct) dateMap[d].reviewed++;
+      if (row.gatekeeper_correct || row.pm_gatekeeper_correct || row.om_gatekeeper_correct) dateMap[d].reviewed++;
     });
 
     var dates = Object.keys(dateMap).sort().reverse();
@@ -1480,6 +1483,9 @@ async function saveReview(id) {
     btn.className='save-review-btn saved';
     btn.disabled = false;
     msg.className='review-save-msg visible';
+    // v30.6 — clear any leftover inline red from a prior failed-save attempt so
+    // the CSS class colour (--go) takes effect on success.
+    msg.style.color = '';
     msg.textContent = anyTrade ? '✓ Scanner log saved and trade written to Journal' : '✓ Review saved';
     var h = document.querySelector('#card-'+id+' .entry-header');
     if (h && !h.querySelector('.entry-saved-indicator')) {
@@ -1579,7 +1585,8 @@ async function loadAnalytics() {
 
     // ─── v30 PM/OM correctness stats ─────────────────────────────
     // Each session's correctness counted independently, against entries where
-    // that session's gatekeeper_correct field is set (YES/NO/PARTIAL).
+    // that session's gatekeeper_correct field is set. v30.3+ auto-derive emits
+    // YES/NO only; PARTIAL appears only on pre-v30 historic rows.
     var pmReviewed = data.filter(function(d){return d.pm_gatekeeper_correct;});
     var pmCorrect  = pmReviewed.filter(function(d){return d.pm_gatekeeper_correct === 'YES';}).length;
     var pmCorrectPct = pmReviewed.length > 0 ? Math.round(pmCorrect / pmReviewed.length * 100) : null;
