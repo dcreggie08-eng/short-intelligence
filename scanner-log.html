@@ -891,7 +891,11 @@ function buildEntryCard(entry) {
   var card = document.createElement('div');
   card.className = 'entry-card';
   card.id = 'card-' + entry.id;
-  var hasReview = entry.fade_destination || entry.gatekeeper_correct || entry.premarket_hod;
+  // v30.7 — extended to also recognise v30 PM/OM split review fields so new entries
+  // get the "✓ Reviewed" badge and reviewed-styled toggle arrow in the daily log strip.
+  var hasReview = entry.fade_destination || entry.gatekeeper_correct || entry.premarket_hod
+                || entry.pm_gatekeeper_correct || entry.om_gatekeeper_correct
+                || entry.pm_fade_destination   || entry.om_fade_destination;
   var dropScore = entry.droppiness_score ? entry.droppiness_score + '/100' : '—';
   var dilBadges = '';
   [{ key:'dilution_overall',label:'Overall'},{ key:'dilution_cash_need',label:'Cash'},{ key:'dilution_offering_risk',label:'Dilution'}].forEach(function(f) {
@@ -1572,14 +1576,21 @@ async function loadAnalytics() {
     var reviewed = data.filter(function(d){
       return d.fade_destination || d.gatekeeper_correct || d.pm_gatekeeper_correct || d.om_gatekeeper_correct;
     }).length;
-    var goCalls = data.filter(function(d){return d.verdict==='GO'&&d.gatekeeper_correct;});
-    var goCorrect = goCalls.filter(function(d){return d.gatekeeper_correct==='YES';}).length;
-    var goAcc = goCalls.length>0?Math.round(goCorrect/goCalls.length*100):null;
+    // v30.7 — GO Accuracy now uses gkCorrectScore aggregate (0/0.5/1 per entry) so v30
+    // entries contribute honestly. anyGkSet is the broad "reviewed" filter that captures
+    // legacy and v30 entries alike. A v30 entry with one session YES and one NO contributes
+    // 0.5 — the gatekeeper half-helped you that day.
+    var goCalls = data.filter(function(d){return d.verdict==='GO' && anyGkSet(d);});
+    var goCorrectSum = goCalls.reduce(function(sum, d){
+      var s = gkCorrectScore(d);
+      return sum + (s !== null ? s : 0);
+    }, 0);
+    var goAcc = goCalls.length>0?Math.round(goCorrectSum/goCalls.length*100):null;
 
-    // True fade rate using did_fade derivation (verdict + gatekeeper_correct → actual outcome)
-    // Phase 2 note: deeper analytics (this stat included) still ride the legacy field.
-    // Re-cut for the PM/OM split in a later phase once data accumulates.
-    var derivedSet = data.filter(function(d){return d.gatekeeper_correct;});
+    // True fade rate using did_fade derivation. v30.7 — now uses anyGkSet as the reviewed
+    // filter and derivedDidFade as the aggregate "did any session fade" rule, so v30
+    // entries count alongside legacy ones.
+    var derivedSet = data.filter(function(d){return anyGkSet(d);});
     var trueFaded = derivedSet.filter(function(d){return derivedDidFade(d) === true;}).length;
     var trueFadeRate = derivedSet.length>0?Math.round(trueFaded/derivedSet.length*100):null;
 
@@ -1639,21 +1650,57 @@ async function loadAnalytics() {
 }
 
 // ─────────────────────────────────────────────
-// HELPER: derive did_fade from fade_destination
+// v30 ANALYTICS HELPERS — anyGkSet, derivedDidFade, gkCorrectScore
 // ─────────────────────────────────────────────
-// v30.1 — read source for did_fade is fade_destination, not gatekeeper_correct.
-// Removed the conflation between "was the verdict's read correct?" and "did the
-// stock fade?" — the fade destination dropdown is the explicit signal.
+// v30.7 rework. These three helpers carry the analytics layer across the PM/OM split
+// schema cleanly:
 //
-// v30.4 note: scanner_log.fade_destination is a LEGACY column. New entries (v30+)
-// write to pm_fade_destination / om_fade_destination via the split review flow, not
-// to this column. So this helper effectively serves the frozen-analytics layer over
-// pre-v30 historic data. The deeper analytics rework — re-pointing the perm tables
-// and Best Setup at pm_/om_ fields — is a separate session (see brief Out-of-Scope).
+//   anyGkSet(d)       — true if any gatekeeper_correct field is populated (legacy or
+//                       pm_/om_). The broad "reviewed" filter used everywhere analytics
+//                       needs to know "has this entry been graded at all?".
+//
+//   derivedDidFade(d) — aggregate "did this entry fade?". Reads PM and OM first; if
+//                       neither has data, falls back to legacy fade_destination. Faded
+//                       if at least one populated session went past "Did Not Fade".
+//                       Returns null if no session has been reviewed.
+//
+//   gkCorrectScore(d) — per-entry gatekeeper-correct score (0/0.5/1). Averages the YES/NO
+//                       votes across populated sessions. A v30 entry with PM=YES and
+//                       OM=NO returns 0.5. Legacy entries return 1 if YES, 0 otherwise.
+//                       Returns null if no session has been reviewed.
+//
+// Together these let analytics consumers read v30 and legacy entries uniformly. Detail
+// on the philosophy: brief §5 "aggregate vs split" — fade-rate questions aggregate;
+// gk-accuracy questions are split at the top-stat cards (PM Correct %, OM Correct %)
+// but aggregated elsewhere via gkCorrectScore.
+//
+function anyGkSet(d) {
+  return !!(d.gatekeeper_correct || d.pm_gatekeeper_correct || d.om_gatekeeper_correct);
+}
+
 function derivedDidFade(d) {
-  if (!d.fade_destination) return null;
-  if (d.fade_destination === 'Did Not Fade') return false;
-  return true;
+  var sessions = [];
+  if (d.pm_fade_destination) sessions.push(d.pm_fade_destination);
+  if (d.om_fade_destination) sessions.push(d.om_fade_destination);
+  // Legacy fallback: only consult if no v30 session data exists for this entry
+  if (sessions.length === 0 && d.fade_destination) sessions.push(d.fade_destination);
+  if (sessions.length === 0) return null;
+  // Faded if any populated session went past "Did Not Fade"
+  return sessions.some(function(s) { return s !== 'Did Not Fade'; });
+}
+
+function gkCorrectScore(d) {
+  var votes = [];
+  if (d.pm_gatekeeper_correct) votes.push(d.pm_gatekeeper_correct === 'YES' ? 1 : 0);
+  if (d.om_gatekeeper_correct) votes.push(d.om_gatekeeper_correct === 'YES' ? 1 : 0);
+  // Legacy fallback: only consult if no v30 session data exists for this entry.
+  // Pre-v30 strict "YES = 1, else 0" treatment retained here to preserve historic
+  // goAcc continuity. PARTIAL semantics handled separately by callers if needed.
+  if (votes.length === 0 && d.gatekeeper_correct) {
+    votes.push(d.gatekeeper_correct === 'YES' ? 1 : 0);
+  }
+  if (votes.length === 0) return null;
+  return votes.reduce(function(a,b){return a+b;}, 0) / votes.length;
 }
 
 function dropBand(score) {
@@ -1709,7 +1756,8 @@ function normaliseVal(v) {
 // ─────────────────────────────────────────────
 function buildPermTable(data, keyFn, headers, cellFn, minEntries) {
   minEntries = minEntries || 5;
-  var reviewed = data.filter(function(d) { return d.gatekeeper_correct && keyFn(d) !== null; });
+  // v30.7 — anyGkSet captures legacy + v30 (pm_/om_) reviewed entries uniformly
+  var reviewed = data.filter(function(d) { return anyGkSet(d) && keyFn(d) !== null; });
   if (reviewed.length < minEntries) {
     return '<div class="analytics-note">Need ' + minEntries + '+ reviewed entries for this table. You have ' + reviewed.length + ' so far.</div>';
   }
@@ -2008,7 +2056,8 @@ function renderKeySummary(data) {
   var MIN = 5;
 
   function topCombo(keyFn) {
-    var reviewed = data.filter(function(d) { return d.gatekeeper_correct && keyFn(d) !== null; });
+    // v30.7 — anyGkSet captures legacy + v30 reviewed entries
+    var reviewed = data.filter(function(d) { return anyGkSet(d) && keyFn(d) !== null; });
     var groups = {};
     reviewed.forEach(function(d) { var k = keyFn(d); if (!k) return; if (!groups[k]) groups[k] = []; groups[k].push(d); });
     var best = null;
@@ -2126,7 +2175,8 @@ function renderBestSetup(data) {
   var allCombos = [];
 
   function scanCombos(keyFn, tableLabel) {
-    var reviewed = data.filter(function(d) { return d.gatekeeper_correct && keyFn(d) !== null; });
+    // v30.7 — anyGkSet captures legacy + v30 reviewed entries
+    var reviewed = data.filter(function(d) { return anyGkSet(d) && keyFn(d) !== null; });
     var groups = {};
     reviewed.forEach(function(d) { var key = keyFn(d); if (!key) return; if (!groups[key]) groups[key] = []; groups[key].push(d); });
     Object.keys(groups).forEach(function(k) {
