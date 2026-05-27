@@ -2227,21 +2227,35 @@ function sampleNote(n) { return n<10?' <span style="color:var(--text-dim);font-s
 
 function renderDropTable(data) {
   var el=document.getElementById('dropTable');
-  var rev=data.filter(function(d){return d.droppiness_score!==null&&d.gatekeeper_correct;});
+  // v30.8 — anyGkSet captures legacy + v30 reviewed entries; gkCorrectScore returns
+  // 0/0.5/1 per entry (mixed PM-YES/OM-NO = 0.5). Displayed "Correct" count is the
+  // rounded sum; percentage uses the unrounded sum for accuracy.
+  var rev=data.filter(function(d){return d.droppiness_score!==null&&anyGkSet(d);});
   if (rev.length<5){el.innerHTML='<div class="analytics-note">Need at least 5 reviewed entries to show droppiness patterns. You have '+rev.length+' so far.</div>';return;}
   var bands=[{label:'High (67+)',f:function(d){return d.droppiness_score>=67;}},{label:'Medium (50-66)',f:function(d){return d.droppiness_score>=50&&d.droppiness_score<67;}},{label:'Low (below 50)',f:function(d){return d.droppiness_score<50;}}];
   el.innerHTML='<table class="analytics-table"><thead><tr><th>Band</th><th>Entries</th><th>Gatekeeper Correct</th><th>Rate</th></tr></thead><tbody>'+
-    bands.map(function(b){var g=rev.filter(b.f),c=g.filter(function(d){return d.gatekeeper_correct==='YES';}).length,p=g.length>0?Math.round(c/g.length*100):null,bc=p>=65?'high-fade':p<40?'low-fade':'';
-      return '<tr><td>'+b.label+'</td><td>'+g.length+'</td><td>'+c+'</td><td><div class="pct-bar-wrap"><div class="pct-bar '+bc+'" style="width:'+(p||0)+'px"></div><span>'+(p!==null?p+'%':'—')+'</span>'+sampleNote(g.length)+'</div></td></tr>';
+    bands.map(function(b){
+      var g=rev.filter(b.f);
+      var sum=g.reduce(function(s,d){var v=gkCorrectScore(d);return s+(v!==null?v:0);},0);
+      var p=g.length>0?Math.round(sum/g.length*100):null;
+      var bc=p>=65?'high-fade':p<40?'low-fade':'';
+      var displayCorrect=Math.round(sum);
+      return '<tr><td>'+b.label+'</td><td>'+g.length+'</td><td>'+displayCorrect+'</td><td><div class="pct-bar-wrap"><div class="pct-bar '+bc+'" style="width:'+(p||0)+'px"></div><span>'+(p!==null?p+'%':'—')+'</span>'+sampleNote(g.length)+'</div></td></tr>';
     }).join('')+'</tbody></table>';
 }
 
 function renderVerdictTable(data) {
   var el=document.getElementById('verdictTable');
-  var rev=data.filter(function(d){return d.verdict&&d.gatekeeper_correct;});
+  // v30.8 — anyGkSet + gkCorrectScore aggregate; mixed PM-YES/OM-NO entries contribute 0.5
+  var rev=data.filter(function(d){return d.verdict&&anyGkSet(d);});
   if (rev.length<5){el.innerHTML='<div class="analytics-note">Need 5+ reviewed entries. You have '+rev.length+'.</div>';return;}
   var verdicts=['GO','CAUTION','NO TRADE','NO GO'];
-  var rows=verdicts.map(function(v){var g=rev.filter(function(d){return d.verdict===v;}),c=g.filter(function(d){return d.gatekeeper_correct==='YES';}).length,p=g.length>0?Math.round(c/g.length*100):null;return{verdict:v,n:g.length,correct:c,pct:p};}).filter(function(r){return r.n>0;});
+  var rows=verdicts.map(function(v){
+    var g=rev.filter(function(d){return d.verdict===v;});
+    var sum=g.reduce(function(s,d){var sc=gkCorrectScore(d);return s+(sc!==null?sc:0);},0);
+    var p=g.length>0?Math.round(sum/g.length*100):null;
+    return{verdict:v,n:g.length,correct:Math.round(sum),pct:p};
+  }).filter(function(r){return r.n>0;});
   el.innerHTML='<table class="analytics-table"><thead><tr><th>Verdict</th><th>Entries</th><th>Correct</th><th>Accuracy</th></tr></thead><tbody>'+
     rows.map(function(r){var bc=r.pct>=65?'high-fade':r.pct<40?'low-fade':'',col=r.verdict==='GO'?'var(--go)':r.verdict==='CAUTION'?'var(--caution)':'var(--nogo)';
       return '<tr><td style="color:'+col+'">'+r.verdict+'</td><td>'+r.n+'</td><td>'+r.correct+'</td><td><div class="pct-bar-wrap"><div class="pct-bar '+bc+'" style="width:'+(r.pct||0)+'px"></div><span>'+(r.pct!==null?r.pct+'%':'—')+'</span>'+sampleNote(r.n)+'</div></td></tr>';
@@ -2250,7 +2264,15 @@ function renderVerdictTable(data) {
 
 function renderVwapTable(data) {
   var el = document.getElementById('vwapTable');
-  var withVwap = data.filter(function(d) { return d.vwap_extension_pct !== null && d.vwap_extension_pct !== undefined && d.gatekeeper_correct; });
+  // v30.8 — semantic bug fix. Previous version measured gatekeeper_correct==='YES'
+  // which means OPPOSITE things by verdict (faded for GO/CAUTION; not-faded for NO
+  // TRADE/NO GO), making the mixed-verdict "Fade Rate" column meaningless. Now uses
+  // derivedDidFade for actual fade rate — consistent with the Signal column's
+  // fade-likelihood framing. anyGkSet ensures we only count reviewed entries; v30
+  // PM/OM split is handled by derivedDidFade's aggregate "either session faded" rule.
+  var withVwap = data.filter(function(d) {
+    return d.vwap_extension_pct !== null && d.vwap_extension_pct !== undefined && anyGkSet(d);
+  });
 
   if (withVwap.length < 3) {
     el.innerHTML = '<div class="analytics-note">Need 3+ entries with VWAP data. You have ' + withVwap.length + ' — keep filling in the VWAP field in evening reviews.</div>';
@@ -2266,13 +2288,13 @@ function renderVwapTable(data) {
 
   var rows = bands.map(function(band) {
     var group = withVwap.filter(band.f);
-    var correct = group.filter(function(d) { return d.gatekeeper_correct === 'YES'; }).length;
-    var pct = group.length > 0 ? Math.round((correct / group.length) * 100) : null;
-    return { label: band.label, note: band.note, n: group.length, correct: correct, pct: pct };
+    var faded = group.filter(function(d) { return derivedDidFade(d) === true; }).length;
+    var pct = group.length > 0 ? Math.round((faded / group.length) * 100) : null;
+    return { label: band.label, note: band.note, n: group.length, faded: faded, pct: pct };
   });
 
   el.innerHTML = '<table class="analytics-table"><thead><tr>' +
-    '<th>VWAP Extension</th><th>Signal</th><th>Entries</th><th>GK Correct</th><th>Fade Rate</th>' +
+    '<th>VWAP Extension</th><th>Signal</th><th>Entries</th><th>Faded</th><th>Fade Rate</th>' +
     '</tr></thead><tbody>' +
     rows.map(function(r) {
       var bc = r.pct >= 65 ? 'high-fade' : r.pct !== null && r.pct < 40 ? 'low-fade' : '';
@@ -2281,7 +2303,7 @@ function renderVwapTable(data) {
         '<td>' + r.label + '</td>' +
         '<td style="color:' + noteColor + ';font-size:11px">' + r.note + '</td>' +
         '<td>' + r.n + '</td>' +
-        '<td>' + r.correct + '</td>' +
+        '<td>' + r.faded + '</td>' +
         '<td><div class="pct-bar-wrap"><div class="pct-bar ' + bc + '" style="width:' + (r.pct || 0) + 'px"></div>' +
         '<span>' + (r.pct !== null ? r.pct + '%' : '—') + '</span>' +
         (r.n < 5 ? ' <span style="color:var(--text-dim);font-size:10px">(need ' + (5 - r.n) + ' more)</span>' : '') +
@@ -2302,13 +2324,30 @@ function renderHODTable(data) {
 
 function renderFadeDestTable(data) {
   var el=document.getElementById('fadeDestTable');
-  var w=data.filter(function(d){return d.fade_destination;});
-  if (w.length<5){el.innerHTML='<div class="analytics-note">Need 5+ entries with fade destinations. You have '+w.length+'.</div>';return;}
+  // v30.8 — count BOTH PM and OM destinations per entry. Legacy fade_destination
+  // serves as a fallback only when neither PM nor OM has data. One v30 entry can
+  // contribute up to two tallies (PM and OM). Frequency denominator = total tallies,
+  // so percentages sum to 100% across destinations.
   var counts={};
-  w.forEach(function(d){counts[d.fade_destination]=(counts[d.fade_destination]||0)+1;});
+  var totalTallies=0;
+  var entriesWithData=0;
+  data.forEach(function(d){
+    var pmDest=d.pm_fade_destination;
+    var omDest=d.om_fade_destination;
+    if (pmDest || omDest) {
+      if (pmDest) { counts[pmDest]=(counts[pmDest]||0)+1; totalTallies++; }
+      if (omDest) { counts[omDest]=(counts[omDest]||0)+1; totalTallies++; }
+      entriesWithData++;
+    } else if (d.fade_destination) {
+      counts[d.fade_destination]=(counts[d.fade_destination]||0)+1;
+      totalTallies++;
+      entriesWithData++;
+    }
+  });
+  if (totalTallies<5){el.innerHTML='<div class="analytics-note">Need 5+ entries with fade destinations. You have '+entriesWithData+' so far.</div>';return;}
   var sorted=Object.keys(counts).sort(function(a,b){return counts[b]-counts[a];});
   el.innerHTML='<table class="analytics-table"><thead><tr><th>Fade Destination</th><th>Count</th><th>Frequency</th></tr></thead><tbody>'+
-    sorted.map(function(dest){var n=counts[dest],p=Math.round(n/w.length*100);return '<tr><td>'+dest+'</td><td>'+n+'</td><td><div class="pct-bar-wrap"><div class="pct-bar" style="width:'+(p*1.5)+'px"></div><span>'+p+'%</span></div></td></tr>';}).join('')+'</tbody></table>';
+    sorted.map(function(dest){var n=counts[dest],p=Math.round(n/totalTallies*100);return '<tr><td>'+dest+'</td><td>'+n+'</td><td><div class="pct-bar-wrap"><div class="pct-bar" style="width:'+(p*1.5)+'px"></div><span>'+p+'%</span></div></td></tr>';}).join('')+'</tbody></table>';
 }
 
 
