@@ -6004,11 +6004,29 @@ async function fetchDroppiness(ticker) {
   } catch(e) { scoreEl.textContent = 'Error'; statsEl.innerHTML = '<span class="droppiness-stat" style="color:var(--nogo)">' + e.message + '</span>'; }
 }
 
+// v31: Banded RVOL helpers. Thresholds mirror anthropic-proxy worker.js rvolBand()
+// — keep these in sync if Worker thresholds ever change.
+function rvolBandColor(band) {
+  if (band === 'NORMAL')  return 'var(--go)';
+  if (band === 'ACTIVE')  return 'var(--caution)';
+  if (band === 'HOT')     return '#ff8c00';
+  if (band === 'EXTREME') return 'var(--nogo)';
+  return 'var(--text-dim)'; // OUTSIDE_WINDOW, INSUFFICIENT_DATA, ERROR
+}
+
+function rvolBandFromRaw(rvol) {
+  if (typeof rvol !== 'number' || isNaN(rvol)) return null;
+  if (rvol < 1.5) return 'NORMAL';
+  if (rvol < 3)   return 'ACTIVE';
+  if (rvol < 10)  return 'HOT';
+  return 'EXTREME';
+}
+
 async function fetchRVOL(ticker) {
   try {
     var res = await fetch(PROXY + '/rvol?ticker=' + ticker);
     var data = await res.json();
-    if (data.error || data.rvol === null || data.rvol === 0) { window.currentRVOL = null; return; }
+    if (!data || !data.rvol_band) { window.currentRVOL = null; return; }
     window.currentRVOL = data;
     var infoBar = document.getElementById('stockInfoBar');
     if (!infoBar) return;
@@ -6016,10 +6034,12 @@ async function fetchRVOL(ticker) {
     if (existing) existing.remove();
     var rvolSpan = document.createElement('span');
     rvolSpan.id = 'rvolSpan';
-    var rvolVal = data.rvol;
-    var rvolColor = rvolVal >= 5 ? 'var(--go)' : rvolVal >= 2 ? 'var(--accent)' : 'var(--text-dim)';
-    var rvolLabel = data.is_premarket ? 'RVOL (PM)' : 'RVOL';
-    rvolSpan.innerHTML = '<span style="color:var(--text-bright);font-weight:700">' + rvolLabel + ': <span style="color:' + rvolColor + '">' + rvolVal + 'x</span></span>';
+    var bandColor = rvolBandColor(data.rvol_band);
+    var bandLabel = data.rvol_band.replace(/_/g, ' ');
+    var rawDisplay = (typeof data.rvol_raw === 'number')
+      ? ' <span style="color:var(--text-dim);font-size:11px">' + data.rvol_raw + '×</span>'
+      : '';
+    rvolSpan.innerHTML = '<span style="color:var(--text-bright);font-weight:700">RVOL: <span style="color:' + bandColor + ';font-weight:700">' + bandLabel + '</span>' + rawDisplay + '</span>';
     infoBar.appendChild(rvolSpan);
   } catch(e) { window.currentRVOL = null; }
 }
@@ -6033,11 +6053,13 @@ function renderSavedRVOL(rvolValue) {
   if (!infoBar || typeof rvolValue !== 'number' || rvolValue === 0) return;
   var existing = infoBar.querySelector('#rvolSpan');
   if (existing) existing.remove();
-  window.currentRVOL = { rvol: rvolValue, is_premarket: false };
+  var band = rvolBandFromRaw(rvolValue);
+  if (!band) return;
+  window.currentRVOL = { rvol_raw: rvolValue, rvol_band: band, rvol_color: rvolBandColor(band) };
   var rvolSpan = document.createElement('span');
   rvolSpan.id = 'rvolSpan';
-  var rvolColor = rvolValue >= 5 ? 'var(--go)' : rvolValue >= 2 ? 'var(--accent)' : 'var(--text-dim)';
-  rvolSpan.innerHTML = '<span style="color:var(--text-bright);font-weight:700">RVOL: <span style="color:' + rvolColor + '">' + rvolValue + 'x</span> <span style="color:var(--text-dim);font-size:10px">(captured)</span></span>';
+  var bandColor = rvolBandColor(band);
+  rvolSpan.innerHTML = '<span style="color:var(--text-bright);font-weight:700">RVOL: <span style="color:' + bandColor + ';font-weight:700">' + band + '</span> <span style="color:var(--text-dim);font-size:11px">' + rvolValue + '× (captured)</span></span>';
   infoBar.appendChild(rvolSpan);
 }
 
@@ -6340,7 +6362,15 @@ async function askBoris(opts) {
     if (window.currentDroppiness) {
       borisMessage += '\nDROPPINESS: ' + window.currentDroppiness.score + '/100 (' + window.currentDroppiness.rating + ') — avg giveback ' + window.currentDroppiness.avg_giveback + '%\n';
     }
-    if (window.currentRVOL) borisMessage += 'RVOL: ' + window.currentRVOL.rvol + 'x (' + (window.currentRVOL.is_premarket ? 'pre-market' : 'session') + ')\n';
+    if (window.currentRVOL && window.currentRVOL.rvol_band) {
+      var rvolLine = 'RVOL: ' + window.currentRVOL.rvol_band;
+      if (typeof window.currentRVOL.rvol_raw === 'number') {
+        rvolLine += ' (' + window.currentRVOL.rvol_raw + 'x pre-market';
+        if (window.currentRVOL.et_time) rvolLine += ' to ' + window.currentRVOL.et_time + ' ET';
+        rvolLine += ')';
+      }
+      borisMessage += rvolLine + '\n';
+    }
     if (window.currentInstPct !== undefined) borisMessage += 'INST%: ' + window.currentInstPct.toFixed(1) + '%\n';
     if (window.currentFloat) borisMessage += 'FLOAT: ' + window.currentFloat + '\n';
     borisMessage += patternContext;
@@ -6485,7 +6515,7 @@ async function analyse() {
     // immediately. This must happen BEFORE renderResult() because renderResult
     // schedules Boris's auto-fire on a 300ms timer, and Boris's cache write
     // requires currentAnalysisId to be set.
-    var savePayload = { ticker: ticker || null, news_text: newsText, price_context: priceContext || null, verdict: result.verdict, catalyst_grade: result.catalystGrade, reasoning: result.reasoning, setup_notes: JSON.stringify(result.setupNotes), red_flags: JSON.stringify(result.redFlags), trade_killers: JSON.stringify(result.tradeKillers), rvol: (window.currentRVOL && typeof window.currentRVOL.rvol === 'number') ? window.currentRVOL.rvol : null };
+    var savePayload = { ticker: ticker || null, news_text: newsText, price_context: priceContext || null, verdict: result.verdict, catalyst_grade: result.catalystGrade, reasoning: result.reasoning, setup_notes: JSON.stringify(result.setupNotes), red_flags: JSON.stringify(result.redFlags), trade_killers: JSON.stringify(result.tradeKillers), rvol: (window.currentRVOL && typeof window.currentRVOL.rvol_raw === 'number') ? window.currentRVOL.rvol_raw : null };
     var saveRes = await fetch(SUPABASE_URL + '/rest/v1/news_analyses', {
       method: 'POST',
       headers: {
