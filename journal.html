@@ -256,8 +256,8 @@ function renderTable(outcomes) {
       else if (o.verdict === 'NO TRADE'){ vc = 'notrade';  vLabel = 'NO TRADE'; }
       else if (o.verdict === 'NO GO')   { vc = 'nogo';     vLabel = 'WALK AWAY'; }
       else                              { vc = 'caution';  vLabel = o.verdict || '—'; }
-      // Fixed: thresholds now match rest of system — 67+ High, 50-66 Medium, below 50 Low
-      var dropRating = o.droppiness_score >= 67 ? '🟢 ' : o.droppiness_score >= 50 ? '🟡 ' : o.droppiness_score ? '🔴 ' : '';
+      // Droppiness bands match the canonical Pine thresholds used by the gatekeeper: 67+ High, 35-66 Medium, below 35 Low (aligned 25 Apr 2026)
+      var dropRating = o.droppiness_score >= 67 ? '🟢 ' : o.droppiness_score >= 35 ? '🟡 ' : o.droppiness_score != null ? '🔴 ' : '';
 
       // Note cell with "show original" icon — only when note_raw exists AND differs from note.
       // For the 15 pre-recovery rows, note_raw is NULL so the icon never shows. Correct behaviour.
@@ -270,10 +270,10 @@ function renderTable(outcomes) {
 
       return '<tr>' +
         '<td style="color:var(--text-dim)">' + date + '</td>' +
-        '<td class="ticker-cell">' + (o.ticker || '—') + '</td>' +
+        '<td class="ticker-cell">' + (o.ticker || '—') + (o.session ? ' <span style="font-family:var(--mono);font-size:9px;color:var(--text-dim);border:1px solid var(--text-dim);border-radius:3px;padding:1px 4px;margin-left:4px;vertical-align:middle">' + escapeHtml(o.session) + '</span>' : '') + '</td>' +
         '<td><span class="verdict-pill ' + vc + '">' + vLabel + '</span></td>' +
         '<td style="color:var(--text-dim)">' + (o.catalyst_grade || '—') + '</td>' +
-        '<td>' + (o.droppiness_score ? dropRating + o.droppiness_score : '—') + '</td>' +
+        '<td>' + (o.droppiness_score != null ? dropRating + o.droppiness_score : '—') + '</td>' +
         '<td class="' + (o.did_fade ? 'fade-yes' : 'fade-no') + '">' + (o.did_fade ? '✓ Yes' : '✗ No') + '</td>' +
         '<td>' + (o.hod_giveback_pct ? o.hod_giveback_pct + '%' : '—') + '</td>' +
         '<td class="note-cell">' + noteHtml + '</td>' +
@@ -297,11 +297,11 @@ function renderStats(outcomes) {
 }
 
 function renderInsights(outcomes) {
-  // Fixed: droppiness thresholds now match rest of system — 67+ High, 50-66 Medium, below 50 Low
-  var dropBuckets = { 'High (67+)': [], 'Medium (50-66)': [], 'Low (below 50)': [] };
+  // Droppiness bands match the canonical Pine thresholds used by the gatekeeper: 67+ High, 35-66 Medium, below 35 Low (aligned 25 Apr 2026)
+  var dropBuckets = { 'High (67+)': [], 'Medium (35-66)': [], 'Low (below 35)': [] };
   outcomes.forEach(function(o) {
-    if (!o.droppiness_score) return;
-    var bucket = o.droppiness_score >= 67 ? 'High (67+)' : o.droppiness_score >= 50 ? 'Medium (50-66)' : 'Low (below 50)';
+    if (o.droppiness_score == null) return;
+    var bucket = o.droppiness_score >= 67 ? 'High (67+)' : o.droppiness_score >= 35 ? 'Medium (35-66)' : 'Low (below 35)';
     dropBuckets[bucket].push(o);
   });
 
