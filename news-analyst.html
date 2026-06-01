@@ -5761,21 +5761,6 @@ eXpilSpDG70qVKmI/9k=" alt="Bear Intel" /></div>
       <div class="result-section" id="watchSection"><div class="result-section-title">What Would Kill This Trade</div><ul id="watchList"></ul></div>
     </div>
     <div class="result-footer"><span id="footerTime"></span><span>VERDICT BY GATEKEEPER LOGIC &middot; REASONING BY AI ANALYST</span></div>
-    <div class="outcome-panel" id="outcomePanel">
-      <div class="outcome-title">Log Trade Outcome</div>
-      <div class="outcome-row1">
-        <div class="outcome-fade-btns"><button class="fade-btn" id="fadeYes" onclick="selectFade(true)">&#10003; Faded</button><button class="fade-btn" id="fadeNo" onclick="selectFade(false)">&#10007; Did Not Fade</button></div>
-        <div class="outcome-price-fields">
-          <div class="outcome-price-group"><label class="outcome-price-label">HOD $</label><input type="number" class="outcome-input outcome-price" id="hodPrice" placeholder="0.00" min="0" step="0.01" oninput="calcGiveback()" /></div>
-          <div class="outcome-price-group"><label class="outcome-price-label">Entry $</label><input type="number" class="outcome-input outcome-price" id="entryPrice" placeholder="0.00" min="0" step="0.01" /></div>
-          <div class="outcome-price-group"><label class="outcome-price-label">Exit $</label><input type="number" class="outcome-input outcome-price" id="exitPrice" placeholder="0.00" min="0" step="0.01" oninput="calcGiveback()" /></div>
-          <div class="outcome-calc" id="outcomeCalc">&mdash;</div>
-        </div>
-        <input type="text" class="outcome-input outcome-note" id="outcomeNote" placeholder="Note (optional)" maxlength="100" />
-        <button class="outcome-submit" id="outcomeSubmit" onclick="logOutcome()">Save</button>
-      </div>
-      <div class="outcome-saved" id="outcomeSaved">&#10003; Outcome saved to journal</div>
-    </div>
   </div>
   <div class="history-section">
     <div class="history-header"><div class="history-title">Recent Analyses</div><div class="history-count" id="historyCount"></div></div>
@@ -5800,7 +5785,6 @@ UNIVERSE & TIMING
 - Only consider stocks 30%+ up from previous close
 - Waiting for news drops at 7am and 8am
 - Preferred market cap: up to $20m
-- Relative volume: 5x or greater required
 
 DILUTION PROFILE (when provided)
 - You may receive a dilution profile from Ask Edgar with 6 badges: Overall Risk, Dilution Risk, Offering Frequency, Cash Need, Warrant Exercise, Nasdaq Compliance
@@ -6283,15 +6267,30 @@ async function askBoris(opts) {
     var patternContext = '';
     var regimeContext = '';
     try {
-      var patRes = await supabaseRequest('scanner_log?select=verdict,catalyst_grade,gatekeeper_correct,ticker,trading_date&gatekeeper_correct=not.is.null&order=trading_date.desc&limit=300');
+      // v31.1 — query repointed off legacy gatekeeper_correct (which v30.3+ entries
+      // no longer write) onto the PM/OM split fields, so Boris's pattern data and the
+      // 14-day regime see post-cutover trades. OR filter = "any gk field populated"
+      // (legacy OR pm OR om). fade destinations selected for the aggregate deriveFade.
+      var patRes = await supabaseRequest('scanner_log?select=verdict,catalyst_grade,gatekeeper_correct,pm_gatekeeper_correct,om_gatekeeper_correct,fade_destination,pm_fade_destination,om_fade_destination,ticker,trading_date&or=(gatekeeper_correct.not.is.null,pm_gatekeeper_correct.not.is.null,om_gatekeeper_correct.not.is.null)&order=trading_date.desc&limit=300');
       var patData = await patRes.json();
       if (Array.isArray(patData) && patData.length > 0) {
         var grade = window.currentResultGrade || '';
         var verdict = window.currentResultVerdict || '';
         var ticker = window.currentResultTicker || '';
 
-        // did_fade derivation
+        // did_fade derivation — v31.1 aggregate, mirrors scanner-log's derivedDidFade.
+        // Read PM/OM fade destinations first; fall back to legacy fade_destination;
+        // then fall back to the pre-v30 verdict + gatekeeper_correct rule for old rows
+        // that only have the manual gatekeeper_correct set. Faded if any populated
+        // session went past "Did Not Fade". Always returns a boolean (legacy default
+        // true) so the matching/grade/ticker/regime rate maths below are unchanged.
         function deriveFade(d) {
+          var dests = [];
+          if (d.pm_fade_destination) dests.push(d.pm_fade_destination);
+          if (d.om_fade_destination) dests.push(d.om_fade_destination);
+          if (dests.length === 0 && d.fade_destination) dests.push(d.fade_destination);
+          if (dests.length > 0) return dests.some(function(s){ return s !== 'Did Not Fade'; });
+          // Legacy fallback: no fade-destination data on this row
           var v = (d.verdict || '').toUpperCase();
           var g = (d.gatekeeper_correct || '').toUpperCase();
           var isBlock = v === 'NO TRADE' || v === 'NO GO';
@@ -6593,14 +6592,6 @@ function renderResult(r, ticker, priceContext) {
   var saveLogBox = document.getElementById('saveLogBox'), saveLogBtn = document.getElementById('saveLogBtn'), saveLogStatus = document.getElementById('saveLogStatus');
   saveLogBox.classList.add('visible'); saveLogBtn.disabled = false; saveLogBtn.textContent = 'Save to Log'; saveLogBtn.className = 'save-log-btn';
   saveLogStatus.className = 'save-log-status'; saveLogStatus.textContent = '';
-  var outcomePanel = document.getElementById('outcomePanel'), outcomeSaved = document.getElementById('outcomeSaved');
-  if (r.verdict === 'GO' || r.verdict === 'CAUTION') {
-    outcomePanel.className = 'outcome-panel visible'; outcomeSaved.className = 'outcome-saved';
-    document.getElementById('outcomeSubmit').disabled = false; document.getElementById('outcomeSubmit').textContent = 'Save';
-    currentFadeSelection = null; document.getElementById('fadeYes').className = 'fade-btn'; document.getElementById('fadeNo').className = 'fade-btn';
-    document.getElementById('hodPrice').value = ''; document.getElementById('entryPrice').value = '';
-    document.getElementById('exitPrice').value = ''; document.getElementById('outcomeCalc').textContent = '\u2014'; document.getElementById('outcomeNote').value = '';
-  } else { outcomePanel.className = 'outcome-panel'; }
   panel.style.display = 'block';
   requestAnimationFrame(function() { panel.classList.add('visible'); if (typeof updateActionSlot === 'function') updateActionSlot(); });
   panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -6732,60 +6723,7 @@ function syncFloatBtn(disabled, loading) {
   floatBtn.disabled = disabled;
   if (loading) { floatBtn.classList.add('loading'); } else { floatBtn.classList.remove('loading'); }
 }
-var currentFadeSelection = null, currentAnalysisId = null;
-
-function selectFade(didFade) { currentFadeSelection = didFade; document.getElementById('fadeYes').className = 'fade-btn' + (didFade ? ' selected-yes' : ''); document.getElementById('fadeNo').className = 'fade-btn' + (!didFade ? ' selected-no' : ''); }
-function calcGiveback() { var hod = parseFloat(document.getElementById('hodPrice').value), exit = parseFloat(document.getElementById('exitPrice').value), calc = document.getElementById('outcomeCalc'); if (hod > 0 && exit > 0 && hod > exit) { var pct = Math.round(((hod - exit) / hod) * 100); calc.textContent = pct + '%'; calc.style.color = 'var(--go)'; } else { calc.textContent = '\u2014'; calc.style.color = 'var(--accent)'; } }
-
-async function logOutcome() {
-  if (currentFadeSelection === null) { alert('Please select whether it faded or not.'); return; }
-  var btn = document.getElementById('outcomeSubmit'), savedMsg = document.getElementById('outcomeSaved');
-  var hodPrice = parseFloat(document.getElementById('hodPrice').value) || null;
-  var exitPrice = parseFloat(document.getElementById('exitPrice').value) || null;
-  var note = document.getElementById('outcomeNote').value.trim();
-  var ticker = document.getElementById('ticker').value.trim().toUpperCase();
-  // v29: use internal verdict value (GO/CAUTION/NO TRADE/NO GO) not the display label
-  // (which translates to STALK/WALK AWAY). DB stores internal values for join consistency.
-  var verdict = window.currentResultVerdict || document.getElementById('verdictLabel').textContent;
-  var catalystGrade = document.getElementById('catalystGrade').textContent;
-  var droppinessScore = window.currentDroppiness ? window.currentDroppiness.score : null;
-  var givebackPct = null;
-  if (hodPrice && exitPrice && hodPrice > exitPrice) givebackPct = Math.round(((hodPrice - exitPrice) / hodPrice) * 100);
-  btn.disabled = true; btn.textContent = 'Saving...';
-  try {
-    var payload = { ticker: ticker || null, analysis_id: currentAnalysisId || null, verdict: verdict || null, catalyst_grade: catalystGrade || null, droppiness_score: droppinessScore ? parseFloat(droppinessScore) : null, did_fade: currentFadeSelection, hod_giveback_pct: givebackPct, note: note || null };
-
-    // Upsert: if a trade_outcomes row already exists for this analysis_id, PATCH it; otherwise POST.
-    // v29: PATCH uses direct fetch() with explicit Prefer: return=minimal because
-    // supabaseRequest sends Prefer:'' on non-POST methods, which is the silent-fail
-    // pattern from v23 (Supabase returns 204 even when RLS blocks). Boris cache write
-    // already uses direct fetch for the same reason — logOutcome now matches.
-    var res;
-    if (currentAnalysisId) {
-      var existingCheck = await supabaseRequest('trade_outcomes?analysis_id=eq.' + currentAnalysisId + '&select=id');
-      var existingRows = await existingCheck.json();
-      if (existingRows && existingRows.length > 0) {
-        res = await fetch(SUPABASE_URL + '/rest/v1/trade_outcomes?analysis_id=eq.' + currentAnalysisId, {
-          method: 'PATCH',
-          headers: {
-            'Content-Type': 'application/json',
-            'apikey': SUPABASE_KEY,
-            'Authorization': 'Bearer ' + SUPABASE_KEY,
-            'Prefer': 'return=minimal'
-          },
-          body: JSON.stringify(payload)
-        });
-      } else {
-        res = await supabaseRequest('trade_outcomes', 'POST', payload);
-      }
-    } else {
-      res = await supabaseRequest('trade_outcomes', 'POST', payload);
-    }
-
-    if (res.status === 201 || res.ok) { savedMsg.className = 'outcome-saved visible'; btn.textContent = 'Saved \u2713'; document.getElementById('hodPrice').value = ''; document.getElementById('entryPrice').value = ''; document.getElementById('exitPrice').value = ''; document.getElementById('outcomeNote').value = ''; document.getElementById('outcomeCalc').textContent = '\u2014'; currentFadeSelection = null; document.getElementById('fadeYes').className = 'fade-btn'; document.getElementById('fadeNo').className = 'fade-btn'; }
-    else { btn.disabled = false; btn.textContent = 'Save'; alert('Could not save \u2014 try again.'); }
-  } catch(e) { btn.disabled = false; btn.textContent = 'Save'; alert('Error: ' + e.message); }
-}
+var currentAnalysisId = null;
 
 loadHistory();
 if (typeof updateActionSlot === 'function') updateActionSlot();
