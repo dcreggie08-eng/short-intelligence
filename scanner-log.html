@@ -1565,11 +1565,23 @@ async function deleteEntry(id, ticker, tradingDate) {
   }
 }
 
+// ─── v31.0 FORWARD-CUT ──────────────────────────────────────────
+// Analytics describe only entries on/after this date. Historic entries
+// stay in the DB and in the Daily Log tab (fetched separately by date) —
+// reference data, not analytics data. To shift the cutover, change this
+// one constant. Date threshold only: no flag, no migration.
+var CUTOVER_DATE = '2026-06-01';
+
 async function loadAnalytics() {
   try {
     var res = await sbFetch('scanner_log?select=*&order=trading_date.desc');
     var data = await res.json();
     if (!Array.isArray(data)) return;
+    // v31.0 cutover: single filter point — every consumer + top stat below
+    // reads this one array, so all inherit the forward-cut. trading_date is
+    // ISO (YYYY-MM-DD) so string compare is correct; null is excluded
+    // (cannot be post-cutover).
+    data = data.filter(function(d){ return d.trading_date && d.trading_date >= CUTOVER_DATE; });
     var total = data.length;
     // v30: "Reviewed" now also counts entries reviewed via the PM/OM split fields,
     // so new entries flip the gate even though they no longer touch legacy fields.
@@ -1967,9 +1979,11 @@ function renderTagTable(data, elId, tagList, category) {
   var el = document.getElementById(elId);
   if (!el) return;
 
-  // Only use reviewed entries (gatekeeper_correct set) that have trade_tags
+  // v31.0 — migrated to v30 aggregate. The legacy filter (gatekeeper_correct
+  // set) excluded post-cutover entries entirely, since v30.3+ rows write only
+  // pm_/om_ fields. anyGkSet captures legacy AND v30 reviewed entries.
   var reviewed = data.filter(function(d) {
-    return d.gatekeeper_correct && d.gatekeeper_correct !== '';
+    return anyGkSet(d);
   });
 
   if (reviewed.length < 5) {
@@ -1977,17 +1991,12 @@ function renderTagTable(data, elId, tagList, category) {
     return;
   }
 
-  // For each tag, count appearances and fade rate
+  // For each tag, count appearances and fade rate.
+  // v31.0 — fade determination now uses the shared derivedDidFade aggregate
+  // (reads pm_/om_ fade destinations, legacy fade_destination as fallback).
+  // The old inline verdict+gatekeeper_correct rule could not see v30 entries.
   function didFade(d) {
-    var v = (d.verdict || '').toUpperCase();
-    var g = (d.gatekeeper_correct || '').toUpperCase();
-    // v30.4 — PARTIAL is a gatekeeper_correct value (legacy/historic only since v30.3
-    // auto-derive). Per briefing §9: PARTIAL = faded. Prior typo (v === 'PARTIAL')
-    // could never fire and mis-classified historic PARTIAL rows as not-faded.
-    if (g === 'PARTIAL') return true;
-    if ((v === 'GO' || v === 'CAUTION') && g === 'YES') return true;
-    if ((v === 'NO TRADE' || v === 'NO GO') && g === 'NO') return true;
-    return false;
+    return derivedDidFade(d) === true;
   }
 
   var rows = tagList.map(function(tag) {
@@ -2070,20 +2079,6 @@ function renderKeySummary(data) {
     return best;
   }
 
-  function topSingle(keyFn) {
-    var reviewed = data.filter(function(d) { return d.gatekeeper_correct && keyFn(d) !== null; });
-    var groups = {};
-    reviewed.forEach(function(d) { var k = keyFn(d); if (!k) return; if (!groups[k]) groups[k] = []; groups[k].push(d); });
-    var best = null;
-    Object.keys(groups).forEach(function(k) {
-      var g = groups[k]; if (g.length < MIN) return;
-      var faded = g.filter(function(d) { return d.gatekeeper_correct === 'YES'; }).length;
-      var pct = Math.round(faded / g.length * 100);
-      if (!best || pct > best.pct) best = { label: k, pct: pct, n: g.length };
-    });
-    return best;
-  }
-
   function strength(pct) { return pct >= 70 ? 'positive' : pct >= 50 ? '' : 'warning'; }
 
   function findingRow(label, text, cls) {
@@ -2094,23 +2089,23 @@ function renderKeySummary(data) {
 
   // Droppiness
   var dropBands = [{label:'High (67+)', f:function(d){return d.droppiness_score>=67;}},{label:'Medium (35-66)',f:function(d){return d.droppiness_score>=35&&d.droppiness_score<67;}},{label:'Low (<35)',f:function(d){return d.droppiness_score!==null&&d.droppiness_score<35;}}];
-  var revDrop = data.filter(function(d){return d.droppiness_score!==null&&d.gatekeeper_correct;});
+  var revDrop = data.filter(function(d){return d.droppiness_score!==null&&anyGkSet(d);});
   var bestDrop = null;
-  dropBands.forEach(function(b){var g=revDrop.filter(b.f);if(g.length<MIN)return;var c=g.filter(function(d){return d.gatekeeper_correct==='YES';}).length;var p=Math.round(c/g.length*100);if(!bestDrop||p>bestDrop.pct)bestDrop={label:b.label,pct:p,n:g.length};});
+  dropBands.forEach(function(b){var g=revDrop.filter(b.f);if(g.length<MIN)return;var c=g.filter(function(d){return derivedDidFade(d)===true;}).length;var p=Math.round(c/g.length*100);if(!bestDrop||p>bestDrop.pct)bestDrop={label:b.label,pct:p,n:g.length};});
   rows.push(findingRow('Droppiness', bestDrop ? bestDrop.label + ' stocks fade ' + bestDrop.pct + '% of the time — ' + (bestDrop.pct>=70?'your strongest droppiness signal':'building signal') : 'Need 5+ entries per band — keep logging.', bestDrop?strength(bestDrop.pct):'dim'));
 
   // Verdict
   var verdicts = ['GO','CAUTION','NO TRADE','NO GO'];
-  var revVerd = data.filter(function(d){return d.verdict&&d.gatekeeper_correct;});
+  var revVerd = data.filter(function(d){return d.verdict&&anyGkSet(d);});
   var bestVerd = null;
-  verdicts.forEach(function(v){var g=revVerd.filter(function(d){return d.verdict===v;});if(g.length<MIN)return;var c=g.filter(function(d){return d.gatekeeper_correct==='YES';}).length;var p=Math.round(c/g.length*100);if(!bestVerd||p>bestVerd.pct)bestVerd={label:v,pct:p,n:g.length};});
+  verdicts.forEach(function(v){var g=revVerd.filter(function(d){return d.verdict===v;});if(g.length<MIN)return;var sum=g.reduce(function(s,d){var sc=gkCorrectScore(d);return s+(sc!==null?sc:0);},0);var p=Math.round(sum/g.length*100);if(!bestVerd||p>bestVerd.pct)bestVerd={label:v,pct:p,n:g.length};});
   rows.push(findingRow('Verdict', bestVerd ? bestVerd.label + ' is your most reliable verdict at ' + bestVerd.pct + '% correct from ' + bestVerd.n + ' entries' : 'Need 5+ entries per verdict type.', bestVerd?strength(bestVerd.pct):'dim'));
 
   // VWAP — show only best zone (no "avoid" language; the metric being shown is gatekeeper-correct, not true fade rate)
   var vwapBands2 = [{label:'50%+ above VWAP',f:function(d){return d.vwap_extension_pct>=50;}},{label:'30-50% above VWAP',f:function(d){return d.vwap_extension_pct>=30&&d.vwap_extension_pct<50;}},{label:'20-30% above VWAP',f:function(d){return d.vwap_extension_pct>=20&&d.vwap_extension_pct<30;}},{label:'Below 20%',f:function(d){return d.vwap_extension_pct!==null&&d.vwap_extension_pct<20;}}];
-  var revVwap = data.filter(function(d){return d.vwap_extension_pct!==null&&d.gatekeeper_correct;});
+  var revVwap = data.filter(function(d){return d.vwap_extension_pct!==null&&anyGkSet(d);});
   var bestVwap = null;
-  vwapBands2.forEach(function(b){var g=revVwap.filter(b.f);if(g.length<MIN)return;var c=g.filter(function(d){return d.gatekeeper_correct==='YES';}).length;var p=Math.round(c/g.length*100);if(!bestVwap||p>bestVwap.pct)bestVwap={label:b.label,pct:p,n:g.length};});
+  vwapBands2.forEach(function(b){var g=revVwap.filter(b.f);if(g.length<MIN)return;var sum=g.reduce(function(s,d){var sc=gkCorrectScore(d);return s+(sc!==null?sc:0);},0);var p=Math.round(sum/g.length*100);if(!bestVwap||p>bestVwap.pct)bestVwap={label:b.label,pct:p,n:g.length};});
   var vwapText = bestVwap ? bestVwap.label + ' has highest gatekeeper-correct rate at ' + bestVwap.pct + '%' : 'Need VWAP data in evening reviews.';
   rows.push(findingRow('VWAP Extension', vwapText, bestVwap?strength(bestVwap.pct):'dim'));
 
@@ -2121,11 +2116,20 @@ function renderKeySummary(data) {
   rows.push(findingRow('HOD Timing', omPct!==null ? 'Open market sets the HOD ' + omPct + '% of the time — pre-market HOD alone is misleading' : 'Need 5+ entries with HOD data.', omPct!==null?(omPct>=55?'warning':''):'dim'));
 
   // Fade destinations
-  var revDest = data.filter(function(d){return d.fade_destination;});
+  // v31.0 — count both PM and OM fade destinations per entry (legacy single
+  // fade_destination as fallback for pre-v30 rows). Mirrors renderFadeDestTable:
+  // denominator = total tallies, so frequencies sum to ~100%.
   var destCounts = {};
-  revDest.forEach(function(d){destCounts[d.fade_destination]=(destCounts[d.fade_destination]||0)+1;});
+  var destTotal = 0;
+  data.forEach(function(d){
+    var dests = [];
+    if (d.pm_fade_destination) dests.push(d.pm_fade_destination);
+    if (d.om_fade_destination) dests.push(d.om_fade_destination);
+    if (dests.length === 0 && d.fade_destination) dests.push(d.fade_destination);
+    dests.forEach(function(s){ destCounts[s]=(destCounts[s]||0)+1; destTotal++; });
+  });
   var topDest = Object.keys(destCounts).sort(function(a,b){return destCounts[b]-destCounts[a];})[0];
-  var topDestPct = topDest&&revDest.length>=MIN ? Math.round(destCounts[topDest]/revDest.length*100) : null;
+  var topDestPct = topDest&&destTotal>=MIN ? Math.round(destCounts[topDest]/destTotal*100) : null;
   rows.push(findingRow('Fade Destination', topDest&&topDestPct!==null ? topDest + ' is the most common exit at ' + topDestPct + '% — focus exits there first' : 'Need 5+ entries with fade destinations.', topDest?'positive':'dim'));
 
   // Perm: Cat + Dil + Cash
@@ -2232,7 +2236,7 @@ function renderDropTable(data) {
   // rounded sum; percentage uses the unrounded sum for accuracy.
   var rev=data.filter(function(d){return d.droppiness_score!==null&&anyGkSet(d);});
   if (rev.length<5){el.innerHTML='<div class="analytics-note">Need at least 5 reviewed entries to show droppiness patterns. You have '+rev.length+' so far.</div>';return;}
-  var bands=[{label:'High (67+)',f:function(d){return d.droppiness_score>=67;}},{label:'Medium (50-66)',f:function(d){return d.droppiness_score>=50&&d.droppiness_score<67;}},{label:'Low (below 50)',f:function(d){return d.droppiness_score<50;}}];
+  var bands=[{label:'High (67+)',f:function(d){return d.droppiness_score>=67;}},{label:'Medium (35-66)',f:function(d){return d.droppiness_score>=35&&d.droppiness_score<67;}},{label:'Low (below 35)',f:function(d){return d.droppiness_score<35;}}];
   el.innerHTML='<table class="analytics-table"><thead><tr><th>Band</th><th>Entries</th><th>Gatekeeper Correct</th><th>Rate</th></tr></thead><tbody>'+
     bands.map(function(b){
       var g=rev.filter(b.f);
