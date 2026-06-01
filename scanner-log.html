@@ -950,10 +950,8 @@ function buildReviewForm(entry) {
   var gkCorrect = entry.gatekeeper_correct || '';
   var didTrade = entry.did_trade;
   // ─── v30 PM/OM split fields ────────────────────────────────────
-  var pmGkCorrect = entry.pm_gatekeeper_correct || '';
   var pmFadeDest  = entry.pm_fade_destination   || '';
   var pmDidTrade  = entry.pm_did_trade;
-  var omGkCorrect = entry.om_gatekeeper_correct || '';
   var omFadeDest  = entry.om_fade_destination   || '';
   var omDidTrade  = entry.om_did_trade;
   // ───────────────────────────────────────────────────────────────
@@ -984,8 +982,6 @@ function buildReviewForm(entry) {
 
   function hodSl(v) { return hodHigher===v?'sel-'+(v==='PM'?'pm':v==='OM'?'om':'same'):''; }
   // v30 per-session selectors
-  function pmGkSl(v) { return pmGkCorrect===v?(v==='YES'?'sel-yes':v==='NO'?'sel-no':'sel-partial'):''; }
-  function omGkSl(v) { return omGkCorrect===v?(v==='YES'?'sel-yes':v==='NO'?'sel-no':'sel-partial'):''; }
   function pmTradSl(v) { return (v==='YES'&&pmDidTrade===true)||(v==='NO'&&pmDidTrade===false)?(v==='YES'?'sel-yes':'sel-no'):''; }
   function omTradSl(v) { return (v==='YES'&&omDidTrade===true)||(v==='NO'&&omDidTrade===false)?(v==='YES'?'sel-yes':'sel-no'):''; }
 
@@ -1811,7 +1807,7 @@ function renderPermCatDilCash(data) {
   var el = document.getElementById('permCatDilCash');
   el.innerHTML = buildPermTable(data,
     function(d) {
-      var cat = d.catalyst_grade, dil = normaliseVal(d.dilution_overall), cash = normaliseVal(d.dilution_cash_need);
+      var cat = d.catalyst_grade, dil = normaliseVal(d.dilution_offering_risk), cash = normaliseVal(d.dilution_cash_need);
       if (!cat || !dil || !cash) return null;
       return cat + ' | ' + dil + ' dil | ' + cash + ' cash';
     },
@@ -1833,7 +1829,7 @@ function renderPermCatDilDrop(data) {
   var el = document.getElementById('permCatDilDrop');
   el.innerHTML = buildPermTable(data,
     function(d) {
-      var cat = d.catalyst_grade, dil = normaliseVal(d.dilution_overall), drop = dropBand(d.droppiness_score);
+      var cat = d.catalyst_grade, dil = normaliseVal(d.dilution_offering_risk), drop = dropBand(d.droppiness_score);
       if (!cat || !dil || !drop) return null;
       return cat + ' | ' + dil + ' dil | Drop ' + drop;
     },
@@ -2133,11 +2129,11 @@ function renderKeySummary(data) {
   rows.push(findingRow('Fade Destination', topDest&&topDestPct!==null ? topDest + ' is the most common exit at ' + topDestPct + '% — focus exits there first' : 'Need 5+ entries with fade destinations.', topDest?'positive':'dim'));
 
   // Perm: Cat + Dil + Cash
-  var b1 = topCombo(function(d){var cat=d.catalyst_grade,dil=normaliseVal(d.dilution_overall),cash=normaliseVal(d.dilution_cash_need);return(cat&&dil&&cash)?cat+' + '+dil+' DIL + '+cash+' CASH':null;});
+  var b1 = topCombo(function(d){var cat=d.catalyst_grade,dil=normaliseVal(d.dilution_offering_risk),cash=normaliseVal(d.dilution_cash_need);return(cat&&dil&&cash)?cat+' + '+dil+' DIL + '+cash+' CASH':null;});
   rows.push(findingRow('Cat + Dil + Cash', b1 ? b1.label + ' fades ' + b1.pct + '% (' + b1.faded + '/' + b1.n + ') — ' + (b1.pct>=80?'high conviction setup':'watch this combination') : 'Building data — need 5+ per combination.', b1?strength(b1.pct):'dim'));
 
   // Perm: Cat + Dil + Drop
-  var b2 = topCombo(function(d){var cat=d.catalyst_grade,dil=normaliseVal(d.dilution_overall),drop=dropBand(d.droppiness_score);return(cat&&dil&&drop)?cat+' + '+dil+' DIL + DROP '+drop:null;});
+  var b2 = topCombo(function(d){var cat=d.catalyst_grade,dil=normaliseVal(d.dilution_offering_risk),drop=dropBand(d.droppiness_score);return(cat&&dil&&drop)?cat+' + '+dil+' DIL + DROP '+drop:null;});
   rows.push(findingRow('Cat + Dil + Drop', b2 ? b2.label + ' fades ' + b2.pct + '% (' + b2.faded + '/' + b2.n + ')' : 'Building data — need 5+ per combination.', b2?strength(b2.pct):'dim'));
 
   // Perm: Verdict + VWAP + Drop
@@ -2191,8 +2187,8 @@ function renderBestSetup(data) {
     });
   }
 
-  scanCombos(function(d){var cat=d.catalyst_grade,dil=normaliseVal(d.dilution_overall),cash=normaliseVal(d.dilution_cash_need);return(cat&&dil&&cash)?cat+' + '+dil+' DIL + '+cash+' CASH':null;},'Catalyst / Dilution / Cash Need');
-  scanCombos(function(d){var cat=d.catalyst_grade,dil=normaliseVal(d.dilution_overall),drop=dropBand(d.droppiness_score);return(cat&&dil&&drop)?cat+' + '+dil+' DIL + DROP '+drop:null;},'Catalyst / Dilution / Droppiness');
+  scanCombos(function(d){var cat=d.catalyst_grade,dil=normaliseVal(d.dilution_offering_risk),cash=normaliseVal(d.dilution_cash_need);return(cat&&dil&&cash)?cat+' + '+dil+' DIL + '+cash+' CASH':null;},'Catalyst / Dilution / Cash Need');
+  scanCombos(function(d){var cat=d.catalyst_grade,dil=normaliseVal(d.dilution_offering_risk),drop=dropBand(d.droppiness_score);return(cat&&dil&&drop)?cat+' + '+dil+' DIL + DROP '+drop:null;},'Catalyst / Dilution / Droppiness');
   scanCombos(function(d){var v=d.verdict,vwap=vwapBand(d.vwap_extension_pct),drop=dropBand(d.droppiness_score);return(v&&vwap&&drop)?v+' + VWAP '+vwap+' + DROP '+drop:null;},'Verdict / VWAP / Droppiness');
   scanCombos(function(d){var inst=instBand(d.inst_percent),cat=d.catalyst_grade;return(inst&&cat)?'INST '+inst+' + '+cat:null;},'Inst% / Catalyst');
   scanCombos(function(d){var fl=floatBand(d.float_shares),cat=d.catalyst_grade,cash=normaliseVal(d.dilution_cash_need);return(fl&&cat&&cash)?'FLOAT '+fl+' + '+cat+' + '+cash+' CASH':null;},'Float / Catalyst / Cash');
