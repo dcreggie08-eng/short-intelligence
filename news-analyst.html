@@ -6289,7 +6289,9 @@ async function askBoris(opts) {
           if (d.pm_fade_destination) dests.push(d.pm_fade_destination);
           if (d.om_fade_destination) dests.push(d.om_fade_destination);
           if (dests.length === 0 && d.fade_destination) dests.push(d.fade_destination);
-          if (dests.length > 0) return dests.some(function(s){ return s !== 'Did Not Fade'; });
+          // v32.1 — "real fade" = past the 38% Fib. 38% is a breathing pullback, not a
+          // tradeable fade, so it counts as no-fade (matches scanner-log's derivedDidFade).
+          if (dests.length > 0) return dests.some(function(s){ return s !== 'Did Not Fade' && s !== '38% Fib'; });
           // Legacy fallback: no fade-destination data on this row
           var v = (d.verdict || '').toUpperCase();
           var g = (d.gatekeeper_correct || '').toUpperCase();
