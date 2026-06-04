@@ -1172,27 +1172,39 @@ function updateTradePriceVisibility(id) {
   priceRow.style.display = anyTrade ? 'flex' : 'none';
 }
 
-// ─── v30.3 — Gatekeeper correctness, AUTO-DERIVED ────────────────
+// ─── v32.1 — Gatekeeper correctness, AUTO-DERIVED ────────────────
 // THE RULE (per session, PM or OM independently):
 //
-//   | Verdict          | Fade in session       | Gatekeeper |
-//   |------------------|-----------------------|------------|
-//   | GO / CAUTION     | Faded past 38% Fib    | CORRECT    |
-//   | GO / CAUTION     | Did Not Fade          | WRONG      |
-//   | NO TRADE / NO GO | Did Not Fade          | CORRECT    |
-//   | NO TRADE / NO GO | Faded past 38% Fib    | WRONG      |
+//   | Verdict          | Fade in session            | Gatekeeper |
+//   |------------------|----------------------------|------------|
+//   | GO / CAUTION     | Tradeable fade (past 38%)  | CORRECT    |
+//   | GO / CAUTION     | Only to 38% / Did Not Fade | WRONG      |
+//   | NO TRADE / NO GO | Only to 38% / Did Not Fade | CORRECT    |
+//   | NO TRADE / NO GO | Tradeable fade (past 38%)  | WRONG      |
 //
-// "Did Not Fade" is the only fade_destination value that counts as no-fade.
-// Every other value (38% Fib, 50% Fib, 61% Fib, 76% Fib, 100% Fib, VWAP,
-// Below VWAP, Ghost Pivot) is treated as a meaningful fade past the threshold.
-// See briefing Section 9 + v30.3 entry.
+// v32.1 CHANGE: a fade to the 38% Fib is NOT a tradeable fade — it's too
+// shallow to short for real (Reggie's call, 4 Jun). "38% Fib" now grades the
+// same as "Did Not Fade" for correctness: a permit (GO/CAUTION) that only
+// reached 38% was WRONG (no tradeable move), and a block (NO TRADE/NO GO)
+// that only reached 38% was CORRECT (it held up — nothing to trade).
+//
+// "Did Not Fade" and "38% Fib" are the only no-tradeable-fade values.
+// Every deeper value (50% Fib, 61% Fib, 76% Fib, 100% Fib, VWAP, Below VWAP,
+// Ghost Pivot) is a tradeable fade past the threshold.
+//
+// NOTE: this is a CORRECTNESS (judgement) change only. The fade-rate metrics
+// (derivedDidFade / True Fade Rate / permutation tables) still treat 38% as a
+// measured fade — "did price retrace?" is a separate question by design.
+// See briefing Section 9.
 
 function deriveGatekeeperCorrect(verdict, fadeDestination) {
   if (!fadeDestination) return null;                            // not yet reviewed for this session
   var isBlock = verdict === 'NO TRADE' || verdict === 'NO GO';
-  var faded   = fadeDestination !== 'Did Not Fade';
-  if (!isBlock) return faded ? 'YES' : 'NO';                    // GO / CAUTION
-  return faded ? 'NO' : 'YES';                                  // NO TRADE / NO GO
+  // A "tradeable fade" must go PAST the 38% Fib. 38% itself and "Did Not Fade"
+  // are not tradeable moves (v32.1).
+  var tradeableFade = fadeDestination !== 'Did Not Fade' && fadeDestination !== '38% Fib';
+  if (!isBlock) return tradeableFade ? 'YES' : 'NO';            // GO / CAUTION
+  return tradeableFade ? 'NO' : 'YES';                          // NO TRADE / NO GO
 }
 
 // Verdict per entry id, populated at hydration so updateGkDerived can find it.
@@ -1211,7 +1223,9 @@ function updateGkDerived(id, sessionKey) {
     return;
   }
   var gk        = deriveGatekeeperCorrect(verdict, fadeDest);
-  var fadeLabel = fadeDest === 'Did Not Fade' ? 'no fade' : 'faded past 38%';
+  var fadeLabel = fadeDest === 'Did Not Fade' ? 'no fade'
+                : fadeDest === '38% Fib'       ? 'only to 38% — not a tradeable fade'
+                :                                'faded past 38%';
   var color     = gk === 'YES' ? 'var(--go)' : 'var(--nogo)';
   displayEl.innerHTML = '<span style="color:'+color+';font-weight:700">→ Gatekeeper ' + gk + '</span> <span style="color:var(--text-dim)">(' + (verdict || '?') + ' + ' + fadeLabel + ')</span>';
 }
@@ -1416,8 +1430,9 @@ async function saveReview(id) {
         // Decouples "did it fade?" (measured) from "was gatekeeper correct?" (judgement).
         function deriveSessionDidFade(sessionFadeDest) {
           if (!sessionFadeDest) return null;                       // unreviewed for this session
-          if (sessionFadeDest === 'Did Not Fade') return false;
-          return true;                                              // any specific destination = faded
+          // v32.1 — 38% Fib is a breathing pullback, not a tradeable fade: counts as no-fade.
+          if (sessionFadeDest === 'Did Not Fade' || sessionFadeDest === '38% Fib') return false;
+          return true;                                              // any deeper destination = faded
         }
 
         // Per-session giveback — uses THAT session's HOD as the reference,
@@ -1693,8 +1708,9 @@ function derivedDidFade(d) {
   // Legacy fallback: only consult if no v30 session data exists for this entry
   if (sessions.length === 0 && d.fade_destination) sessions.push(d.fade_destination);
   if (sessions.length === 0) return null;
-  // Faded if any populated session went past "Did Not Fade"
-  return sessions.some(function(s) { return s !== 'Did Not Fade'; });
+  // v32.1 — "real fade" = went PAST the 38% Fib. A touch of 38% is a breathing
+  // pullback, not a tradeable fade, so it counts the same as "Did Not Fade".
+  return sessions.some(function(s) { return s !== 'Did Not Fade' && s !== '38% Fib'; });
 }
 
 function gkCorrectScore(d) {
