@@ -2746,6 +2746,26 @@ function stopWagAutoScan() {
 // PULL HOD DATA FROM POLYGON
 // ─────────────────────────────────────────────
 
+// [HOD-time autofill] Map an /eod ET time ("HH:MM", 24h) to the nearest existing
+// HOD-Time dropdown bucket. Returns the bucket label (which matches an <option>
+// value) or '' if the input is missing/invalid. Used only by pullHodData below;
+// it sets the dropdown, the user can still override it manually afterwards.
+function mapEtTimeToHodBucket(etTime24, isPm) {
+  if (!etTime24 || !/^\d{2}:\d{2}$/.test(etTime24)) return '';
+  var parts = etTime24.split(':');
+  var mins = parseInt(parts[0], 10) * 60 + parseInt(parts[1], 10);
+  if (isNaN(mins)) return '';
+  var buckets = isPm
+    ? [['4:00am',240],['5:00am',300],['6:00am',360],['7:00am',420],['8:00am',480],['9:00am',540],['9:30am',570]]
+    : [['9:30am',570],['10:00am',600],['11:00am',660],['12:00pm',720],['1:00pm',780],['2:00pm',840],['3:00pm',900],['4:00pm',960]];
+  var best = '', bestDiff = Infinity;
+  for (var i = 0; i < buckets.length; i++) {
+    var d = Math.abs(mins - buckets[i][1]);
+    if (d < bestDiff) { bestDiff = d; best = buckets[i][0]; }
+  }
+  return best;
+}
+
 async function pullHodData(id, ticker, tradingDate) {
   var btn = document.getElementById('pullHodBtn-' + id);
   var status = document.getElementById('pullHodStatus-' + id);
@@ -2769,6 +2789,17 @@ async function pullHodData(id, ticker, tradingDate) {
       if (diff < 0.02) { selectHOD(id, 'Same'); }
       else if (pmHod > omHod) { selectHOD(id, 'PM'); }
       else { selectHOD(id, 'OM'); }
+    }
+    // [HOD-time autofill] Pre-select the HOD-Time dropdowns from the /eod ET times
+    // (mapped to the nearest bucket). Existing manual override preserved — the user
+    // can still change either dropdown after the pull.
+    if (data.pm_hod_et_time) {
+      var pmT = document.getElementById('pmHodTime-' + id);
+      if (pmT) { var pmBucket = mapEtTimeToHodBucket(data.pm_hod_et_time, true); if (pmBucket) pmT.value = pmBucket; }
+    }
+    if (data.om_hod_et_time) {
+      var omT = document.getElementById('omHodTime-' + id);
+      if (omT) { var omBucket = mapEtTimeToHodBucket(data.om_hod_et_time, false); if (omBucket) omT.value = omBucket; }
     }
     status.textContent = '✓ PM HOD ' + (pmHod ? '$' + pmHod.toFixed(2) : 'n/a') + '  OM HOD ' + (omHod ? '$' + omHod.toFixed(2) : 'n/a');
     status.style.color = 'var(--go)';
