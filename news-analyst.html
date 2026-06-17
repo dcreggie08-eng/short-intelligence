@@ -6084,6 +6084,7 @@ function renderStructureSpan(data) {
   if (!data || !data.structure_state) return;
   var span = document.createElement('span');
   span.id = 'structureSpan';
+  span.style.cssText = 'display:inline-flex; gap:14px; align-items:baseline; flex-wrap:wrap;'; // spacing only — stops chip collision
   var stateColor = structureStateColor(data.structure_state);
   var stateLabel = String(data.structure_state).replace(/_/g, ' ');
   var html = '<span style="color:var(--text-bright);font-weight:700">STRUCTURE: <span style="color:' + stateColor + ';font-weight:700">' + stateLabel + '</span></span>';
