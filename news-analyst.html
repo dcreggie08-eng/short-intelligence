@@ -72,6 +72,8 @@
   .chip-pct { font-family:var(--mono); font-size:11px; font-weight:700; color:var(--go); }
   .chip-pct.hot { color:#ff9900; }
   .chip-price { font-family:var(--mono); font-size:9px; color:rgba(232,240,248,0.7); }
+  .chip-struct { font-family:var(--mono); font-size:9px; font-weight:700; letter-spacing:0.5px; display:flex; gap:4px; align-items:center; }
+  .chip-squeeze { color:var(--nogo); font-weight:900; }
   .gainers-strip-status { font-family:var(--mono); font-size:11px; color:var(--text-dim); letter-spacing:1px; white-space:nowrap; flex-shrink:0; margin-left:8px; }
   .status-pill { font-family:var(--mono); font-size:10px; letter-spacing:1.5px; padding:6px 12px; border:1px solid var(--border-bright); color:var(--text-dim); text-transform:uppercase; align-self:flex-start; transition:color 0.3s,border-color 0.3s; }
   .input-section { display:grid; gap:16px; margin-bottom:24px; }
@@ -6845,13 +6847,43 @@ function getETOffset() { var now = new Date(); var etTime = new Date(now.toLocal
 function getMarketSession() { var now = new Date(); var etOffset = getETOffset(); var etHour = (now.getUTCHours() + etOffset + 24) % 24; var etMin = now.getUTCMinutes(); var etTime = etHour + etMin / 60; if (etTime >= 4 && etTime < 9.5) return 'premarket'; if (etTime >= 9.5 && etTime < 16) return 'market'; if (etTime >= 16 && etTime < 20) return 'afterhours'; return 'closed'; }
 function getSessionDisplay(t) { var session = getMarketSession(); var pct, price, label; if (session === 'premarket' && t.premarketChange) { pct = t.premarketChange; price = t.premarketClose; label = 'PRE'; } else if (session === 'afterhours' && t.postmarketChange) { pct = t.postmarketChange; price = t.postmarketClose; label = 'AH'; } else { pct = t.change; price = t.close; label = session === 'market' ? 'MKT' : ''; } return { pct: pct || 0, price: price || t.close || 0, label: label }; }
 
+// ── STRIP TRIAGE — structure marker per gainer chip ─────────────
+// FULLY INDEPENDENT of the Beacon. Display-only. Paints a structure
+// marker onto ONE chip element and nothing else. Hard rules:
+//   - never writes Supabase
+//   - never touches window.currentStructure / structureInterval /
+//     fetchStructureOnce / startStructurePoll (those are the Beacon's)
+//   - fails silent: OUTSIDE_WINDOW / non-actionable / timeout / error
+//     -> no marker, no console error, no impact on chip or Beacon
+// Reuses the Beacon's structureStateColor() for colour parity only.
+async function fetchStripStructure(ticker, chipEl) {
+  if (!ticker || !chipEl) return;
+  try {
+    var res = await fetch(PROXY + '/structure?ticker=' + encodeURIComponent(ticker));
+    if (!res.ok) return;                          // HTTP error -> no marker
+    var data = await res.json();
+    if (!data || !data.structure_state) return;   // no state -> no marker
+    var st = data.structure_state;
+    // Paint actionable states only. QUIET / OUTSIDE_WINDOW / unknown -> no marker.
+    if (st !== 'EXTENDING' && st !== 'STALLING' && st !== 'ROLLING' && st !== 'BROKEN') return;
+    // Span created ONLY on an actionable result -> zero layout artifact otherwise.
+    // If the 60s rebuild already replaced this chip, append lands on a detached
+    // node (harmless, invisible, GC'd) -> never a stale marker.
+    var sm = document.createElement('span'); sm.className = 'chip-struct';
+    var html = '<span style="color:' + structureStateColor(st) + ';font-weight:700">' + String(st).replace(/_/g, ' ') + '</span>';
+    if (data.squeeze_flag === true) { html += '<span class="chip-squeeze">SQ</span>'; } // orthogonal, never folded into structure colour
+    sm.innerHTML = html;
+    chipEl.appendChild(sm);
+  } catch(e) { /* timeout/error -> no marker; never throws into the strip */ }
+}
+
 async function loadGainers() {
   var strip = document.getElementById('gainersStrip'), status = document.getElementById('gainersStatus');
   try {
     var res = await fetch(PROXY + '/gainers');
     var data = await res.json();
     var tickers = data.tickers || [];
-    if (tickers.length === 0) { if (status) status.textContent = 'No gainers 20%+ right now'; return; }
+    if (tickers.length === 0) { if (status) status.textContent = 'No gainers right now'; return; }
     var session = getMarketSession();
     var sessionLabel = session === 'premarket' ? 'PRE-MKT' : session === 'market' ? 'MARKET' : session === 'afterhours' ? 'AFTER-HRS' : 'CLOSED';
     strip.innerHTML = '<span class="gainers-strip-label">TOP GAINERS \u00b7 ' + sessionLabel + '</span>';
@@ -6861,6 +6893,9 @@ async function loadGainers() {
       chip.innerHTML = '<span class="chip-ticker">' + t.ticker + '</span><span class="chip-pct' + (isHot ? ' hot' : '') + '">' + (disp.pct >= 0 ? '+' : '') + pct + '%</span><span class="chip-price">' + price + '</span>';
       chip.onclick = function() { document.querySelectorAll('.gainer-chip').forEach(function(c) { c.classList.remove('active'); }); chip.classList.add('active'); document.getElementById('ticker').value = t.ticker; document.getElementById('ticker').focus(); };
       strip.appendChild(chip);
+      // Strip triage: pre-market only. Fire /structure non-blocking (no await) so a
+      // slow/failed call never holds up the strip; marker appends only on success.
+      if (session === 'premarket') { fetchStripStructure(t.ticker, chip); }
     });
     var updated = document.createElement('span'); updated.className = 'gainers-strip-status'; updated.textContent = '\u21bb ' + new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }); strip.appendChild(updated);
   } catch(e) { if (status) status.textContent = 'Gainers unavailable'; }
