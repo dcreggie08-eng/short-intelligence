@@ -1084,6 +1084,11 @@ function buildReviewForm(entry) {
 }
 
 var hodSel={}, tagSel={}, backsideSel={};
+// [exact-HOD-time capture] Per-id stash of the /eod ET HOD times ("HH:MM"),
+// set ONLY on a successful Pull HOD this session. Read at save: the exact-time
+// columns are written only when a pull occurred (key present); otherwise the
+// keys are omitted from the PATCH so a re-save never wipes prior values.
+var hodTimeExact={};
 // v30 — PM/OM trade selection state (gatekeeper_correct is now auto-derived, not button-driven)
 var pmTradeSel={}, omTradeSel={};
 
@@ -1392,6 +1397,17 @@ async function saveReview(id) {
     om_fade_destination:   omFadeDest,
     om_did_trade:          omDidTrade
   };
+
+  // [exact-HOD-time capture] Write the exact-time columns ONLY if a pull
+  // happened this session (stash present for this id). When present, write both
+  // (null where /eod had no HOD). When absent, omit both keys entirely so this
+  // PATCH leaves any previously-stored exact times untouched. This is the
+  // highest-risk behaviour in the pass: omit-on-no-pull is what prevents a
+  // plain re-save from wiping prior values.
+  if (hodTimeExact[id]) {
+    payload.pm_hod_time_exact = hodTimeExact[id].pm;
+    payload.om_hod_time_exact = hodTimeExact[id].om;
+  }
 
   try {
     // Step 1 — save scanner log
@@ -2783,6 +2799,20 @@ async function pullHodData(id, ticker, tradingDate) {
     var omHod = data.om_hod;
     if (pmHod) { var el = document.getElementById('pmHod-' + id); if (el) el.value = pmHod.toFixed(2); }
     if (omHod) { var el2 = document.getElementById('omHod-' + id); if (el2) el2.value = omHod.toFixed(2); }
+    // [VWAP autofill] Fill the PM/OM VWAP $ inputs from /eod pm_vwap_at_hod /
+    // om_vwap_at_hod (2dp, matching the input step). These inputs already save
+    // via the existing pm_vwap / om_vwap payload keys — no new save path.
+    // OM VWAP is SKIPPED when "OM HOD didn't reclaim VWAP" is ticked: that
+    // manual flag is the stronger signal and disables the input — do not overwrite.
+    if (data.pm_vwap_at_hod !== null && data.pm_vwap_at_hod !== undefined) {
+      var pmV = document.getElementById('pmVwap-' + id);
+      if (pmV) pmV.value = Number(data.pm_vwap_at_hod).toFixed(2);
+    }
+    var omBelow = document.getElementById('omVwapBelowVwap-' + id) ? document.getElementById('omVwapBelowVwap-' + id).checked : false;
+    if (!omBelow && data.om_vwap_at_hod !== null && data.om_vwap_at_hod !== undefined) {
+      var omV = document.getElementById('omVwap-' + id);
+      if (omV) omV.value = Number(data.om_vwap_at_hod).toFixed(2);
+    }
     calcVwapExt(id);
     if (pmHod && omHod) {
       var diff = Math.abs(pmHod - omHod);
@@ -2801,6 +2831,15 @@ async function pullHodData(id, ticker, tradingDate) {
       var omT = document.getElementById('omHodTime-' + id);
       if (omT) { var omBucket = mapEtTimeToHodBucket(data.om_hod_et_time, false); if (omBucket) omT.value = omBucket; }
     }
+    // [exact-HOD-time capture] Stash the raw /eod ET times for this id. Presence
+    // of this key at save = "a pull happened this session" → the exact-time
+    // columns get written (incl. genuine nulls). No pull → key absent → save
+    // omits the columns → prior values preserved. The exact value is the /eod
+    // primitive and is independent of any manual dropdown-bucket override.
+    hodTimeExact[id] = {
+      pm: data.pm_hod_et_time || null,
+      om: data.om_hod_et_time || null
+    };
     status.textContent = '✓ PM HOD ' + (pmHod ? '$' + pmHod.toFixed(2) : 'n/a') + '  OM HOD ' + (omHod ? '$' + omHod.toFixed(2) : 'n/a');
     status.style.color = 'var(--go)';
   } catch(e) {
