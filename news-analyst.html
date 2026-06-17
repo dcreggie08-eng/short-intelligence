@@ -74,6 +74,18 @@
   .chip-price { font-family:var(--mono); font-size:9px; color:rgba(232,240,248,0.7); }
   .chip-struct { font-family:var(--mono); font-size:9px; font-weight:700; letter-spacing:0.5px; display:flex; gap:4px; align-items:center; }
   .chip-squeeze { color:var(--nogo); font-weight:900; }
+  /* URSA — Live Monitor panel (display-only; hidden until it has content) */
+  #ursaPanel:empty { display:none; }
+  .ursa-panel { border:1px solid var(--border); border-left:2px solid var(--accent); background:rgba(255,255,255,0.02); padding:10px 14px; margin:10px 0 0; font-family:var(--mono); }
+  .ursa-head { font-size:11px; letter-spacing:2px; color:var(--text-dim); text-transform:uppercase; margin-bottom:6px; }
+  .ursa-saved { font-size:11px; color:var(--text-dim); margin-bottom:5px; }
+  .ursa-live { display:flex; gap:12px; align-items:baseline; }
+  .ursa-state { font-family:var(--display); font-weight:900; font-size:18px; letter-spacing:1px; }
+  .ursa-squeeze { font-size:11px; font-weight:900; color:var(--nogo); letter-spacing:1px; }
+  .ursa-primitives { font-size:11px; color:var(--text-dim); margin-top:3px; }
+  .ursa-context-head { font-size:10px; letter-spacing:2px; color:var(--text-dim); text-transform:uppercase; margin-top:9px; }
+  .ursa-context { font-size:13px; color:var(--text-bright); margin-top:2px; }
+  .ursa-empty { font-size:12px; color:var(--text-dim); }
   .gainers-strip-status { font-family:var(--mono); font-size:11px; color:var(--text-dim); letter-spacing:1px; white-space:nowrap; flex-shrink:0; margin-left:8px; }
   .status-pill { font-family:var(--mono); font-size:10px; letter-spacing:1.5px; padding:6px 12px; border:1px solid var(--border-bright); color:var(--text-dim); text-transform:uppercase; align-self:flex-start; transition:color 0.3s,border-color 0.3s; }
   .input-section { display:grid; gap:16px; margin-bottom:24px; }
@@ -5703,6 +5715,7 @@ eXpilSpDG70qVKmI/9k=" alt="Bear Intel" /></div>
     <div class="field-group">
       <div class="news-label"><label>Dilution Profile</label><span class="news-source" id="dilutionSource"></span></div>
       <div class="stock-info-bar" id="stockInfoBar"></div>
+      <div class="ursa-panel" id="ursaPanel"></div>
       <div class="dilution-panel" id="dilutionPanel"><div class="dilution-badges" id="dilutionBadges"></div></div>
       <div class="grok-panel" id="grokPanel">
         <div class="grok-header">Ask Edgar &mdash; TLDR <span style="font-size:9px;color:var(--text-dim);letter-spacing:1px;font-weight:300;margin-left:8px;">&#128308; BEARISH FOR STOCK (GOOD FOR SHORT) &middot; &#128993; NEUTRAL &middot; &#128994; BULLISH FOR STOCK (CAUTION)</span></div>
@@ -6122,6 +6135,7 @@ async function fetchStructureOnce(ticker) {
   try {
     var res = await fetch(PROXY + '/structure?ticker=' + encodeURIComponent(ticker));
     var data = await res.json();
+    renderUrsa(data, ticker); // URSA: reuse this fetch — no 2nd call, no 2nd poll
     if (!data || !data.structure_state) { window.currentStructure = null; return; }
     window.currentStructure = data; // display state only
     renderStructureSpan(data);
@@ -6131,6 +6145,7 @@ async function fetchStructureOnce(ticker) {
 function startStructurePoll(ticker) {
   stopStructurePoll();
   if (!ticker) return;
+  clearUrsa(); // URSA: new ticker -> reset; first poll repaints LIVE
   fetchStructureOnce(ticker); // immediate
   structureInterval = setInterval(function() { fetchStructureOnce(ticker); }, 15000);
 }
@@ -6150,6 +6165,82 @@ function buildStructureSnapshot() {
   snap.version = STRUCTURE_SNAPSHOT_VERSION;               // freeze controls
   snap.analysis_et_time = etNowHHMM();                     // inline, never the poll's
   return { snapshot: snap, state: s.structure_state };
+}
+
+// ── URSA — Live Monitor + Structure Context ─────────────────────
+// DETERMINISTIC LOOKUP, NOT AN LLM. This is NOT the Boris assistant —
+// no API call, no reasoning, no recommendations. It maps a live
+// structure_state to a fixed reminder string and nothing more.
+// Display-only live monitor for the CURRENTLY-LOADED LIVE ticker,
+// shown beside that same ticker's frozen SAVED snapshot. Hard rules:
+//   - reuses fetchStructureOnce's fetch (no 2nd poll, no 2nd /structure call)
+//   - owns its own state (window.ursaSaved) + DOM (#ursaPanel) only
+//   - never reads window.currentStructure; never writes Supabase
+//   - SAVED row renders ONLY when window.ursaSaved.ticker === live ticker
+//   - cleared on ticker change + historical reopen (no stale/cross-ticker bleed)
+var STRUCTURE_CONTEXT_VERSION = 1;
+
+// Pure state -> reminder lookup. squeeze_flag OVERRIDES the state text.
+function ursaContextText(state, squeeze) {
+  if (squeeze === true) return 'Squeeze risk elevated. Avoid aggressive positioning.';
+  switch (state) {
+    case 'EXTENDING': return 'Trend intact. Avoid early shorts.';
+    case 'STALLING':  return 'Momentum slowing. Watch for failure.';
+    case 'ROLLING':   return 'Structure deteriorating. Short thesis building.';
+    case 'BROKEN':    return 'Upside structure failed. Monitor for continuation.';
+    default:          return 'No live structure available.';
+  }
+}
+
+// Blank Ursa + drop the saved display copy. Used on ticker change + reopen.
+function clearUrsa() {
+  window.ursaSaved = null;
+  var panel = document.getElementById('ursaPanel');
+  if (!panel) return;
+  panel.innerHTML = '<div class="ursa-head">LIVE MONITOR</div><div class="ursa-empty">No live structure available.</div>';
+}
+
+// DISPLAY ONLY. Called from fetchStructureOnce with the live read + ticker.
+// Owns #ursaPanel only. Never throws into the poll.
+function renderUrsa(data, liveTicker) {
+  var panel = document.getElementById('ursaPanel');
+  if (!panel) return;
+  var st = data && data.structure_state;
+  var actionable = (st === 'EXTENDING' || st === 'STALLING' || st === 'ROLLING' || st === 'BROKEN');
+  var html = '<div class="ursa-head">LIVE MONITOR</div>';
+
+  // SAVED row — only when THIS exact ticker was saved this session.
+  var saved = window.ursaSaved;
+  if (saved && saved.ticker === liveTicker && saved.frozen && saved.frozen.state) {
+    var sSnap = saved.frozen.snapshot || {};
+    var sTime = sSnap.analysis_et_time ? (sSnap.analysis_et_time + ' ET') : 'saved';
+    html += '<div class="ursa-saved">SAVED ' + sTime + ' \u00b7 <span style="color:' +
+            structureStateColor(saved.frozen.state) + '">' +
+            String(saved.frozen.state).replace(/_/g, ' ') + '</span></div>';
+  }
+
+  if (!actionable) {
+    // OUTSIDE_WINDOW / QUIET / error / no-state -> fail clean (SAVED row, if any, stays)
+    html += '<div class="ursa-empty">No live structure available.</div>';
+    panel.innerHTML = html;
+    return;
+  }
+
+  var squeeze = (data.squeeze_flag === true);
+  html += '<div class="ursa-live"><span class="ursa-state" style="color:' + structureStateColor(st) + '">' +
+          String(st).replace(/_/g, ' ') + '</span>';
+  if (squeeze) html += '<span class="ursa-squeeze">SQUEEZE</span>'; // orthogonal, never folded in
+  html += '</div>';
+
+  var bits = [];
+  if (typeof data.volume_acceleration === 'number') bits.push('vol accel ' + data.volume_acceleration + '\u00d7');
+  if (typeof data.distance_from_pm_vwap_pct === 'number') bits.push('vs PM VWAP ' + (data.distance_from_pm_vwap_pct >= 0 ? '+' : '') + data.distance_from_pm_vwap_pct + '%');
+  if (bits.length) html += '<div class="ursa-primitives">' + bits.join('\u2003') + '</div>';
+
+  html += '<div class="ursa-context-head">CONTEXT</div><div class="ursa-context">' +
+          ursaContextText(st, squeeze) + '</div>';
+
+  panel.innerHTML = html;
 }
 
 function applyFetchedData(cached, ticker) {
@@ -6625,6 +6716,7 @@ async function analyse() {
     // AT SAVE. analysis_et_time is stamped inline (never the poll's value); no
     // fresh /structure fetch here — last polled values only (<=15s skew, immaterial).
     var structureFrozen = buildStructureSnapshot();
+    window.ursaSaved = { ticker: ticker, frozen: structureFrozen }; // URSA display copy only; never read by save, never to Supabase
     var savePayload = { ticker: ticker || null, news_text: newsText, price_context: priceContext || null, verdict: result.verdict, catalyst_grade: result.catalystGrade, reasoning: result.reasoning, setup_notes: JSON.stringify(result.setupNotes), red_flags: JSON.stringify(result.redFlags), trade_killers: JSON.stringify(result.tradeKillers), rvol: (window.currentRVOL && typeof window.currentRVOL.rvol_raw === 'number') ? window.currentRVOL.rvol_raw : null, structure_snapshot: structureFrozen.snapshot, structure_state: structureFrozen.state };
     var saveRes = await fetch(SUPABASE_URL + '/rest/v1/news_analyses', {
       method: 'POST',
@@ -6789,6 +6881,7 @@ async function loadFromHistory(id) {
         fetchDroppiness(ticker);
         // Beacon: show the CAPTURED snapshot on reopen; never live-poll a historical row.
         stopStructurePoll();
+        clearUrsa(); // URSA: historical row -> no live monitor, drop saved display copy
         renderSavedStructure(item.structure_snapshot, item.structure_state);
       }
       window.scrollTo({ top: 0, behavior: 'smooth' });
