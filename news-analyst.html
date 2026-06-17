@@ -5929,6 +5929,7 @@ async function fetchNews() {
     document.getElementById('dilutionSource').textContent = 'via Ask Edgar (cached)';
     fetchDroppiness(ticker);
     fetchRVOL(ticker);
+    startStructurePoll(ticker);
     return;
   }
 
@@ -5955,6 +5956,7 @@ async function fetchNews() {
     applyFetchedData({ newsData, dilutionData, floatData, tldrData }, ticker);
     fetchDroppiness(ticker);
     fetchRVOL(ticker);
+    startStructurePoll(ticker);
   } catch(e) {
     showError('Could not fetch data: ' + e.message);
   } finally {
@@ -6045,6 +6047,106 @@ function renderSavedRVOL(rvolValue) {
   var bandColor = rvolBandColor(band);
   rvolSpan.innerHTML = '<span style="color:var(--text-bright);font-weight:700">RVOL: <span style="color:' + bandColor + ';font-weight:700">' + band + '</span> <span style="color:var(--text-dim);font-size:11px">' + rvolValue + '× (captured)</span></span>';
   infoBar.appendChild(rvolSpan);
+}
+
+// ============================================================
+// THE BEACON — observation layer (structure_state + squeeze_flag)
+// Display-only live read of the /structure Worker route. Logs an
+// immutable, versioned snapshot at SAVE only (inside analyse()).
+// The 15s poll updates DISPLAY ONLY: window.currentStructure + the
+// #structureSpan DOM. It NEVER writes Supabase, savePayload, or
+// currentAnalysisId. analysis_et_time is stamped inline at SAVE,
+// never copied from the poll. (Beacon spec v3 — frozen at save.)
+// ============================================================
+var structureInterval = null;
+var STRUCTURE_SNAPSHOT_VERSION = 1;
+
+// Inline ET HH:MM stamp — computed fresh at SAVE, independent of the poll.
+function etNowHHMM() {
+  return new Date().toLocaleTimeString('en-GB', { timeZone: 'America/New_York', hour: '2-digit', minute: '2-digit', hour12: false });
+}
+
+function structureStateColor(state) {
+  switch (state) {
+    case 'EXTENDING': return 'var(--go)';
+    case 'STALLING':  return 'var(--caution)';
+    case 'ROLLING':   return 'var(--caution)';
+    default:          return 'var(--text-dim)'; // BROKEN / QUIET / OUTSIDE_WINDOW / unknown
+  }
+}
+
+// DISPLAY ONLY. Renders/updates #structureSpan in the info bar.
+function renderStructureSpan(data) {
+  var infoBar = document.getElementById('stockInfoBar');
+  if (!infoBar) return;
+  var existing = infoBar.querySelector('#structureSpan');
+  if (existing) existing.remove();
+  if (!data || !data.structure_state) return;
+  var span = document.createElement('span');
+  span.id = 'structureSpan';
+  var stateColor = structureStateColor(data.structure_state);
+  var stateLabel = String(data.structure_state).replace(/_/g, ' ');
+  var html = '<span style="color:var(--text-bright);font-weight:700">STRUCTURE: <span style="color:' + stateColor + ';font-weight:700">' + stateLabel + '</span></span>';
+  // squeeze flag is ORTHOGONAL — distinct red, never the amber of STALLING/ROLLING
+  if (data.squeeze_flag === true) {
+    html += '<span style="color:var(--text-bright);font-weight:700">SQUEEZE: <span style="color:var(--nogo);font-weight:700">ABSORBING</span></span>';
+  }
+  if (typeof data.volume_acceleration === 'number') {
+    html += '<span style="color:var(--text-dim);font-size:11px">vol accel ' + data.volume_acceleration + '×</span>';
+  }
+  if (typeof data.distance_from_pm_vwap_pct === 'number') {
+    html += '<span style="color:var(--text-dim);font-size:11px">vs PM VWAP ' + (data.distance_from_pm_vwap_pct >= 0 ? '+' : '') + data.distance_from_pm_vwap_pct + '%</span>';
+  }
+  span.innerHTML = html;
+  infoBar.appendChild(span);
+}
+
+// Renders the SAVED snapshot on history reopen (captured, not live).
+// Mirrors renderSavedRVOL — more honest than re-polling a historical row.
+function renderSavedStructure(snapshot, state) {
+  if (!snapshot && !state) return;
+  var data = snapshot ? snapshot : {};
+  if (state && !data.structure_state) data.structure_state = state;
+  window.currentStructure = data; // parity with renderSavedRVOL
+  renderStructureSpan(data);
+  var infoBar = document.getElementById('stockInfoBar');
+  var span = infoBar ? infoBar.querySelector('#structureSpan') : null;
+  if (span) span.innerHTML += '<span style="color:var(--text-dim);font-size:11px">(captured)</span>';
+}
+
+// DISPLAY ONLY. One live read -> window.currentStructure + render.
+async function fetchStructureOnce(ticker) {
+  try {
+    var res = await fetch(PROXY + '/structure?ticker=' + encodeURIComponent(ticker));
+    var data = await res.json();
+    if (!data || !data.structure_state) { window.currentStructure = null; return; }
+    window.currentStructure = data; // display state only
+    renderStructureSpan(data);
+  } catch(e) { /* display-only; never throw into the save path */ }
+}
+
+function startStructurePoll(ticker) {
+  stopStructurePoll();
+  if (!ticker) return;
+  fetchStructureOnce(ticker); // immediate
+  structureInterval = setInterval(function() { fetchStructureOnce(ticker); }, 15000);
+}
+
+function stopStructurePoll() {
+  if (structureInterval) { clearInterval(structureInterval); structureInterval = null; }
+}
+
+// Freeze the latest polled read into an immutable snapshot AT SAVE.
+// Copies poll primitives; OVERWRITES analysis_et_time with an inline
+// stamp; stamps version. Returns { snapshot, state } — both null if no read.
+function buildStructureSnapshot() {
+  var s = window.currentStructure;
+  if (!s || !s.structure_state) return { snapshot: null, state: null };
+  var snap = {};
+  Object.keys(s).forEach(function(k) { snap[k] = s[k]; }); // copy primitives
+  snap.version = STRUCTURE_SNAPSHOT_VERSION;               // freeze controls
+  snap.analysis_et_time = etNowHHMM();                     // inline, never the poll's
+  return { snapshot: snap, state: s.structure_state };
 }
 
 function applyFetchedData(cached, ticker) {
@@ -6516,7 +6618,11 @@ async function analyse() {
     // immediately. This must happen BEFORE renderResult() because renderResult
     // schedules Boris's auto-fire on a 300ms timer, and Boris's cache write
     // requires currentAnalysisId to be set.
-    var savePayload = { ticker: ticker || null, news_text: newsText, price_context: priceContext || null, verdict: result.verdict, catalyst_grade: result.catalystGrade, reasoning: result.reasoning, setup_notes: JSON.stringify(result.setupNotes), red_flags: JSON.stringify(result.redFlags), trade_killers: JSON.stringify(result.tradeKillers), rvol: (window.currentRVOL && typeof window.currentRVOL.rvol_raw === 'number') ? window.currentRVOL.rvol_raw : null };
+    // Beacon: freeze the latest live structure read into an immutable snapshot
+    // AT SAVE. analysis_et_time is stamped inline (never the poll's value); no
+    // fresh /structure fetch here — last polled values only (<=15s skew, immaterial).
+    var structureFrozen = buildStructureSnapshot();
+    var savePayload = { ticker: ticker || null, news_text: newsText, price_context: priceContext || null, verdict: result.verdict, catalyst_grade: result.catalystGrade, reasoning: result.reasoning, setup_notes: JSON.stringify(result.setupNotes), red_flags: JSON.stringify(result.redFlags), trade_killers: JSON.stringify(result.tradeKillers), rvol: (window.currentRVOL && typeof window.currentRVOL.rvol_raw === 'number') ? window.currentRVOL.rvol_raw : null, structure_snapshot: structureFrozen.snapshot, structure_state: structureFrozen.state };
     var saveRes = await fetch(SUPABASE_URL + '/rest/v1/news_analyses', {
       method: 'POST',
       headers: {
@@ -6678,6 +6784,9 @@ async function loadFromHistory(id) {
           .catch(function(e) { console.error('Could not reload ticker data', e); });
         }
         fetchDroppiness(ticker);
+        // Beacon: show the CAPTURED snapshot on reopen; never live-poll a historical row.
+        stopStructurePoll();
+        renderSavedStructure(item.structure_snapshot, item.structure_state);
       }
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
