@@ -6321,10 +6321,11 @@ function gatekeeperVerdict(catalystGrade) {
   var dropMed = droppiness !== null && droppiness >= 35 && droppiness < 67;
   var dropLow = droppiness !== null && droppiness < 35;
 
-  if (grade === 'STRONG') return { verdict: 'NO GO', reason: 'Strong catalyst detected \u2014 short thesis is invalid. Do not trade.' };
-  if (instPct > 50) return { verdict: 'NO TRADE', reason: 'Institutional ownership above 50% \u2014 squeeze risk too high. Hard block.' };
+  if (grade === 'STRONG') return { verdict: 'NO GO', reason: 'Strong catalyst detected \u2014 short thesis is invalid. Do not trade.', primary_block_reason: 'strong_catalyst', secondary_block_reason: null, block_class: 'hard' };
+  if (instPct > 50) return { verdict: 'NO TRADE', reason: 'Institutional ownership above 50% \u2014 squeeze risk too high. Hard block.', primary_block_reason: 'institutional_ownership', secondary_block_reason: null, block_class: 'hard' };
 
   var verdict, reason;
+  var primaryBlock = null, secondaryBlock = null, blockClass = null; // instrumentation: set only on a block path
 
   if (grade.indexOf('WEAK') !== -1 || grade.indexOf('FLUFF') !== -1) {
     if (isHighDil && isHighCash) {
@@ -6340,7 +6341,7 @@ function gatekeeperVerdict(catalystGrade) {
     else { verdict = 'CAUTION'; reason = 'Weak catalyst but dilution data is incomplete. Run Fetch News first for a full verdict.'; }
   } else if (grade === 'MID') {
     if (isHighDil && isHighCash && dropHigh) { verdict = 'CAUTION'; reason = 'Mid catalyst with high dilution + high cash need + reliable fader. Watchable \u2014 but MID news limits conviction.'; }
-    else { verdict = 'NO TRADE'; reason = 'Mid catalyst \u2014 requires high dilution + high cash need + droppiness 67+ to qualify even for CAUTION. Conditions not met.'; }
+    else { verdict = 'NO TRADE'; reason = 'Mid catalyst \u2014 requires high dilution + high cash need + droppiness 67+ to qualify even for CAUTION. Conditions not met.'; primaryBlock = 'mid_catalyst'; blockClass = 'soft'; }
   } else { verdict = 'CAUTION'; reason = 'Catalyst grade unclear \u2014 defaulting to caution.'; }
 
   if (verdict === 'GO' && instPct >= 20 && instPct <= 50) {
@@ -6348,7 +6349,7 @@ function gatekeeperVerdict(catalystGrade) {
     reason += ' \u26a0 Downgraded: institutional ownership at ' + instPct.toFixed(1) + '% introduces squeeze risk.';
   }
 
-  return { verdict: verdict, reason: reason };
+  return { verdict: verdict, reason: reason, primary_block_reason: primaryBlock, secondary_block_reason: secondaryBlock, block_class: blockClass };
 }
 
 const BORIS_SYSTEM_PROMPT = `You are Boris. You are Reggie's trading partner — not his assistant, not an AI, not a service. A partner. You've seen every setup, read every tape, and you've made every mistake so Reggie doesn't have to.
@@ -6706,7 +6707,7 @@ async function analyse() {
     var clean = rawText.replace(/```json|```/g, '').trim();
     var result = JSON.parse(clean);
     var gk = gatekeeperVerdict(result.catalystGrade);
-    result.verdict = gk.verdict; result.gatekeeperReason = gk.reason;
+    result.verdict = gk.verdict; result.gatekeeperReason = gk.reason; result.primaryBlockReason = gk.primary_block_reason; result.secondaryBlockReason = gk.secondary_block_reason; result.blockClass = gk.block_class;
     saveIndicator.className = 'save-indicator saving'; saveIndicator.textContent = 'Saving to database...';
     // Save FIRST and request the inserted row back inline so we get the new id
     // immediately. This must happen BEFORE renderResult() because renderResult
@@ -6767,6 +6768,7 @@ function renderResult(r, ticker, priceContext) {
   document.getElementById('reasoningText').textContent = r.reasoning;
   window.currentResultTicker = ticker; window.currentResultVerdict = r.verdict;
   window.currentResultGrade = r.catalystGrade; window.currentResultReason = r.gatekeeperReason || ''; window.currentResultReasoning = r.reasoning || '';
+  window.currentResultPrimaryBlock = r.primaryBlockReason || null; window.currentResultSecondaryBlock = r.secondaryBlockReason || null; window.currentResultBlockClass = r.blockClass || null;
   var setupList = document.getElementById('setupList'); setupList.innerHTML = '';
   var setupSection = document.getElementById('setupSection');
   if (r.setupNotes && r.setupNotes.length > 0) { r.setupNotes.forEach(function(n) { var li = document.createElement('li'); li.textContent = n; setupList.appendChild(li); }); setupSection.style.display = 'block'; } else setupSection.style.display = 'none';
@@ -6811,7 +6813,7 @@ async function saveToScannerLog() {
       if (existing && existing.length > 0) { btn.textContent = '\u2705 Already Logged Today'; btn.className = 'save-log-btn saved'; status.className = 'save-log-status visible'; status.textContent = window.currentResultTicker + ' is already in the scanner log for ' + today; return; }
     }
     btn.textContent = 'Saving...';
-    var payload = { trading_date: today, ticker: window.currentResultTicker || '', catalyst_description: window.currentResultReasoning || '', catalyst_grade: window.currentResultGrade || '', verdict: window.currentResultVerdict || '', verdict_reason: window.currentResultReason || '', droppiness_score: window.currentDroppiness ? parseFloat(window.currentDroppiness.score) : null, droppiness_rating: window.currentDroppiness ? window.currentDroppiness.rating : '', dilution_overall: currentDilution ? (currentDilution.overall_offering_risk || '') : '', dilution_cash_need: currentDilution ? (currentDilution.cash_need || '') : '', dilution_offering_risk: currentDilution ? (currentDilution.dilution || '') : '', dilution_offering_frequency: currentDilution ? (currentDilution.offering_frequency || '') : '', dilution_warrant_exercise: currentDilution ? (currentDilution.warrant_exercise || '') : '', dilution_nasdaq_compliance: currentDilution ? (currentDilution.nasdaq_compliance || '') : '', inst_percent: window.currentInstPct !== undefined ? window.currentInstPct : null, insider_percent: window.currentInsiderPct !== undefined ? window.currentInsiderPct : null, float_shares: window.currentFloat || null, market_cap: window.currentMarketCap || null, price_at_analysis: null, rvol: (window.currentRVOL && typeof window.currentRVOL.rvol_raw === 'number') ? window.currentRVOL.rvol_raw : null };
+    var payload = { trading_date: today, ticker: window.currentResultTicker || '', catalyst_description: window.currentResultReasoning || '', catalyst_grade: window.currentResultGrade || '', verdict: window.currentResultVerdict || '', verdict_reason: window.currentResultReason || '', droppiness_score: window.currentDroppiness ? parseFloat(window.currentDroppiness.score) : null, droppiness_rating: window.currentDroppiness ? window.currentDroppiness.rating : '', dilution_overall: currentDilution ? (currentDilution.overall_offering_risk || '') : '', dilution_cash_need: currentDilution ? (currentDilution.cash_need || '') : '', dilution_offering_risk: currentDilution ? (currentDilution.dilution || '') : '', dilution_offering_frequency: currentDilution ? (currentDilution.offering_frequency || '') : '', dilution_warrant_exercise: currentDilution ? (currentDilution.warrant_exercise || '') : '', dilution_nasdaq_compliance: currentDilution ? (currentDilution.nasdaq_compliance || '') : '', inst_percent: window.currentInstPct !== undefined ? window.currentInstPct : null, insider_percent: window.currentInsiderPct !== undefined ? window.currentInsiderPct : null, float_shares: window.currentFloat || null, market_cap: window.currentMarketCap || null, price_at_analysis: null, rvol: (window.currentRVOL && typeof window.currentRVOL.rvol_raw === 'number') ? window.currentRVOL.rvol_raw : null, primary_block_reason: window.currentResultPrimaryBlock || null, secondary_block_reason: window.currentResultSecondaryBlock || null, block_class: window.currentResultBlockClass || null };
     var res = await fetch(SUPABASE_URL + '/rest/v1/scanner_log', { method: 'POST', headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Prefer': 'return=minimal' }, body: JSON.stringify(payload) });
     if (res.status === 201 || res.ok) { btn.textContent = '\u2705 Saved to Log'; btn.className = 'save-log-btn saved'; status.className = 'save-log-status visible'; status.textContent = (payload.ticker || 'Ticker') + ' logged for ' + today + ' \u2014 fill in HOD and outcome this evening'; }
     else { throw new Error('Save failed \u2014 status ' + res.status); }
@@ -6833,6 +6835,7 @@ function clearAll() {
   window.currentDroppiness = null;
   window.currentResultTicker = null; window.currentResultVerdict = null;
   window.currentResultGrade = null; window.currentResultReason = null; window.currentResultReasoning = null;
+  window.currentResultPrimaryBlock = null; window.currentResultSecondaryBlock = null; window.currentResultBlockClass = null;
   // v29: clear cache flags and analysis ID so a subsequent fresh analyse() doesn't
   // accidentally render a stale Boris response from a previously-loaded history entry,
   // or write Boris cache to the wrong row.
