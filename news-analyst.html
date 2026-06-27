@@ -86,6 +86,21 @@
   .ursa-context-head { font-size:10px; letter-spacing:2px; color:var(--text-dim); text-transform:uppercase; margin-top:9px; }
   .ursa-context { font-size:13px; color:var(--text-bright); margin-top:2px; }
   .ursa-empty { font-size:12px; color:var(--text-dim); }
+  /* WATCH MONITOR — multi-ticker live structure read over today's saved scanner_log set.
+     Display-only; additive. Hidden until it has content. Deleting this block +
+     the #watchMonitorPanel div + the WATCH MONITOR JS block fully reverts. */
+  #watchMonitorPanel:empty { display:none; }
+  .wm-panel { border:1px solid var(--border); border-left:2px solid var(--accent); background:rgba(255,255,255,0.02); padding:10px 14px; margin:10px 0 0; font-family:var(--mono); }
+  .wm-head { font-size:11px; letter-spacing:2px; color:var(--text-dim); text-transform:uppercase; margin-bottom:8px; display:flex; justify-content:space-between; align-items:baseline; }
+  .wm-head-meta { font-size:10px; letter-spacing:1px; color:var(--text-dim); text-transform:none; }
+  .wm-row { display:grid; grid-template-columns:64px 110px 1fr auto; gap:10px; align-items:baseline; padding:5px 0; border-top:1px solid var(--border); }
+  .wm-row:first-of-type { border-top:none; }
+  .wm-ticker { font-family:var(--display); font-weight:900; font-size:15px; letter-spacing:1px; color:var(--text-bright); }
+  .wm-state { font-family:var(--display); font-weight:900; font-size:14px; letter-spacing:1px; }
+  .wm-squeeze { font-size:10px; font-weight:900; color:var(--nogo); letter-spacing:1px; margin-left:6px; }
+  .wm-primitives { font-size:11px; color:var(--text-dim); }
+  .wm-lag { font-size:10px; color:var(--text-dim); letter-spacing:1px; white-space:nowrap; }
+  .wm-empty { font-size:12px; color:var(--text-dim); }
   .gainers-strip-status { font-family:var(--mono); font-size:11px; color:var(--text-dim); letter-spacing:1px; white-space:nowrap; flex-shrink:0; margin-left:8px; }
   .status-pill { font-family:var(--mono); font-size:10px; letter-spacing:1.5px; padding:6px 12px; border:1px solid var(--border-bright); color:var(--text-dim); text-transform:uppercase; align-self:flex-start; transition:color 0.3s,border-color 0.3s; }
   .input-section { display:grid; gap:16px; margin-bottom:24px; }
@@ -5702,6 +5717,7 @@ eXpilSpDG70qVKmI/9k=" alt="Bear Intel" /></div>
     <div class="ms-body" id="msBody"></div>
   </div>
   <div class="gainers-strip-wrap"><div class="gainers-strip" id="gainersStrip"><span class="gainers-strip-label">Top Gainers</span><span class="gainers-strip-status" id="gainersStatus">Loading...</span></div></div>
+  <div class="wm-panel" id="watchMonitorPanel"></div>
   <div class="input-section">
     <div style="display:grid;grid-template-columns:120px minmax(220px,1fr) auto auto;gap:12px;align-items:end;margin-bottom:16px;">
       <div class="field-group"><label>Ticker</label><div class="ticker-input-wrap"><span class="ticker-prefix">$</span><input type="text" id="ticker" class="ticker-input" placeholder="" maxlength="10" autocomplete="off" autocapitalize="characters" spellcheck="false" oninput="this.value=this.value.toUpperCase()" onkeydown="if(event.key==='Enter'){event.preventDefault();fetchNews();}" /></div></div>
@@ -7086,6 +7102,128 @@ function toggleMarketStrength() {
 }
 
 loadMarketStrength();
+
+// ═══════════════════════════════════════════════════════════════════
+// WATCH MONITOR — multi-ticker live structure read over today's saved set
+// ═══════════════════════════════════════════════════════════════════
+// Reads today's scanner_log tickers (the "saved as interesting" set) and shows
+// a live /structure read per ticker, refreshed on the same 15s cadence as the
+// single-ticker monitor. STAGGERED: the N calls are spread across the interval
+// so they never burst the Worker/Polygon rate limit. Pre-market only — outside
+// 04:00–09:29 ET, /structure returns OUTSIDE_WINDOW and the panel says so.
+//
+// DISPLAY ONLY. ZERO write path: it never PATCHes/POSTs and never touches the
+// saved snapshot. Additive: it owns #watchMonitorPanel + window.wm* only, reuses
+// existing constants (SUPABASE_URL/KEY, PROXY) and helpers (structureStateColor).
+//
+// REVERT GUARANTEE: delete this block + the #watchMonitorPanel div + the
+// .wm-* CSS block and the file reverts exactly to its prior behaviour. No
+// existing function, route, or shared variable is modified by it.
+var wmInterval = null;          // the 15s set-refresh timer
+var wmStaggerTimers = [];       // per-ticker stagger timers within a cycle
+var wmTickers = [];             // today's saved set (deduped)
+var wmReads = {};               // ticker -> latest /structure read (display state only)
+var WM_CYCLE_MS = 15000;        // matches the single-ticker poll cadence
+
+// One read for one ticker -> stash + repaint. Never throws.
+async function wmFetchOne(ticker) {
+  try {
+    var res = await fetch(PROXY + '/structure?ticker=' + encodeURIComponent(ticker));
+    var data = await res.json();
+    wmReads[ticker] = (data && data.structure_state) ? data : { structure_state: null };
+  } catch (e) {
+    wmReads[ticker] = { structure_state: null };
+  }
+  wmRender();
+}
+
+// Fire all saved tickers, staggered evenly across the cycle window so the
+// requests never land as a single burst. Leaves a margin before the next cycle.
+function wmRunCycleStaggered() {
+  wmStaggerTimers.forEach(function(t) { clearTimeout(t); });
+  wmStaggerTimers = [];
+  var n = wmTickers.length;
+  if (n === 0) return;
+  // spread across ~80% of the cycle, leaving headroom before the next refresh
+  var span = Math.max(0, WM_CYCLE_MS - 3000);
+  var gap = n > 1 ? Math.floor(span / n) : 0;
+  wmTickers.forEach(function(ticker, i) {
+    var timer = setTimeout(function() { wmFetchOne(ticker); }, i * gap);
+    wmStaggerTimers.push(timer);
+  });
+}
+
+// DISPLAY ONLY. Paints #watchMonitorPanel from wmReads.
+function wmRender() {
+  var panel = document.getElementById('watchMonitorPanel');
+  if (!panel) return;
+  if (wmTickers.length === 0) {
+    panel.innerHTML = '';   // :empty CSS hides it
+    return;
+  }
+  var rows = wmTickers.map(function(ticker) {
+    var d = wmReads[ticker];
+    if (!d || !d.structure_state) {
+      return '<div class="wm-row"><span class="wm-ticker">' + ticker + '</span>'
+        + '<span class="wm-state" style="color:var(--text-dim)">\u2014</span>'
+        + '<span class="wm-primitives">awaiting read\u2026</span><span class="wm-lag"></span></div>';
+    }
+    if (d.structure_state === 'OUTSIDE_WINDOW') {
+      return '<div class="wm-row"><span class="wm-ticker">' + ticker + '</span>'
+        + '<span class="wm-state" style="color:var(--text-dim)">\u2014</span>'
+        + '<span class="wm-primitives">outside premarket window</span><span class="wm-lag"></span></div>';
+    }
+    var stateLabel = String(d.structure_state).replace(/_/g, ' ');
+    var stateColor = structureStateColor(d.structure_state);
+    var squeeze = d.squeeze_flag ? '<span class="wm-squeeze">ABSORB</span>' : '';
+    var pull = (typeof d.pullback_from_hod_pct === 'number') ? d.pullback_from_hod_pct.toFixed(1) + '% off HOD' : '\u2014';
+    var msh = (typeof d.minutes_since_hod === 'number') ? d.minutes_since_hod + 'm since HOD' : '';
+    var prim = pull + (msh ? ' \u00b7 ' + msh : '');
+    var lag = (typeof d.data_lag_min === 'number') ? d.data_lag_min + 'm lag' : '';
+    return '<div class="wm-row">'
+      + '<span class="wm-ticker">' + ticker + '</span>'
+      + '<span class="wm-state" style="color:' + stateColor + '">' + stateLabel + squeeze + '</span>'
+      + '<span class="wm-primitives">' + prim + '</span>'
+      + '<span class="wm-lag">' + lag + '</span>'
+      + '</div>';
+  }).join('');
+  panel.innerHTML =
+    '<div class="wm-head">WATCH MONITOR \u2014 SAVED SET'
+    + '<span class="wm-head-meta">' + wmTickers.length + ' ticker' + (wmTickers.length === 1 ? '' : 's') + ' \u00b7 live /structure \u00b7 15s</span></div>'
+    + rows;
+}
+
+// Load today's saved set from scanner_log (READ ONLY), dedupe, then start the
+// staggered refresh. Re-reads the set each cycle so a ticker saved mid-session
+// appears without a page reload.
+async function wmLoadSetAndPaint() {
+  try {
+    var today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
+    var res = await fetch(SUPABASE_URL + '/rest/v1/scanner_log?trading_date=eq.' + today + '&select=ticker&order=created_at.asc',
+      { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY } });
+    var rows = await res.json();
+    var seen = {}, list = [];
+    (Array.isArray(rows) ? rows : []).forEach(function(r) {
+      var t = (r.ticker || '').toUpperCase().trim();
+      if (t && !seen[t]) { seen[t] = 1; list.push(t); }
+    });
+    wmTickers = list;
+    // drop reads for tickers no longer in the set
+    Object.keys(wmReads).forEach(function(t) { if (!seen[t]) delete wmReads[t]; });
+    wmRender();
+    wmRunCycleStaggered();
+  } catch (e) {
+    // read-only; never throws into anything else
+  }
+}
+
+function wmStart() {
+  if (wmInterval) return;
+  wmLoadSetAndPaint();                      // immediate
+  wmInterval = setInterval(wmLoadSetAndPaint, WM_CYCLE_MS);
+}
+
+wmStart();
 // ─────────────────────────────────────────────────────────────────
 </script>
 </div><!-- /page-body -->
