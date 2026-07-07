@@ -93,13 +93,15 @@
   .wm-panel { border:1px solid var(--border); border-left:2px solid var(--accent); background:rgba(255,255,255,0.02); padding:10px 14px; margin:10px 0 0; font-family:var(--mono); }
   .wm-head { font-size:11px; letter-spacing:2px; color:var(--text-dim); text-transform:uppercase; margin-bottom:8px; display:flex; justify-content:space-between; align-items:baseline; }
   .wm-head-meta { font-size:10px; letter-spacing:1px; color:var(--text-dim); text-transform:none; }
-  .wm-row { display:grid; grid-template-columns:64px 110px 1fr auto; gap:10px; align-items:baseline; padding:5px 0; border-top:1px solid var(--border); }
+  .wm-row { display:grid; grid-template-columns:64px 110px 1fr auto 92px; gap:10px; align-items:baseline; padding:5px 0; border-top:1px solid var(--border); }
   .wm-row:first-of-type { border-top:none; }
   .wm-ticker { font-family:var(--display); font-weight:900; font-size:15px; letter-spacing:1px; color:var(--text-bright); }
   .wm-state { font-family:var(--display); font-weight:900; font-size:14px; letter-spacing:1px; }
   .wm-squeeze { font-size:10px; font-weight:900; color:var(--nogo); letter-spacing:1px; margin-left:6px; }
   .wm-primitives { font-size:11px; color:var(--text-dim); }
   .wm-lag { font-size:10px; color:var(--text-dim); letter-spacing:1px; white-space:nowrap; }
+  .wm-verdict { font-family:var(--display); font-weight:900; font-size:12px; letter-spacing:1px; white-space:nowrap; text-align:right; }
+  .wm-verdict.go { color:var(--go); } .wm-verdict.caution { color:var(--caution); } .wm-verdict.notrade { color:var(--no-trade); } .wm-verdict.nogo { color:var(--nogo); }
   .wm-empty { font-size:12px; color:var(--text-dim); }
   .gainers-strip-status { font-family:var(--mono); font-size:11px; color:var(--text-dim); letter-spacing:1px; white-space:nowrap; flex-shrink:0; margin-left:8px; }
   .status-pill { font-family:var(--mono); font-size:10px; letter-spacing:1.5px; padding:6px 12px; border:1px solid var(--border-bright); color:var(--text-dim); text-transform:uppercase; align-self:flex-start; transition:color 0.3s,border-color 0.3s; }
@@ -7123,6 +7125,18 @@ var wmInterval = null;          // the 15s set-refresh timer
 var wmStaggerTimers = [];       // per-ticker stagger timers within a cycle
 var wmTickers = [];             // today's saved set (deduped)
 var wmReads = {};               // ticker -> latest /structure read (display state only)
+var wmVerdicts = {};            // ticker -> gatekeeper verdict from scanner_log (read-only)
+
+// Verdict -> display badge. Same translation as the rest of the app:
+// GO -> GO, CAUTION -> STALK, NO TRADE -> NO TRADE, NO GO -> WALK AWAY.
+function wmVerdictBadge(ticker) {
+  var v = (wmVerdicts[ticker] || '').toUpperCase();
+  if (v === 'GO')       return '<span class="wm-verdict go">GO</span>';
+  if (v === 'CAUTION')  return '<span class="wm-verdict caution">STALK</span>';
+  if (v === 'NO TRADE') return '<span class="wm-verdict notrade">NO TRADE</span>';
+  if (v === 'NO GO')    return '<span class="wm-verdict nogo">WALK AWAY</span>';
+  return '<span class="wm-verdict"></span>';
+}
 var WM_CYCLE_MS = 15000;        // matches the single-ticker poll cadence
 
 // One read for one ticker -> stash + repaint. Never throws.
@@ -7166,12 +7180,12 @@ function wmRender() {
     if (!d || !d.structure_state) {
       return '<div class="wm-row"><span class="wm-ticker">' + ticker + '</span>'
         + '<span class="wm-state" style="color:var(--text-dim)">\u2014</span>'
-        + '<span class="wm-primitives">awaiting read\u2026</span><span class="wm-lag"></span></div>';
+        + '<span class="wm-primitives">awaiting read\u2026</span><span class="wm-lag"></span>' + wmVerdictBadge(ticker) + '</div>';
     }
     if (d.structure_state === 'OUTSIDE_WINDOW') {
       return '<div class="wm-row"><span class="wm-ticker">' + ticker + '</span>'
         + '<span class="wm-state" style="color:var(--text-dim)">\u2014</span>'
-        + '<span class="wm-primitives">outside premarket window</span><span class="wm-lag"></span></div>';
+        + '<span class="wm-primitives">outside premarket window</span><span class="wm-lag"></span>' + wmVerdictBadge(ticker) + '</div>';
     }
     var stateLabel = String(d.structure_state).replace(/_/g, ' ');
     var stateColor = structureStateColor(d.structure_state);
@@ -7185,6 +7199,7 @@ function wmRender() {
       + '<span class="wm-state" style="color:' + stateColor + '">' + stateLabel + squeeze + '</span>'
       + '<span class="wm-primitives">' + prim + '</span>'
       + '<span class="wm-lag">' + lag + '</span>'
+      + wmVerdictBadge(ticker)
       + '</div>';
   }).join('');
   panel.innerHTML =
@@ -7199,15 +7214,16 @@ function wmRender() {
 async function wmLoadSetAndPaint() {
   try {
     var today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
-    var res = await fetch(SUPABASE_URL + '/rest/v1/scanner_log?trading_date=eq.' + today + '&select=ticker&order=created_at.asc',
+    var res = await fetch(SUPABASE_URL + '/rest/v1/scanner_log?trading_date=eq.' + today + '&select=ticker,verdict&order=created_at.asc',
       { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY } });
     var rows = await res.json();
-    var seen = {}, list = [];
+    var seen = {}, list = [], verd = {};
     (Array.isArray(rows) ? rows : []).forEach(function(r) {
       var t = (r.ticker || '').toUpperCase().trim();
-      if (t && !seen[t]) { seen[t] = 1; list.push(t); }
+      if (t && !seen[t]) { seen[t] = 1; list.push(t); verd[t] = (r.verdict || ''); }
     });
     wmTickers = list;
+    wmVerdicts = verd;
     // drop reads for tickers no longer in the set
     Object.keys(wmReads).forEach(function(t) { if (!seen[t]) delete wmReads[t]; });
     wmRender();
