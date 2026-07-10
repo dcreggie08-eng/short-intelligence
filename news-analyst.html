@@ -324,8 +324,16 @@
     .status-pill { font-size: 10px; padding: 4px 8px; align-self: center !important; flex: 1; text-align: center; }
     .nav-link { font-size: 10px; padding: 4px 8px; flex: 1; text-align: center; }
 
-    /* Gainers strip — hidden on mobile (your call: manual ticker input) */
-    .gainers-strip-wrap { display: none !important; }
+    /* Gainers strip — mobile shows top 6 tradeable chips in a 2-col grid.
+       Chips 7+ hidden (chips are the only <div>s in the strip, so
+       div-counting nth-of-type targets them cleanly). Label + refresh
+       time span full width. Desktop strip CSS above untouched. */
+    .gainers-strip-wrap { display: block !important; }
+    .gainers-strip { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; overflow-x: visible; padding-bottom: 0; }
+    .gainers-strip-label { grid-column: 1 / -1; border-right: none; padding-right: 0; margin-right: 0; }
+    .gainers-strip-status { grid-column: 1 / -1; margin-left: 0; }
+    .gainer-chip { min-width: 0; }
+    .gainer-chip:nth-of-type(n+7) { display: none; }
 
     /* Market Strength banner — stays, slimmer */
     .ms-pill { gap: 10px; padding: 9px 12px; flex-wrap: wrap; font-size: 11px; }
@@ -7001,8 +7009,15 @@ async function loadGainers() {
     var session = getMarketSession();
     var sessionLabel = session === 'premarket' ? 'PRE-MKT' : session === 'market' ? 'MARKET' : session === 'afterhours' ? 'AFTER-HRS' : 'CLOSED';
     strip.innerHTML = '<span class="gainers-strip-label">TOP GAINERS \u00b7 ' + sessionLabel + '</span>';
+    var shown = 0;
     tickers.forEach(function(t) {
       var disp = getSessionDisplay(t), pct = disp.pct.toFixed(1), isHot = disp.pct >= 100, price = disp.price ? '$' + disp.price.toFixed(2) : '';
+      // Display filter: sub-$1.00 names are untradeable for us — skip. The %
+      // shown is the full session gain from the feed, so a name crossing $1.00
+      // appears carrying its entire move including the sub-$1 portion.
+      // No/zero price -> also skipped (can't verify tradeable). Feed untouched.
+      if (!(disp.price >= 1.00)) return;
+      shown++;
       var chip = document.createElement('div'); chip.className = 'gainer-chip';
       chip.innerHTML = '<span class="chip-ticker">' + t.ticker + '</span><span class="chip-pct' + (isHot ? ' hot' : '') + '">' + (disp.pct >= 0 ? '+' : '') + pct + '%</span><span class="chip-price">' + price + '</span>';
       chip.onclick = function() { document.querySelectorAll('.gainer-chip').forEach(function(c) { c.classList.remove('active'); }); chip.classList.add('active'); document.getElementById('ticker').value = t.ticker; document.getElementById('ticker').focus(); };
@@ -7011,6 +7026,7 @@ async function loadGainers() {
       // slow/failed call never holds up the strip; marker appends only on success.
       if (session === 'premarket') { fetchStripStructure(t.ticker, chip); }
     });
+    if (shown === 0) { var none = document.createElement('span'); none.className = 'gainers-strip-status'; none.textContent = 'No gainers \u2265 $1.00'; strip.appendChild(none); }
     var updated = document.createElement('span'); updated.className = 'gainers-strip-status'; updated.textContent = '\u21bb ' + new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }); strip.appendChild(updated);
   } catch(e) { if (status) status.textContent = 'Gainers unavailable'; }
 }
