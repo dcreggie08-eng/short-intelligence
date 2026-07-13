@@ -19,7 +19,7 @@
   * { margin:0; padding:0; box-sizing:border-box; }
   body { background:var(--bg); color:var(--text); font-family:var(--body); min-height:100vh; overflow-x:hidden; display:flex; }
   body::before { content:''; position:fixed; inset:0; background-image:linear-gradient(rgba(0,212,255,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(0,212,255,0.03) 1px,transparent 1px); background-size:40px 40px; pointer-events:none; z-index:0; }
-  .container { position:relative; z-index:1; flex:1; max-width:1400px; margin:0 auto; padding:40px 24px 80px; min-width:0; }
+  .container { position:relative; z-index:1; flex:1; max-width:1354px; margin:0 auto; padding:40px 24px 80px; min-width:0; }
   .page-body { flex:1; min-width:0; }
   header { margin-bottom:24px; border-bottom:1px solid var(--border); padding-bottom:24px; }
   .header-top { display:flex; align-items:flex-start; justify-content:space-between; gap:16px; flex-wrap:wrap; }
@@ -306,6 +306,8 @@
   .main-grid { display:grid; grid-template-columns:minmax(0,1fr) 430px; gap:24px; align-items:start; }
   .main-left { min-width:0; }
   .main-right { min-width:0; }
+  /* Lock header + top sections to the original app width; charts are the only thing right of it */
+  header, .ms-wrap, .gainers-strip-wrap, .wm-panel { max-width:852px; }
   #chartPanel { display:none; }
   #chartPanel.active { display:block; }
   .chart-card { border:1px solid var(--border); background:var(--surface); border-radius:6px; margin-bottom:16px; overflow:hidden; }
