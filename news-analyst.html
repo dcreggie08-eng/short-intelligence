@@ -308,9 +308,10 @@
   .main-right { min-width:0; }
   /* Lock header + top sections to the original app width; charts are the only thing right of it */
   header, .ms-wrap, .gainers-strip-wrap, .wm-panel { max-width:852px; }
+  .main-left .wm-panel { margin-top:0; } /* align chart tops with Watch Monitor top edge */
   #chartPanel { display:none; }
   #chartPanel.active { display:block; }
-  .chart-card { border:1px solid var(--border); background:var(--surface); border-radius:6px; margin-bottom:16px; overflow:hidden; }
+  .chart-card { border:1px solid var(--accent); background:rgba(0,0,0,0.9); border-radius:6px; margin-bottom:16px; overflow:hidden; }
   .chart-card-head { display:flex; align-items:center; justify-content:space-between; padding:8px 12px; border-bottom:1px solid var(--border); font-family:var(--mono); font-size:11px; letter-spacing:1.5px; color:var(--text-bright); }
   .cc-tf { color:var(--text-dim); }
   .cc-tkr { color:var(--accent); font-weight:700; margin-left:6px; }
@@ -5760,9 +5761,9 @@ eXpilSpDG70qVKmI/9k=" alt="Bear Intel" /></div>
     <div class="ms-body" id="msBody"></div>
   </div>
   <div class="gainers-strip-wrap"><div class="gainers-strip" id="gainersStrip"><span class="gainers-strip-label">Top Gainers</span><span class="gainers-strip-status" id="gainersStatus">Loading...</span></div></div>
-  <div class="wm-panel" id="watchMonitorPanel"></div>
   <div class="main-grid"><!-- CHART-PANEL-V1 layout wrapper -->
   <div class="main-left">
+  <div class="wm-panel" id="watchMonitorPanel"></div>
   <div class="input-section">
     <div style="display:grid;grid-template-columns:120px minmax(220px,1fr) auto auto;gap:12px;align-items:end;margin-bottom:16px;">
       <div class="field-group"><label>Ticker</label><div class="ticker-input-wrap"><span class="ticker-prefix">$</span><input type="text" id="ticker" class="ticker-input" placeholder="" maxlength="10" autocomplete="off" autocapitalize="characters" spellcheck="false" oninput="this.value=this.value.toUpperCase()" onkeydown="if(event.key==='Enter'){event.preventDefault();fetchNews();}" /></div></div>
@@ -7357,22 +7358,23 @@ wmStart();
   }
 
   function emaSeries(bars, period) {
-    var out = [], k = 2 / (period + 1), prev = null, sum = 0;
+    // Seed from the first bar so the line draws from the start; early bars are
+    // warming up and converge to the true EMA within ~3x period, so the recent
+    // (decision) end is exact once enough bars exist.
+    var out = [], k = 2 / (period + 1), prev = null;
     for (var i = 0; i < bars.length; i++) {
       var c = bars[i].c;
-      if (i < period) { sum += c; if (i === period - 1) { prev = sum / period; out.push({ time: bars[i].time, value: prev }); } continue; }
-      prev = c * k + prev * (1 - k);
+      prev = (prev === null) ? c : c * k + prev * (1 - k);
       out.push({ time: bars[i].time, value: prev });
     }
     return out;
   }
 
   function emaVals(pts, period) {
-    var out = [], k = 2 / (period + 1), prev = null, sum = 0;
+    var out = [], k = 2 / (period + 1), prev = null;
     for (var i = 0; i < pts.length; i++) {
       var v = pts[i].value;
-      if (i < period) { sum += v; if (i === period - 1) { prev = sum / period; out.push({ time: pts[i].time, value: prev }); } continue; }
-      prev = v * k + prev * (1 - k);
+      prev = (prev === null) ? v : v * k + prev * (1 - k);
       out.push({ time: pts[i].time, value: prev });
     }
     return out;
