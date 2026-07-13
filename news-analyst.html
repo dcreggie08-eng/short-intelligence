@@ -301,7 +301,7 @@
      REVERT: delete (1) this CSS block (to CHART-PANEL-V1-END), (2) the
      .main-grid/.main-left/.main-right wrapper + #chartPanel markup, (3) the
      lightweight-charts CDN <script> tag, (4) the CHART PANEL v1 JS IIFE,
-     (5) the guarded hook lines in startStructurePoll/stopStructurePoll/clearAll,
+     (5) the guarded hook lines in startStructurePoll/loadFromHistory/clearAll,
      and revert .container max-width 1400px -> 900px. */
   .main-grid { display:grid; grid-template-columns:minmax(0,1fr) 430px; gap:24px; align-items:start; }
   .main-left { min-width:0; }
@@ -6232,13 +6232,13 @@ function startStructurePoll(ticker) {
   if (!ticker) return;
   clearUrsa(); // URSA: new ticker -> reset; first poll repaints LIVE
   fetchStructureOnce(ticker); // immediate
-  if (window.chartsStart) window.chartsStart(ticker); // CHART-PANEL-V1: init on live poll start
-  structureInterval = setInterval(function() { fetchStructureOnce(ticker); if (window.chartsTick) window.chartsTick(ticker); }, 15000);
+  if (window.chartsStart) window.chartsStart(ticker); // CHART-PANEL-V1: start chart on fresh live fetch
+  structureInterval = setInterval(function() { fetchStructureOnce(ticker); }, 15000);
 }
 
 function stopStructurePoll() {
   if (structureInterval) { clearInterval(structureInterval); structureInterval = null; }
-  if (window.chartsStop) window.chartsStop(); // CHART-PANEL-V1: teardown on history reopen
+  // NOTE: chart is NOT stopped here — it self-times and lives across reopen (New/clear stops it explicitly).
 }
 
 // Freeze the latest polled read into an immutable snapshot AT SAVE.
@@ -6974,6 +6974,7 @@ async function loadFromHistory(id) {
         stopStructurePoll();
         clearUrsa(); // URSA: historical row -> no live monitor, drop saved display copy
         renderSavedStructure(item.structure_snapshot, item.structure_state);
+        if (window.chartsStart) window.chartsStart(ticker); // CHART-PANEL-V1: chart goes live on reopen; beacon stays frozen
       }
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
@@ -7324,8 +7325,10 @@ wmStart();
    CHART-PANEL-V1 — intraday candles for the currently-loaded LIVE ticker.
    Read-only. Fetches /candles (raw 1-min OHLCV), computes every indicator
    client-side, renders 1-min + 3-min charts each with a MACD sub-pane.
-   Refreshes on the existing 15s structure poll (window.chartsTick) — no new
-   timer. No Supabase, no writes, no touch to structure/gatekeeper/Boris.
+   Refreshes on its OWN 15s timer (chartsStart/chartsStop), independent of the
+   structure poll — so the chart lives on both fresh fetch and log reopen while
+   the structure beacon stays frozen. No Supabase, no writes, no touch to
+   structure/gatekeeper/Boris.
    Owns only #chartPanel/#chartEmpty + window.charts* + its own closure.
    TradingView Lightweight Charts v4 (attribution shown, per licence).
    REVERT: delete this IIFE + the 5 hook lines + CSS block + markup + CDN tag.
@@ -7337,6 +7340,7 @@ wmStart();
   var inflight = false;   // guards overlapping /candles fetches
   var built = false;      // charts created once, then reused
   var needFit = false;    // fit view only on first paint of a ticker
+  var chartTimer = null;  // own 15s refresh — independent of the structure poll
   var C = {};             // chart/series handles
 
   var COL = {
@@ -7526,14 +7530,17 @@ wmStart();
   window.chartsStart = function (ticker) {
     if (!ticker) return;
     active = true; curTicker = ticker; needFit = true;
+    if (chartTimer) { clearInterval(chartTimer); chartTimer = null; } // never leave two running
     showEmpty('Loading ' + ticker + '\u2026');
     load(ticker);
+    chartTimer = setInterval(function () { if (active && curTicker) load(curTicker); }, 15000);
   };
-  window.chartsTick = function (ticker) {
+  window.chartsTick = function (ticker) { // retained for compatibility; chart now self-times
     if (!active || ticker !== curTicker) return;
     load(ticker);
   };
   window.chartsStop = function () {
+    if (chartTimer) { clearInterval(chartTimer); chartTimer = null; }
     active = false; curTicker = null;
     showEmpty('Load a live ticker to view intraday charts');
   };
