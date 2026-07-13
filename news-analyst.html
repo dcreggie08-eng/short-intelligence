@@ -19,7 +19,7 @@
   * { margin:0; padding:0; box-sizing:border-box; }
   body { background:var(--bg); color:var(--text); font-family:var(--body); min-height:100vh; overflow-x:hidden; display:flex; }
   body::before { content:''; position:fixed; inset:0; background-image:linear-gradient(rgba(0,212,255,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(0,212,255,0.03) 1px,transparent 1px); background-size:40px 40px; pointer-events:none; z-index:0; }
-  .container { position:relative; z-index:1; flex:1; max-width:900px; margin:0 auto; padding:40px 24px 80px; min-width:0; }
+  .container { position:relative; z-index:1; flex:1; max-width:1400px; margin:0 auto; padding:40px 24px 80px; min-width:0; }
   .page-body { flex:1; min-width:0; }
   header { margin-bottom:24px; border-bottom:1px solid var(--border); padding-bottom:24px; }
   .header-top { display:flex; align-items:flex-start; justify-content:space-between; gap:16px; flex-wrap:wrap; }
@@ -296,6 +296,37 @@
              ask edgar tldr, droppiness, verdict, save-to-log, market strength
      Desktop CSS above is COMPLETELY UNTOUCHED.
      ════════════════════════════════════════════════════════════════ */
+  /* CHART-PANEL-V1-START ═══ right-rail intraday charts (13 Jul 2026) ═══
+     Read-only. Day-of, currently-loaded live ticker only. No write path.
+     REVERT: delete (1) this CSS block (to CHART-PANEL-V1-END), (2) the
+     .main-grid/.main-left/.main-right wrapper + #chartPanel markup, (3) the
+     lightweight-charts CDN <script> tag, (4) the CHART PANEL v1 JS IIFE,
+     (5) the guarded hook lines in startStructurePoll/stopStructurePoll/clearAll,
+     and revert .container max-width 1400px -> 900px. */
+  .main-grid { display:grid; grid-template-columns:minmax(0,1fr) 430px; gap:24px; align-items:start; }
+  .main-left { min-width:0; }
+  .main-right { min-width:0; }
+  #chartPanel { display:none; }
+  #chartPanel.active { display:block; }
+  .chart-card { border:1px solid var(--border); background:var(--surface); border-radius:6px; margin-bottom:16px; overflow:hidden; }
+  .chart-card-head { display:flex; align-items:center; justify-content:space-between; padding:8px 12px; border-bottom:1px solid var(--border); font-family:var(--mono); font-size:11px; letter-spacing:1.5px; color:var(--text-bright); }
+  .cc-tf { color:var(--text-dim); }
+  .cc-tkr { color:var(--accent); font-weight:700; margin-left:6px; }
+  .chart-pulse { width:7px; height:7px; border-radius:50%; background:var(--text-dim); display:inline-block; }
+  .chart-pulse.live { background:#26a69a; box-shadow:0 0 7px #26a69a; animation:chartPulse 1.6s ease-in-out infinite; }
+  @keyframes chartPulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+  .cc-price { width:100%; height:260px; }
+  .cc-macd { width:100%; height:78px; border-top:1px solid var(--border); }
+  .chart-legend { display:flex; flex-wrap:wrap; gap:12px; padding:6px 12px 8px; font-family:var(--mono); font-size:9.5px; letter-spacing:0.5px; color:var(--text-dim); border-top:1px solid var(--border); }
+  .chart-legend b { font-weight:700; }
+  .chart-empty { border:1px solid var(--border); background:var(--surface); border-radius:6px; padding:34px 16px; text-align:center; font-family:var(--mono); font-size:11px; letter-spacing:1.5px; color:var(--text-dim); }
+  .chart-foot { font-family:var(--mono); font-size:9.5px; letter-spacing:0.5px; color:var(--text-dim); text-align:center; padding:2px 0 6px; }
+  @media (max-width:1100px) {
+    .main-grid { grid-template-columns:1fr; }
+    .main-right { order:2; }
+  }
+  /* CHART-PANEL-V1-END */
+
   @media (max-width: 768px) {
     /* Container — tighter padding, eliminate horizontal waste */
     .container { padding: 14px 12px 60px; max-width: 100%; }
@@ -5728,6 +5759,8 @@ eXpilSpDG70qVKmI/9k=" alt="Bear Intel" /></div>
   </div>
   <div class="gainers-strip-wrap"><div class="gainers-strip" id="gainersStrip"><span class="gainers-strip-label">Top Gainers</span><span class="gainers-strip-status" id="gainersStatus">Loading...</span></div></div>
   <div class="wm-panel" id="watchMonitorPanel"></div>
+  <div class="main-grid"><!-- CHART-PANEL-V1 layout wrapper -->
+  <div class="main-left">
   <div class="input-section">
     <div style="display:grid;grid-template-columns:120px minmax(220px,1fr) auto auto;gap:12px;align-items:end;margin-bottom:16px;">
       <div class="field-group"><label>Ticker</label><div class="ticker-input-wrap"><span class="ticker-prefix">$</span><input type="text" id="ticker" class="ticker-input" placeholder="" maxlength="10" autocomplete="off" autocapitalize="characters" spellcheck="false" oninput="this.value=this.value.toUpperCase()" onkeydown="if(event.key==='Enter'){event.preventDefault();fetchNews();}" /></div></div>
@@ -5807,8 +5840,31 @@ eXpilSpDG70qVKmI/9k=" alt="Bear Intel" /></div>
     <div class="history-header"><div class="history-title">Recent Analyses</div><div class="history-count" id="historyCount"></div></div>
     <div class="history-list" id="historyList"><div class="history-empty">Loading history...</div></div>
   </div>
+  </div><!-- /main-left -->
+
+  <div class="main-right"><!-- CHART-PANEL-V1 markup -->
+    <div id="chartPanel">
+      <div class="chart-card">
+        <div class="chart-card-head"><span><span class="cc-tf">1&#8202;MIN</span><span class="cc-tkr" id="cc1Tkr"></span></span><span class="chart-pulse" id="cc1Pulse"></span></div>
+        <div class="cc-price" id="cc1Price"></div>
+        <div class="cc-macd" id="cc1Macd"></div>
+        <div class="chart-legend"><span style="color:#f5c518"><b>&mdash;</b> 9 EMA</span><span style="color:#4da3ff"><b>&mdash;</b> 21 EMA</span><span style="color:#c084fc"><b>&#8231;&#8231;</b> VWAP</span><span style="color:#ef5350"><b>&#8231;&#8231;</b> HOD</span><span>MACD 12/26/9</span></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-card-head"><span><span class="cc-tf">3&#8202;MIN</span><span class="cc-tkr" id="cc3Tkr"></span></span><span class="chart-pulse" id="cc3Pulse"></span></div>
+        <div class="cc-price" id="cc3Price"></div>
+        <div class="cc-macd" id="cc3Macd"></div>
+        <div class="chart-legend"><span style="color:#f5c518"><b>&mdash;</b> 9 EMA</span><span style="color:#4da3ff"><b>&mdash;</b> 21 EMA</span><span style="color:#c084fc"><b>&#8231;&#8231;</b> VWAP</span><span style="color:#ef5350"><b>&#8231;&#8231;</b> HOD</span><span>MACD 12/26/9</span></div>
+      </div>
+      <div class="chart-foot">Reference only &middot; full due diligence in TradingView</div>
+    </div>
+    <div class="chart-empty" id="chartEmpty">Load a live ticker to view intraday charts</div>
+  </div><!-- /main-right -->
+  </div><!-- /main-grid -->
 </div>
 
+<!-- CHART-PANEL-V1: TradingView Lightweight Charts, pinned v4 (v5 renamed addCandlestickSeries) -->
+<script src="https://cdn.jsdelivr.net/npm/lightweight-charts@4.2.3/dist/lightweight-charts.standalone.production.js"></script>
 <script>
 const SUPABASE_URL = 'https://xuvzhykopirgojwhtzlf.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_6gz5N7Txd7FbmgwKMep-PQ_V3F5XIrd';
@@ -6173,11 +6229,13 @@ function startStructurePoll(ticker) {
   if (!ticker) return;
   clearUrsa(); // URSA: new ticker -> reset; first poll repaints LIVE
   fetchStructureOnce(ticker); // immediate
-  structureInterval = setInterval(function() { fetchStructureOnce(ticker); }, 15000);
+  if (window.chartsStart) window.chartsStart(ticker); // CHART-PANEL-V1: init on live poll start
+  structureInterval = setInterval(function() { fetchStructureOnce(ticker); if (window.chartsTick) window.chartsTick(ticker); }, 15000);
 }
 
 function stopStructurePoll() {
   if (structureInterval) { clearInterval(structureInterval); structureInterval = null; }
+  if (window.chartsStop) window.chartsStop(); // CHART-PANEL-V1: teardown on history reopen
 }
 
 // Freeze the latest polled read into an immutable snapshot AT SAVE.
@@ -6875,6 +6933,7 @@ function clearAll() {
   document.getElementById('saveLogBox').classList.remove('visible');
   document.getElementById('floatAnalyseBtn').classList.remove('visible');
   var panel = document.getElementById('resultPanel'); panel.classList.remove('visible');
+  if (window.chartsStop) window.chartsStop(); // CHART-PANEL-V1: hide on New/clear
   setTimeout(function() { panel.style.display = 'none'; }, 400);
   if (typeof updateActionSlot === 'function') updateActionSlot();
   document.getElementById('ticker').focus();
@@ -7257,6 +7316,225 @@ function wmStart() {
 
 wmStart();
 // ─────────────────────────────────────────────────────────────────
+
+/* ═══════════════════════════════════════════════════════════════
+   CHART-PANEL-V1 — intraday candles for the currently-loaded LIVE ticker.
+   Read-only. Fetches /candles (raw 1-min OHLCV), computes every indicator
+   client-side, renders 1-min + 3-min charts each with a MACD sub-pane.
+   Refreshes on the existing 15s structure poll (window.chartsTick) — no new
+   timer. No Supabase, no writes, no touch to structure/gatekeeper/Boris.
+   Owns only #chartPanel/#chartEmpty + window.charts* + its own closure.
+   TradingView Lightweight Charts v4 (attribution shown, per licence).
+   REVERT: delete this IIFE + the 5 hook lines + CSS block + markup + CDN tag.
+   ═══════════════════════════════════════════════════════════════ */
+(function () {
+  var LWC = window.LightweightCharts;
+  var active = false;     // true only while a live ticker is loaded
+  var curTicker = null;   // ticker the charts currently show
+  var inflight = false;   // guards overlapping /candles fetches
+  var built = false;      // charts created once, then reused
+  var needFit = false;    // fit view only on first paint of a ticker
+  var C = {};             // chart/series handles
+
+  var COL = {
+    up:'#26a69a', down:'#ef5350',
+    ema9:'#f5c518', ema21:'#4da3ff', vwap:'#c084fc', hod:'#ef5350',
+    macd:'#4da3ff', signal:'#f5c518', histUp:'#26a69a', histDn:'#ef5350',
+    grid:'rgba(255,255,255,0.04)', text:'#b3b3b3', border:'#1e2530'
+  };
+
+  // Polygon 't' may be ms or s -> normalise to ms, then shift to ET
+  // wall-clock seconds so LWC (which renders in UTC) shows ET on the axis.
+  // DST-safe via Intl. Bars are start-of-window (matches DAS/TV labels).
+  function etSeconds(t) {
+    var ms = t > 1e12 ? t : t * 1000;
+    var d = new Date(ms);
+    var et = new Date(d.toLocaleString('en-US', { timeZone: 'America/New_York' }));
+    var utc = new Date(d.toLocaleString('en-US', { timeZone: 'UTC' }));
+    return Math.floor((ms + (et - utc)) / 1000);
+  }
+
+  function emaSeries(bars, period) {
+    var out = [], k = 2 / (period + 1), prev = null, sum = 0;
+    for (var i = 0; i < bars.length; i++) {
+      var c = bars[i].c;
+      if (i < period) { sum += c; if (i === period - 1) { prev = sum / period; out.push({ time: bars[i].time, value: prev }); } continue; }
+      prev = c * k + prev * (1 - k);
+      out.push({ time: bars[i].time, value: prev });
+    }
+    return out;
+  }
+
+  function emaVals(pts, period) {
+    var out = [], k = 2 / (period + 1), prev = null, sum = 0;
+    for (var i = 0; i < pts.length; i++) {
+      var v = pts[i].value;
+      if (i < period) { sum += v; if (i === period - 1) { prev = sum / period; out.push({ time: pts[i].time, value: prev }); } continue; }
+      prev = v * k + prev * (1 - k);
+      out.push({ time: pts[i].time, value: prev });
+    }
+    return out;
+  }
+
+  function vwapSeries(bars) {
+    var out = [], cumPV = 0, cumV = 0;
+    for (var i = 0; i < bars.length; i++) {
+      var b = bars[i], tp = (b.h + b.l + b.c) / 3, v = b.v || 0;
+      cumPV += tp * v; cumV += v;
+      out.push({ time: b.time, value: cumV > 0 ? cumPV / cumV : b.c });
+    }
+    return out;
+  }
+
+  // MACD(12,26,9): line = EMA12(close) - EMA26(close); signal = EMA9(line)
+  function macdSeries(bars) {
+    var close = bars.map(function (b) { return { time: b.time, value: b.c }; });
+    var e12 = emaVals(close, 12), e26 = emaVals(close, 26);
+    var m12 = {}; e12.forEach(function (p) { m12[p.time] = p.value; });
+    var line = [];
+    e26.forEach(function (p) { if (m12[p.time] != null) line.push({ time: p.time, value: m12[p.time] - p.value }); });
+    var signal = emaVals(line, 9);
+    var sig = {}; signal.forEach(function (p) { sig[p.time] = p.value; });
+    var hist = [];
+    line.forEach(function (p) { if (sig[p.time] != null) { var h = p.value - sig[p.time]; hist.push({ time: p.time, value: h, color: h >= 0 ? COL.histUp : COL.histDn }); } });
+    return { line: line, signal: signal, hist: hist };
+  }
+
+  function baseOpts(h) {
+    return {
+      height: h, autoSize: true,
+      layout: { background: { color: 'transparent' }, textColor: COL.text, fontSize: 10, fontFamily: "'Share Tech Mono', monospace", attributionLogo: true },
+      grid: { vertLines: { color: COL.grid }, horzLines: { color: COL.grid } },
+      rightPriceScale: { borderColor: COL.border },
+      timeScale: { borderColor: COL.border, timeVisible: true, secondsVisible: false },
+      crosshair: { mode: 0 }
+    };
+  }
+
+  // v4 has no shared panes in the standalone build -> price + MACD are two
+  // charts, kept time-aligned. Reentrancy lock stops the sync feedback loop.
+  function syncTime(a, b) {
+    var lock = false;
+    a.timeScale().subscribeVisibleLogicalRangeChange(function (r) { if (lock || !r) return; lock = true; b.timeScale().setVisibleLogicalRange(r); lock = false; });
+    b.timeScale().subscribeVisibleLogicalRangeChange(function (r) { if (lock || !r) return; lock = true; a.timeScale().setVisibleLogicalRange(r); lock = false; });
+  }
+
+  function buildOne(priceEl, macdEl) {
+    var pc = LWC.createChart(priceEl, baseOpts(priceEl.clientHeight || 260));
+    var candle = pc.addCandlestickSeries({ upColor: COL.up, downColor: COL.down, borderUpColor: COL.up, borderDownColor: COL.down, wickUpColor: COL.up, wickDownColor: COL.down });
+    var ema9 = pc.addLineSeries({ color: COL.ema9, lineWidth: 1, priceLineVisible: false, lastValueVisible: false });
+    var ema21 = pc.addLineSeries({ color: COL.ema21, lineWidth: 1, priceLineVisible: false, lastValueVisible: false });
+    var vwap = pc.addLineSeries({ color: COL.vwap, lineWidth: 1, lineStyle: 2, priceLineVisible: false, lastValueVisible: false });
+    var mc = LWC.createChart(macdEl, baseOpts(macdEl.clientHeight || 78));
+    var hist = mc.addHistogramSeries({ priceLineVisible: false, lastValueVisible: false });
+    var mLine = mc.addLineSeries({ color: COL.macd, lineWidth: 1, priceLineVisible: false, lastValueVisible: false });
+    var mSig = mc.addLineSeries({ color: COL.signal, lineWidth: 1, priceLineVisible: false, lastValueVisible: false });
+    syncTime(pc, mc);
+    return { pc: pc, mc: mc, candle: candle, ema9: ema9, ema21: ema21, vwap: vwap, hist: hist, mLine: mLine, mSig: mSig, hodLine: null };
+  }
+
+  function build() {
+    if (built) return true;
+    if (!LWC || !LWC.createChart) return false;
+    C.one = buildOne(document.getElementById('cc1Price'), document.getElementById('cc1Macd'));
+    C.three = buildOne(document.getElementById('cc3Price'), document.getElementById('cc3Macd'));
+    built = true;
+    return true;
+  }
+
+  function bucket3(bars) {
+    var out = [], cur = null, key = null;
+    for (var i = 0; i < bars.length; i++) {
+      var b = bars[i], k = Math.floor(b.time / 180); // 180s = 3-min bucket (ET-shifted)
+      if (k !== key) { if (cur) out.push(cur); cur = { time: k * 180, o: b.o, h: b.h, l: b.l, c: b.c, v: b.v }; key = k; }
+      else { cur.h = Math.max(cur.h, b.h); cur.l = Math.min(cur.l, b.l); cur.c = b.c; cur.v += b.v; }
+    }
+    if (cur) out.push(cur);
+    return out;
+  }
+
+  function paint(h, bars) {
+    if (!bars.length) return;
+    h.candle.setData(bars.map(function (b) { return { time: b.time, open: b.o, high: b.h, low: b.l, close: b.c }; }));
+    h.ema9.setData(emaSeries(bars, 9));
+    h.ema21.setData(emaSeries(bars, 21));
+    h.vwap.setData(vwapSeries(bars));
+    var m = macdSeries(bars);
+    h.hist.setData(m.hist);
+    h.mLine.setData(m.line);
+    h.mSig.setData(m.signal);
+    var hod = bars.reduce(function (mx, b) { return b.h > mx ? b.h : mx; }, -Infinity);
+    if (h.hodLine) h.candle.removePriceLine(h.hodLine);
+    h.hodLine = h.candle.createPriceLine({ price: hod, color: COL.hod, lineWidth: 1, lineStyle: 1, axisLabelVisible: true, title: 'HOD' });
+  }
+
+  function setPulse(on) {
+    ['cc1Pulse', 'cc3Pulse'].forEach(function (id) { var e = document.getElementById(id); if (e) e.className = 'chart-pulse' + (on ? ' live' : ''); });
+  }
+  function showEmpty(msg) {
+    var p = document.getElementById('chartPanel'), e = document.getElementById('chartEmpty');
+    if (p) p.classList.remove('active');
+    if (e) { e.textContent = msg; e.style.display = 'block'; }
+    setPulse(false);
+  }
+  function showCharts() {
+    var p = document.getElementById('chartPanel'), e = document.getElementById('chartEmpty');
+    if (e) e.style.display = 'none';
+    if (p) p.classList.add('active');
+  }
+
+  async function load(ticker) {
+    if (inflight) return;
+    inflight = true;
+    try {
+      var res = await fetch(PROXY + '/candles?ticker=' + encodeURIComponent(ticker));
+      if (!res.ok) throw new Error('candles ' + res.status);
+      var data = await res.json();
+      if (curTicker !== ticker || !active) return; // ticker changed / stopped mid-fetch
+      var raw = (data && data.bars) ? data.bars : [];
+      if (!raw.length) { showEmpty('No intraday data yet for ' + ticker); return; }
+      var seen = {}, bars = [];
+      raw.forEach(function (b) {
+        var t = etSeconds(b.t);
+        if (seen[t]) return; seen[t] = 1;
+        bars.push({ time: t, o: +b.o, h: +b.h, l: +b.l, c: +b.c, v: +b.v || 0 });
+      });
+      bars.sort(function (a, b) { return a.time - b.time; });
+      showCharts();                       // reveal BEFORE build so charts size correctly
+      if (!build()) { showEmpty('Chart library unavailable'); return; }
+      document.getElementById('cc1Tkr').textContent = ticker;
+      document.getElementById('cc3Tkr').textContent = ticker;
+      paint(C.one, bars);
+      paint(C.three, bucket3(bars));
+      if (needFit) {
+        C.one.pc.timeScale().fitContent(); C.one.mc.timeScale().fitContent();
+        C.three.pc.timeScale().fitContent(); C.three.mc.timeScale().fitContent();
+        needFit = false;
+      }
+      setPulse(true);
+    } catch (e) {
+      showEmpty('Chart feed error');
+    } finally {
+      inflight = false;
+    }
+  }
+
+  window.chartsStart = function (ticker) {
+    if (!ticker) return;
+    active = true; curTicker = ticker; needFit = true;
+    showEmpty('Loading ' + ticker + '\u2026');
+    load(ticker);
+  };
+  window.chartsTick = function (ticker) {
+    if (!active || ticker !== curTicker) return;
+    load(ticker);
+  };
+  window.chartsStop = function () {
+    active = false; curTicker = null;
+    showEmpty('Load a live ticker to view intraday charts');
+  };
+})();
+// CHART-PANEL-V1-END
 </script>
 </div><!-- /page-body -->
 </body>
