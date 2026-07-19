@@ -503,8 +503,6 @@
       <div class="stat-card discipline"><div class="stat-card-label">NO TRADE/NO GO Adherence</div><div class="stat-card-value" id="statAdherence">—</div><div class="stat-card-sub">you didn't trade when system said no</div></div>
       <div class="stat-card discipline"><div class="stat-card-label">GO/CAUTION Engagement</div><div class="stat-card-value" id="statEngagement">—</div><div class="stat-card-sub">you traded when system said yes</div></div>
     </div>
-    <div id="bestSetupLoading" class="best-setup-loading" style="display:none;">Scanning combinations...</div>
-    <div class="best-setup-grid" id="bestSetupGrid"></div>
     <div class="key-findings" id="keyFindings" style="display:none;">
       <div class="key-findings-header">Key Findings — what the data is saying</div>
       <div id="keyFindingsBody"></div>
@@ -1689,7 +1687,6 @@ async function loadAnalytics() {
     renderTagTable(data, 'tagEntryQualityTable', ENTRY_QUALITY_TAGS, 'Entry Quality');
     renderTagTable(data, 'tagPriceActionTable', PRICE_ACTION_TAGS, 'Price Action');
     renderTagTable(data, 'tagThesisTable', THESIS_TAGS, 'Thesis');
-    renderBestSetup(data);
     renderKeySummary(data);
   } catch(e) { console.error('Analytics error:',e); }
 }
@@ -2203,64 +2200,6 @@ function renderKeySummary(data) {
 }
 
 // ─────────────────────────────────────────────
-// BEST SETUP BOX — TOP 3 PODIUM
-// ─────────────────────────────────────────────
-function renderBestSetup(data) {
-  var loading = document.getElementById('bestSetupLoading');
-  var grid = document.getElementById('bestSetupGrid');
-  var MIN = 5;
-
-  var allCombos = [];
-
-  function scanCombos(keyFn, tableLabel) {
-    // v30.7 — anyGkSet captures legacy + v30 reviewed entries
-    var reviewed = data.filter(function(d) { return anyGkSet(d) && keyFn(d) !== null; });
-    var groups = {};
-    reviewed.forEach(function(d) { var key = keyFn(d); if (!key) return; if (!groups[key]) groups[key] = []; groups[key].push(d); });
-    Object.keys(groups).forEach(function(k) {
-      var g = groups[k]; if (g.length < MIN) return;
-      var faded = g.filter(function(d) { return derivedDidFade(d) === true; }).length;
-      var pct = Math.round(faded / g.length * 100);
-      allCombos.push({ label: k, table: tableLabel, n: g.length, faded: faded, pct: pct });
-    });
-  }
-
-  scanCombos(function(d){var cat=d.catalyst_grade,dil=normaliseVal(d.dilution_offering_risk),cash=normaliseVal(d.dilution_cash_need);return(cat&&dil&&cash)?cat+' + '+dil+' DIL + '+cash+' CASH':null;},'Catalyst / Dilution / Cash Need');
-  scanCombos(function(d){var cat=d.catalyst_grade,dil=normaliseVal(d.dilution_offering_risk),drop=dropBand(d.droppiness_score);return(cat&&dil&&drop)?cat+' + '+dil+' DIL + DROP '+drop:null;},'Catalyst / Dilution / Droppiness');
-  scanCombos(function(d){var v=d.verdict,vwap=vwapBand(d.vwap_extension_pct),drop=dropBand(d.droppiness_score);return(v&&vwap&&drop)?v+' + VWAP '+vwap+' + DROP '+drop:null;},'Verdict / VWAP / Droppiness');
-  scanCombos(function(d){var inst=instBand(d.inst_percent),cat=d.catalyst_grade;return(inst&&cat)?'INST '+inst+' + '+cat:null;},'Inst% / Catalyst');
-  scanCombos(function(d){var fl=floatBand(d.float_shares),cat=d.catalyst_grade,cash=normaliseVal(d.dilution_cash_need);return(fl&&cat&&cash)?'FLOAT '+fl+' + '+cat+' + '+cash+' CASH':null;},'Float / Catalyst / Cash');
-  scanCombos(function(d){var freq=normaliseVal(d.dilution_offering_frequency),risk=normaliseVal(d.dilution_offering_risk);return(freq&&risk)?freq+' FREQ + '+risk+' RISK':null;},'Serial Diluter');
-  scanCombos(function(d){var cash=normaliseVal(d.dilution_cash_need),nasd=normaliseVal(d.dilution_nasdaq_compliance);return(cash&&nasd)?cash+' CASH + '+nasd+' NASDAQ':null;},'Desperate Company');
-  scanCombos(function(d){var p=priceBand(d.price_at_analysis);return p?'PRICE '+p:null;},'Price Band');
-
-  if (allCombos.length === 0) {
-    loading.textContent = 'Not enough data yet — need 5+ entries per combination. Keep logging.';
-    loading.style.display = 'block';
-    grid.innerHTML = '';
-    return;
-  }
-
-  loading.style.display = 'none';
-
-  // Sort and dedupe — take top 3 distinct combinations
-  allCombos.sort(function(a, b) { return b.pct - a.pct || b.n - a.n; });
-  var seen = {}, top3 = [];
-  allCombos.forEach(function(c) { if (top3.length < 3 && !seen[c.label]) { seen[c.label] = true; top3.push(c); } });
-
-  var rankLabels = ['#1 Best Setup', '#2 Setup', '#3 Setup'];
-  var rankClasses = ['rank-1', 'rank-2', 'rank-3'];
-
-  grid.innerHTML = top3.map(function(c, i) {
-    return '<div class="best-setup-box ' + rankClasses[i] + '">' +
-      '<div class="best-setup-rank">' + rankLabels[i] + '</div>' +
-      '<div class="best-setup-rate">' + c.pct + '%</div>' +
-      '<div class="best-setup-combo">' + c.label + '</div>' +
-      '<div class="best-setup-meta"><span>' + c.faded + '</span> of <span>' + c.n + '</span> faded &mdash; ' + c.table + '</div>' +
-    '</div>';
-  }).join('');
-}
-
 function sampleNote(n) { return n<10?' <span style="color:var(--text-dim);font-size:10px">(need '+(10-n)+' more)</span>':''; }
 
 function renderDropTable(data) {
