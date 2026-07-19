@@ -1245,11 +1245,11 @@ NO GO: Brief, direct. Maybe a touch of dry humour to take the sting out. Then im
 PATTERN AWARENESS:
 When Reggie's historical data is provided, use it. Reference specific numbers — "your last 8 WEAK/FLUFF CAUTIONs faded 6 times" is Boris talking. "Historical data suggests" is not.
 
-HOD TIMING — THE STRONGEST SIGNAL IN REGGIE'S DATA:
-PM HOD as the true HOD = 87% historical fade rate. OM-led HODs only fade 36% of the time. That's a 51-point gap — the strongest signal in his entire dataset.
+HOD TIMING — A RETROSPECTIVE PATTERN IN REGGIE'S DATA:
+PM HOD as the true HOD has historically faded more often than when the open makes a higher high — a retrospective pattern, since which session leads isn't known until the day plays out.
 For GO/CAUTION verdicts during pre-market analysis, weave this in:
-- "If pre-market HOD holds without OM reclaim by 9:45, you're looking at an 87% fade in your data."
-- "If we see higher highs into the open, fade odds drop to 36% — that's the patience zone, not the entry zone."
+- "If pre-market HOD holds without an early reclaim, that's historically a stronger fade environment."
+- "If higher highs continue into the open, patience is usually rewarded rather than forcing the first entry."
 Don't force it into NO TRADE/NO GO reads where it's not relevant. Use it where it adds signal, not as filler.
 
 REGIME AWARENESS:
@@ -1331,7 +1331,7 @@ async function askBoris(opts) {
       // no longer write) onto the PM/OM split fields, so Boris's pattern data and the
       // 14-day regime see post-cutover trades. OR filter = "any gk field populated"
       // (legacy OR pm OR om). fade destinations selected for the aggregate deriveFade.
-      var patRes = await supabaseRequest('scanner_log?select=verdict,catalyst_grade,gatekeeper_correct,pm_gatekeeper_correct,om_gatekeeper_correct,fade_destination,pm_fade_destination,om_fade_destination,ticker,trading_date&or=(gatekeeper_correct.not.is.null,pm_gatekeeper_correct.not.is.null,om_gatekeeper_correct.not.is.null)&order=trading_date.desc&limit=300');
+      var patRes = await supabaseRequest('scanner_log?select=verdict,catalyst_grade,gatekeeper_correct,pm_gatekeeper_correct,om_gatekeeper_correct,fade_destination,pm_fade_destination,om_fade_destination,ticker,trading_date,hod_which_higher&or=(gatekeeper_correct.not.is.null,pm_gatekeeper_correct.not.is.null,om_gatekeeper_correct.not.is.null)&order=trading_date.desc&limit=300');
       var patData = await patRes.json();
       if (Array.isArray(patData) && patData.length > 0) {
         var grade = window.currentResultGrade || '';
@@ -1376,6 +1376,14 @@ async function askBoris(opts) {
         var gradeAllFaded = gradeAll.filter(deriveFade).length;
         var gradeRate = gradeAll.length > 0 ? Math.round(gradeAllFaded / gradeAll.length * 100) : null;
 
+        // HOD timing split — live, replaces the old hard-coded 87/36 constants (review Change 1B).
+        // Retrospective classification (which session's high ended up higher), so it is descriptive
+        // history, NOT a pre-open entry signal. Reported for accuracy only.
+        var pmLed = patData.filter(function(d) { return (d.hod_which_higher || '').toUpperCase() === 'PM'; });
+        var omLed = patData.filter(function(d) { return (d.hod_which_higher || '').toUpperCase() === 'OM'; });
+        var pmLedRate = pmLed.length > 0 ? Math.round(pmLed.filter(deriveFade).length / pmLed.length * 100) : null;
+        var omLedRate = omLed.length > 0 ? Math.round(omLed.filter(deriveFade).length / omLed.length * 100) : null;
+
         // This ticker's history
         var tickerHistory = ticker ? patData.filter(function(d) {
           return (d.ticker || '').toUpperCase() === ticker.toUpperCase();
@@ -1384,6 +1392,7 @@ async function askBoris(opts) {
         patternContext = '\n\nREGGIE\'S PATTERN DATA (' + patData.length + ' reviewed trades):';
         if (matchRate !== null) patternContext += '\n- ' + grade + ' + ' + verdict + ' setups: ' + matching.length + ' reviewed, ' + matchRate + '% faded';
         if (gradeRate !== null && gradeAll.length > matching.length) patternContext += '\n- All ' + grade + ' setups: ' + gradeAll.length + ' reviewed, ' + gradeRate + '% faded';
+        if (pmLed.length >= 5 && omLed.length >= 5) patternContext += '\n- HOD timing (retrospective): PM-led highs faded ' + pmLedRate + '% (' + pmLed.length + ' logged), OM-led ' + omLedRate + '% (' + omLed.length + ' logged)';
         if (tickerHistory.length > 0) {
           patternContext += '\n- ' + ticker + ' has been logged ' + tickerHistory.length + ' time(s) before';
           var tickerFaded = tickerHistory.filter(deriveFade).length;
