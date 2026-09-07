@@ -91,6 +91,37 @@
   .ursa-context-head { font-size:10px; letter-spacing:2px; color:var(--text-dim); text-transform:uppercase; margin-top:9px; }
   .ursa-context { font-size:13px; color:var(--text-bright); margin-top:2px; }
   .ursa-empty { font-size:12px; color:var(--text-dim); }
+  /* FUEL-PANEL-V1-START ═══ Dollar Block reading (7 Sep 2026) ═══════════
+     Display-only. Cumulative dollar volume + float rotations, 04:00-09:30:59
+     ET, read once per minute until the 09:30 lock and then frozen. Hidden
+     until it has content (:empty). Mirrors the URSA panel pattern exactly.
+     REVERT: delete (1) this CSS block to FUEL-PANEL-V1-END, (2) the
+     #fuelPanel div, (3) the FUEL PANEL v1 JS IIFE, (4) the three guarded
+     hook lines in startStructurePoll/loadFromHistory/clearAll, (5) the two
+     pm_dollar_volume / pm_float_rotations lines in the scanner_log payload. */
+  #fuelPanel:empty { display:none; }
+  .fuel-panel { border:1px solid var(--border); border-left:2px solid var(--accent); background:rgba(255,255,255,0.02); padding:10px 14px; margin:10px 0 0; font-family:var(--mono); }
+  .fuel-head { font-size:11px; letter-spacing:2px; color:var(--text-dim); text-transform:uppercase; margin-bottom:8px; display:flex; justify-content:space-between; align-items:baseline; gap:12px; }
+  .fuel-head-meta { font-size:10px; letter-spacing:1px; color:var(--text-dim); text-transform:none; }
+  .fuel-row { display:flex; align-items:baseline; gap:10px; font-size:12px; margin-bottom:4px; flex-wrap:wrap; }
+  .fuel-label { color:var(--text-dim); min-width:170px; }
+  .fuel-val { font-family:var(--display); font-weight:900; font-size:18px; letter-spacing:1px; color:var(--text-bright); }
+  .fuel-ref { font-size:11px; color:var(--text-dim); }
+  .fuel-ref.pending { opacity:0.45; }
+  .fuel-state { margin-top:9px; padding-top:8px; border-top:1px solid var(--border); font-size:12px; line-height:1.5; color:var(--text-dim); }
+  .fuel-verdict { font-family:var(--display); font-weight:900; font-size:16px; letter-spacing:2px; color:var(--text-dim); }
+  .fuel-verdict.wait { color:var(--caution); }
+  .fuel-note { display:block; margin-top:3px; color:var(--text-dim); }
+  /* Mobile: the 170px label column would force the value off-row on a phone.
+     Kept inside this block so the revert stays one contiguous deletion. */
+  @media (max-width: 768px) {
+    .fuel-panel { padding:10px 12px; }
+    .fuel-label { min-width:100%; font-size:11px; }
+    .fuel-val { font-size:16px; }
+    .fuel-row { gap:8px; margin-bottom:6px; }
+    .fuel-verdict { font-size:15px; }
+  }
+  /* FUEL-PANEL-V1-END */
   /* WATCH MONITOR — multi-ticker live structure read over today's saved scanner_log set.
      Display-only; additive. Hidden until it has content. Deleting this block +
      the #watchMonitorPanel div + the WATCH MONITOR JS block fully reverts. */
@@ -513,6 +544,7 @@
     <div class="field-group">
       <div class="news-label"><label>Dilution Profile</label><span class="news-source" id="dilutionSource"></span></div>
       <div class="stock-info-bar" id="stockInfoBar"></div>
+      <div class="fuel-panel" id="fuelPanel"></div><!-- FUEL-PANEL-V1 -->
       <div class="ursa-panel" id="ursaPanel"></div>
       <div class="dilution-panel" id="dilutionPanel"><div class="dilution-badges" id="dilutionBadges"></div></div>
       <div class="grok-panel" id="grokPanel">
@@ -1009,6 +1041,7 @@ function startStructurePoll(ticker) {
   clearUrsa(); // URSA: new ticker -> reset; first poll repaints LIVE
   fetchStructureOnce(ticker); // immediate
   if (window.chartsStart) window.chartsStart(ticker); // CHART-PANEL-V1: start chart on fresh live fetch
+  if (window.fuelStart) window.fuelStart(ticker); // FUEL-PANEL-V1: start Dollar Block read on fresh live fetch
   structureInterval = setInterval(function() { fetchStructureOnce(ticker); }, 15000);
 }
 
@@ -1685,7 +1718,12 @@ async function saveToScannerLog() {
       if (existing && existing.length > 0) { btn.textContent = '\u2705 Already Logged Today'; btn.className = 'save-log-btn saved'; status.className = 'save-log-status visible'; status.textContent = window.currentResultTicker + ' is already in the scanner log for ' + today; return; }
     }
     btn.textContent = 'Saving...';
-    var payload = { trading_date: today, ticker: window.currentResultTicker || '', catalyst_description: window.currentResultReasoning || '', catalyst_grade: window.currentResultGrade || '', verdict: window.currentResultVerdict || '', verdict_reason: window.currentResultReason || '', droppiness_score: window.currentDroppiness ? parseFloat(window.currentDroppiness.score) : null, droppiness_rating: window.currentDroppiness ? window.currentDroppiness.rating : '', dilution_overall: currentDilution ? (currentDilution.overall_offering_risk || '') : '', dilution_cash_need: currentDilution ? (currentDilution.cash_need || '') : '', dilution_offering_risk: currentDilution ? (currentDilution.dilution || '') : '', dilution_offering_frequency: currentDilution ? (currentDilution.offering_frequency || '') : '', dilution_warrant_exercise: currentDilution ? (currentDilution.warrant_exercise || '') : '', dilution_nasdaq_compliance: currentDilution ? (currentDilution.nasdaq_compliance || '') : '', inst_percent: window.currentInstPct !== undefined ? window.currentInstPct : null, insider_percent: window.currentInsiderPct !== undefined ? window.currentInsiderPct : null, float_shares: window.currentFloat || null, market_cap: window.currentMarketCap || null, price_at_analysis: null, rvol: (window.currentRVOL && typeof window.currentRVOL.rvol_raw === 'number') ? window.currentRVOL.rvol_raw : null, primary_block_reason: window.currentResultPrimaryBlock || null, secondary_block_reason: window.currentResultSecondaryBlock || null, block_class: window.currentResultBlockClass || null };
+    var payload = { trading_date: today, ticker: window.currentResultTicker || '', catalyst_description: window.currentResultReasoning || '', catalyst_grade: window.currentResultGrade || '', verdict: window.currentResultVerdict || '', verdict_reason: window.currentResultReason || '', droppiness_score: window.currentDroppiness ? parseFloat(window.currentDroppiness.score) : null, droppiness_rating: window.currentDroppiness ? window.currentDroppiness.rating : '', dilution_overall: currentDilution ? (currentDilution.overall_offering_risk || '') : '', dilution_cash_need: currentDilution ? (currentDilution.cash_need || '') : '', dilution_offering_risk: currentDilution ? (currentDilution.dilution || '') : '', dilution_offering_frequency: currentDilution ? (currentDilution.offering_frequency || '') : '', dilution_warrant_exercise: currentDilution ? (currentDilution.warrant_exercise || '') : '', dilution_nasdaq_compliance: currentDilution ? (currentDilution.nasdaq_compliance || '') : '', inst_percent: window.currentInstPct !== undefined ? window.currentInstPct : null, insider_percent: window.currentInsiderPct !== undefined ? window.currentInsiderPct : null, float_shares: window.currentFloat || null, market_cap: window.currentMarketCap || null, price_at_analysis: null, rvol: (window.currentRVOL && typeof window.currentRVOL.rvol_raw === 'number') ? window.currentRVOL.rvol_raw : null, primary_block_reason: window.currentResultPrimaryBlock || null, secondary_block_reason: window.currentResultSecondaryBlock || null, block_class: window.currentResultBlockClass || null,
+      // FUEL-PANEL-V1: frozen 09:30 Dollar Block reading. window.fuelReading is
+      // only ever set once the count is locked, so a partial can never be logged;
+      // both fields go in as null if the panel never produced a locked read.
+      pm_dollar_volume: (window.fuelReading && typeof window.fuelReading.dollars === 'number') ? window.fuelReading.dollars : null,
+      pm_float_rotations: (window.fuelReading && typeof window.fuelReading.rotations === 'number') ? window.fuelReading.rotations : null };
     var res = await fetch(SUPABASE_URL + '/rest/v1/scanner_log', { method: 'POST', headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Prefer': 'return=minimal' }, body: JSON.stringify(payload) });
     if (res.status === 201 || res.ok) { btn.textContent = '\u2705 Saved to Log'; btn.className = 'save-log-btn saved'; status.className = 'save-log-status visible'; status.textContent = (payload.ticker || 'Ticker') + ' logged for ' + today + ' \u2014 fill in HOD and outcome this evening'; }
     else { throw new Error('Save failed \u2014 status ' + res.status); }
@@ -1722,6 +1760,7 @@ function clearAll() {
   document.getElementById('floatAnalyseBtn').classList.remove('visible');
   var panel = document.getElementById('resultPanel'); panel.classList.remove('visible');
   if (window.chartsStop) window.chartsStop(); // CHART-PANEL-V1: hide on New/clear
+  if (window.fuelStop) window.fuelStop(); // FUEL-PANEL-V1: hide on New/clear
   setTimeout(function() { panel.style.display = 'none'; }, 400);
   if (typeof updateActionSlot === 'function') updateActionSlot();
   document.getElementById('ticker').focus();
@@ -1759,6 +1798,7 @@ async function loadFromHistory(id) {
         stopStructurePoll();
         clearUrsa(); // URSA: historical row -> no live monitor, drop saved display copy
         renderSavedStructure(item.structure_snapshot, item.structure_state);
+        if (window.fuelBlank) window.fuelBlank(); // FUEL-PANEL-V1: historical row -> no reading (/candles is today-only)
         if (window.chartsStart) window.chartsStart(ticker); // CHART-PANEL-V1: chart goes live on reopen; beacon stays frozen
       }
       window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -2123,6 +2163,273 @@ function wmStart() {
 
 wmStart();
 // ─────────────────────────────────────────────────────────────────
+
+/* ═══════════════════════════════════════════════════════════════
+   FUEL-PANEL-V1 — Dollar Block reading (7 Sep 2026).
+   Cumulative dollar volume (hlc3 x volume) and float rotations over
+   04:00 to 09:30:59 ET, from /candles. Read once a minute while the
+   count is filling; the poll STOPS at the lock and the reading never
+   changes again. Display-only plus one frozen value read by the
+   scanner_log save path. No writes of its own, no Supabase, no touch
+   to structure/gatekeeper/Boris/chart/URSA/watch monitor.
+   Owns only #fuelPanel + window.fuelReading + its own closure.
+
+   Research basis (frozen, do not retune here): thresholds
+   $31,113,828 and 3.47x, out-of-sample validated June-Sep 2026.
+   Divider is Ask Edgar FREE FLOAT (window.currentFloat), which is the
+   basis 3.47x was derived on. Shares outstanding would read ~0.58x of
+   basis and make the reference wrong by nearly half.
+
+   REVERT: delete this IIFE + the CSS block + the #fuelPanel div + the
+   3 hook lines + the 2 payload lines.
+   ═══════════════════════════════════════════════════════════════ */
+(function () {
+  var REF_DOLLARS   = 31113828;   // frozen 7 Sep 2026 — displayed, never enforced
+  var REF_ROTATIONS = 3.47;       // frozen 7 Sep 2026 — displayed, never enforced
+  var CUTOFF_MIN    = 330;        // minutes after 04:00 ET -> 09:30. Bars are
+                                  // start-of-window, so <= 330 INCLUDES the 09:30
+                                  // bar and its opening cross print (matches the
+                                  // research's inclusive boundary).
+  var POLL_MS       = 60000;      // one read a minute while filling; stops at lock
+  var LOCK_BACKSTOP = 335;        // 09:35 ET. The clock passing 09:30 does NOT mean
+                                  // Polygon has published the 09:30 bar yet — bars
+                                  // lag. Freezing at 09:31 could permanently omit the
+                                  // opening cross, which is a large share of the
+                                  // total. So freeze only once the 09:30 bar has
+                                  // actually arrived, or once this backstop passes
+                                  // (covers a ticker with no trade in that minute).
+
+  var active = false, curTicker = null, timer = null, inflight = false;
+
+  // Frozen reading for the save path. Only ever set to a LOCKED value;
+  // a still-filling count stays null so a partial can never be logged.
+  window.fuelReading = null;
+
+  function stopTimer() { if (timer) { clearInterval(timer); timer = null; } }
+
+  // Escape anything interpolated into panel HTML. The ticker comes from a free
+  // text input; nothing user-typed goes into innerHTML unescaped.
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+
+  // Ask Edgar values arrive as numbers today, but fmt() elsewhere on the page
+  // tolerates numeric strings, so this does too rather than silently refusing
+  // to compute rotations.
+  function num(v) {
+    if (typeof v === 'number' && isFinite(v)) return v;
+    if (typeof v === 'string' && v.trim() !== '') {
+      var n = Number(v);
+      if (isFinite(n)) return n;
+    }
+    return null;
+  }
+
+  // Self-contained ET clock read. DST-safe via Intl. Deliberately does not
+  // reuse etNowHHMM() so this block stays independently deletable. The
+  // formatter is built once, not per bar — a session can carry 720 bars.
+  var ET_FMT = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/New_York', hour: '2-digit', minute: '2-digit', hour12: false
+  });
+  function etParts(ms) {
+    var p = ET_FMT.formatToParts(new Date(ms));
+    var get = function (t) { return p.find(function (x) { return x.type === t; }).value; };
+    var h = parseInt(get('hour'), 10); if (h === 24) h = 0;
+    var m = parseInt(get('minute'), 10);
+    return {
+      min4: (h - 4) * 60 + m,
+      hhmm: String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0')
+    };
+  }
+
+  function money(n) {
+    if (typeof n !== 'number' || !isFinite(n)) return '\u2014';
+    if (n >= 1e9) return '$' + (n / 1e9).toFixed(2) + 'B';
+    if (n >= 1e6) return '$' + (n / 1e6).toFixed(1) + 'M';
+    if (n >= 1e3) return '$' + Math.round(n / 1e3) + 'K';
+    return '$' + Math.round(n);
+  }
+
+  function panel() { return document.getElementById('fuelPanel'); }
+
+  function paint(html) { var p = panel(); if (p) p.innerHTML = html; }
+
+  // A message state: head + one line. Used for every case where there is no
+  // usable reading. NEVER prints one of the four states — a broken feed or a
+  // missing float must not produce a wait signal.
+  function paintMessage(meta, line) {
+    paint(
+      '<div class="fuel-head"><span>Dollar Block</span><span class="fuel-head-meta">' + meta + '</span></div>' +
+      '<div class="fuel-state">' + line + '</div>'
+    );
+  }
+
+  function paintReading(dollars, rotations, locked, asOf) {
+    var refClass = locked ? 'fuel-ref' : 'fuel-ref pending';
+    var meta = locked ? '09:30 ET \u2014 locked' : 'filling \u2014 as of ' + asOf + ' ET';
+
+    var rotDisplay = (typeof rotations === 'number') ? rotations.toFixed(2) + '\u00d7' : '\u2014';
+
+    var state = '';
+    if (!locked) {
+      state = '<span class="fuel-verdict">FILLING</span>' +
+              '<span class="fuel-note">' + asOf + ' of a 09:30 count. Not comparable yet.</span>';
+    } else if (typeof rotations !== 'number') {
+      // Locked but no float: dollars alone can never produce a state.
+      state = '<span class="fuel-verdict">NO READ</span>' +
+              '<span class="fuel-note">No float available, so rotations cannot be computed. Both measures are needed.</span>';
+    } else {
+      var dHigh = dollars   >= REF_DOLLARS;
+      var rHigh = rotations >= REF_ROTATIONS;
+      if (!dHigh && !rHigh) {
+        state = '<span class="fuel-verdict wait">FUEL LEFT</span>' +
+                '<span class="fuel-note">Most buyers haven\u2019t shown up yet. Days like this legged up again before they faded.</span>';
+      } else if (dHigh && rHigh) {
+        state = '<span class="fuel-verdict">FUEL SPENT</span>' +
+                '<span class="fuel-note">The buyers have been and gone. Days like this topped out earlier.</span>';
+      } else {
+        state = '<span class="fuel-verdict">UNCLEAR</span>' +
+                '<span class="fuel-note">Big money, few turns (or the reverse). No read \u2014 these cells were never signal.</span>';
+      }
+    }
+
+    paint(
+      '<div class="fuel-head"><span>Dollar Block</span><span class="fuel-head-meta">' + meta + '</span></div>' +
+      '<div class="fuel-row"><span class="fuel-label">Money in (04:00\u201309:30)</span>' +
+        '<span class="fuel-val">' + money(dollars) + '</span>' +
+        '<span class="' + refClass + '">typical ' + money(REF_DOLLARS) + '</span></div>' +
+      '<div class="fuel-row"><span class="fuel-label">Shares turned</span>' +
+        '<span class="fuel-val">' + rotDisplay + '</span>' +
+        '<span class="' + refClass + '">typical ' + REF_ROTATIONS.toFixed(2) + '\u00d7</span></div>' +
+      '<div class="fuel-state">' + state + '</div>'
+    );
+  }
+
+  async function load(ticker) {
+    if (inflight) return;
+    inflight = true;
+    try {
+      var now = etParts(Date.now());
+
+      // Before 04:00 ET there is nothing to count yet.
+      if (now.min4 < 0) {
+        window.fuelReading = null;
+        paintMessage('pre-session', 'The count starts at 04:00 ET. Nothing to read yet.');
+        return;
+      }
+
+      // The clock passing 09:30 is NOT sufficient to freeze — see LOCK_BACKSTOP.
+      // Decided after the bars are summed, once we know whether the 09:30 bar
+      // has actually published.
+      var windowClosed = now.min4 > CUTOFF_MIN;
+
+      var res = await fetch(PROXY + '/candles?ticker=' + encodeURIComponent(ticker));
+      var data = null;
+      try { data = await res.json(); } catch (e) { data = null; }
+      if (curTicker !== ticker || !active) return;  // ticker changed mid-fetch
+
+      // /candles returns HTTP 200 on failure with bars:[] and an error field,
+      // so res.ok alone is NOT enough. An empty or errored response must show
+      // NO READ — zero dollars would otherwise read as a wait signal.
+      var bars = (data && Array.isArray(data.bars)) ? data.bars : [];
+      if (!res.ok || !data || data.error || bars.length === 0) {
+        window.fuelReading = null;
+        paintMessage('no data', 'NO READ \u2014 no intraday data returned for this ticker.');
+        return;   // the 60s poll retries on its own; nothing to stop or reschedule
+      }
+
+      var dollars = 0, shares = 0, counted = 0, lastMin = -1, lastHHMM = null;
+      var sawCutoffBar = false;
+      for (var i = 0; i < bars.length; i++) {
+        var b = bars[i];
+        var et = etParts(b.t > 1e12 ? b.t : b.t * 1000);
+        if (et.min4 < 0 || et.min4 > CUTOFF_MIN) continue;   // inclusive to 09:30
+        if (et.min4 === CUTOFF_MIN) sawCutoffBar = true;     // opening cross has landed
+        var v = (typeof b.v === 'number') ? b.v : 0;
+        dollars += ((b.h + b.l + b.c) / 3) * v;              // hlc3, matches research
+        shares  += v;
+        counted++;
+        if (et.min4 > lastMin) { lastMin = et.min4; lastHHMM = et.hhmm; }
+      }
+
+      // Freeze once the window has closed AND either the 09:30 bar is present or
+      // the backstop has passed. Until then keep polling: a reading frozen
+      // without the opening cross would understate the day permanently.
+      var locked = windowClosed && (sawCutoffBar || now.min4 >= LOCK_BACKSTOP);
+
+      if (counted === 0) {
+        window.fuelReading = null;
+        paintMessage(windowClosed ? '09:30 ET' : 'filling',
+          'NO READ \u2014 no bars inside the 04:00\u201309:30 window.');
+        if (locked) stopTimer();   // window closed and settled; nothing more can arrive
+        return;
+      }
+
+      var fl = num(window.currentFloat);
+      var rotations = (fl && fl > 0) ? (shares / fl) : null;
+
+      paintReading(dollars, rotations, locked, lastHHMM || now.hhmm);
+
+      if (locked) {
+        // Freeze for the save path, then stop reading. Rotations may be null
+        // (no float) — the dollar figure is still worth logging.
+        window.fuelReading = {
+          dollars: Math.round(dollars),
+          rotations: (typeof rotations === 'number') ? Math.round(rotations * 10000) / 10000 : null,
+          locked: true
+        };
+        stopTimer();
+      } else {
+        window.fuelReading = null;   // never log a partial count
+      }
+    } catch (e) {
+      // Display-only: never throw into the fetch or save paths.
+      window.fuelReading = null;
+      paintMessage('feed error', 'NO READ \u2014 could not reach the candles feed.');
+    } finally {
+      inflight = false;
+    }
+  }
+
+  function startTimer() {
+    stopTimer();
+    timer = setInterval(function () { if (active && curTicker) load(curTicker); }, POLL_MS);
+  }
+
+  // Live ticker loaded. window.currentFloat is already set by this point in
+  // both fetch paths (applyFetchedData runs before startStructurePoll).
+  window.fuelStart = function (ticker) {
+    if (!ticker) return;
+    active = true; curTicker = ticker; window.fuelReading = null;
+    // Release the in-flight guard. It exists to stop the 60s timer stacking
+    // requests on a stalled network, not to block a ticker change: any read
+    // still in flight is for the OLD ticker and is discarded by the curTicker
+    // check inside load(). Without this, switching tickers mid-fetch leaves the
+    // panel on "Reading…" until the next poll a full minute later.
+    inflight = false;
+    paintMessage('loading', 'Reading ' + esc(ticker) + '\u2026');
+    load(ticker);
+    startTimer();
+  };
+
+  // Historical row reopened. /candles is today-only, so a past ticker would
+  // show today's count. Same reasoning as the frozen structure beacon.
+  window.fuelBlank = function () {
+    active = false; curTicker = null; window.fuelReading = null;
+    stopTimer();
+    paintMessage('historical row', 'No reading \u2014 the count is available for today only.');
+  };
+
+  // New/clear. Empty panel hides itself via #fuelPanel:empty.
+  window.fuelStop = function () {
+    active = false; curTicker = null; window.fuelReading = null;
+    stopTimer();
+    paint('');
+  };
+})();
+// FUEL-PANEL-V1-END
 
 /* ═══════════════════════════════════════════════════════════════
    CHART-PANEL-V1 — intraday candles for the currently-loaded LIVE ticker.
