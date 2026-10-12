@@ -73,6 +73,14 @@
   .gainer-chip { display:flex; flex-direction:column; gap:2px; padding:5px 10px; border:1px solid var(--border-bright); cursor:pointer; min-width:72px; flex-shrink:0; transition:border-color 0.15s; }
   .gainer-chip:hover { border-color:var(--accent); }
   .gainer-chip.active { border-color:var(--accent); background:var(--accent-dim); }
+  /* HALT HIGHLIGHT (12 Oct 2026) — display only, fed by halt_watch.mjs on this Mac */
+  .gainer-chip.halted { border-color:#ff3b3b; background:rgba(255,59,59,0.16); animation:haltPulse 1.2s ease-in-out infinite; }
+  .gainer-chip.resumed { border-color:#ffb020; background:rgba(255,176,32,0.12); }
+  @keyframes haltPulse { 0%,100% { box-shadow:0 0 0 0 rgba(255,59,59,0.0); } 50% { box-shadow:0 0 0 3px rgba(255,59,59,0.45); } }
+  .chip-halt { font-family:var(--mono); font-size:9px; font-weight:700; letter-spacing:0.5px; }
+  .chip-halt.h { color:#ff3b3b; } .chip-halt.r { color:#ffb020; } .chip-halt.n { color:var(--text-dim); font-weight:400; }
+  .halt-feed { font-family:var(--mono); font-size:10px; letter-spacing:1px; color:var(--text-dim); margin-top:6px; cursor:default; }
+  .halt-feed .live { color:#00e676; } .halt-feed .bad { color:#ff3b3b; } .halt-feed .warn { color:#ffb020; }
   .chip-ticker { font-family:var(--display); font-weight:900; font-size:14px; letter-spacing:1px; color:var(--accent); }
   .chip-pct { font-family:var(--mono); font-size:11px; font-weight:700; color:var(--go); }
   .chip-pct.hot { color:#ff9900; }
@@ -527,7 +535,7 @@
     </div>
     <div class="ms-body" id="msBody"></div>
   </div>
-  <div class="gainers-strip-wrap"><div class="gainers-strip" id="gainersStrip"><span class="gainers-strip-label">Top Gainers</span><span class="gainers-strip-status" id="gainersStatus">Loading...</span></div></div>
+  <div class="gainers-strip-wrap"><div class="gainers-strip" id="gainersStrip"><span class="gainers-strip-label">Top Gainers</span><span class="gainers-strip-status" id="gainersStatus">Loading...</span></div><div class="halt-feed" id="haltFeed">HALT FEED · starting…</div></div>
   <div class="main-grid"><!-- CHART-PANEL-V1 layout wrapper -->
   <div class="main-left">
   <div class="wm-panel" id="watchMonitorPanel"></div>
@@ -1901,7 +1909,7 @@ async function loadGainers() {
       // No/zero price -> also skipped (can't verify tradeable). Feed untouched.
       if (!(disp.price >= 1.00)) return;
       shown++;
-      var chip = document.createElement('div'); chip.className = 'gainer-chip';
+      var chip = document.createElement('div'); chip.className = 'gainer-chip'; chip.setAttribute('data-ticker', t.ticker);
       chip.innerHTML = '<span class="chip-ticker">' + t.ticker + '</span><span class="chip-pct' + (isHot ? ' hot' : '') + '">' + (disp.pct >= 0 ? '+' : '') + pct + '%</span><span class="chip-price">' + price + '</span>';
       chip.onclick = function() { document.querySelectorAll('.gainer-chip').forEach(function(c) { c.classList.remove('active'); }); chip.classList.add('active'); document.getElementById('ticker').value = t.ticker; document.getElementById('ticker').focus(); };
       strip.appendChild(chip);
@@ -1911,10 +1919,121 @@ async function loadGainers() {
     });
     if (shown === 0) { var none = document.createElement('span'); none.className = 'gainers-strip-status'; none.textContent = 'No gainers \u2265 $1.00'; strip.appendChild(none); }
     var updated = document.createElement('span'); updated.className = 'gainers-strip-status'; updated.textContent = '\u21bb ' + new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }); strip.appendChild(updated);
+    if (typeof paintHalts === 'function') paintHalts();   // halt colours survive the 60s rebuild
   } catch(e) { if (status) status.textContent = 'Gainers unavailable'; }
 }
 
 loadGainers(); gainersInterval = setInterval(loadGainers, 60000);
+
+// ── HALT HIGHLIGHT (12 Oct 2026) ─────────────────────────────────
+// Source: halt_watch.mjs running on this Mac (~/winston-longbow/halt_probe).
+// It holds the Massive LULD stream and serves http://127.0.0.1:8790/halts.
+// Exchange flags only (LULD 17 halt / 18 resume) — never inferred from
+// missing trades. NASDAQ-listed only (that is all Massive flags).
+// Hard rules: display only. Never writes Supabase. Never touches the
+// Worker, the Beacon or the strip's own data. Fails LOUD in the status
+// line (OFF / NOT CONNECTED / STALE), never silently.
+// Beeps only for tickers on the gainers strip, only for fresh events.
+var HALT_FEED_URL = 'http://127.0.0.1:8790/halts';
+var HALT_RESUME_SHOW_MIN = 30;    // amber RESUMED shown this long after resume (display only)
+var HALT_FRESH_MS = 20000;        // only beep for events this recent
+var HALT_STALE_MS = 30000;        // in market hours LULD messages arrive every second
+var haltData = null, haltBusy = false, haltAlerted = {}, haltAudio = null, haltSoundArmed = false;
+
+function haltArmSound() {
+  try {
+    if (!haltAudio) { var AC = window.AudioContext || window.webkitAudioContext; if (!AC) return; haltAudio = new AC(); }
+    if (haltAudio.state === 'suspended') haltAudio.resume();
+    haltSoundArmed = true;
+  } catch (e) { /* no sound — highlight still works */ }
+}
+document.addEventListener('pointerdown', haltArmSound, { once: false, passive: true });
+document.addEventListener('keydown', haltArmSound, { once: false, passive: true });
+
+function haltTone(freqs) {
+  try {
+    if (!haltAudio || haltAudio.state !== 'running') return;
+    var t = haltAudio.currentTime;
+    freqs.forEach(function(f, i) {
+      var o = haltAudio.createOscillator(), g = haltAudio.createGain();
+      o.type = 'square'; o.frequency.value = f;
+      g.gain.setValueAtTime(0.0001, t + i * 0.22);
+      g.gain.exponentialRampToValueAtTime(0.18, t + i * 0.22 + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + i * 0.22 + 0.18);
+      o.connect(g); g.connect(haltAudio.destination);
+      o.start(t + i * 0.22); o.stop(t + i * 0.22 + 0.2);
+    });
+  } catch (e) { /* never throws into the page */ }
+}
+
+function haltClock(ms) {
+  if (!(ms >= 0)) return '';
+  var s = Math.floor(ms / 1000), m = Math.floor(s / 60);
+  return m < 60 ? (m + ':' + String(s % 60).padStart(2, '0')) : (Math.floor(m / 60) + 'h' + String(m % 60).padStart(2, '0'));
+}
+
+function paintHalts() {
+  var chips = document.querySelectorAll('.gainer-chip[data-ticker]');
+  var halts = (haltData && haltData.halts) || {}, now = haltData ? haltData.server_ms : Date.now();
+  chips.forEach(function(chip) {
+    chip.classList.remove('halted', 'resumed');
+    var old = chip.querySelector('.chip-halt'); if (old) old.remove();
+    var h = halts[chip.getAttribute('data-ticker')];
+    if (!h || !haltData) return;
+    var tag = document.createElement('span'), count = h.halts_today > 1 ? ' \u00b7 H' + h.halts_today : '';
+    if (h.state === 'HALTED') {
+      chip.classList.add('halted'); tag.className = 'chip-halt h';
+      tag.textContent = 'HALTED ' + haltClock(now - h.halt_ms) + count;
+    } else if (h.state === 'RESUMED' && h.resume_ms && (now - h.resume_ms) < HALT_RESUME_SHOW_MIN * 60000) {
+      chip.classList.add('resumed'); tag.className = 'chip-halt r';
+      tag.textContent = 'RESUMED ' + haltClock(now - h.resume_ms) + count;
+    } else if (h.halts_today > 0) {
+      tag.className = 'chip-halt n'; tag.textContent = 'H' + h.halts_today + ' today';
+    } else return;
+    chip.appendChild(tag);
+  });
+}
+
+function haltBeeps() {
+  if (!haltData || !haltData.halts) return;
+  var now = haltData.server_ms;
+  document.querySelectorAll('.gainer-chip[data-ticker]').forEach(function(chip) {
+    var h = haltData.halts[chip.getAttribute('data-ticker')]; if (!h) return;
+    if (h.state === 'HALTED' && h.halt_ms && (now - h.halt_ms) < HALT_FRESH_MS) {
+      var k = h.ticker + ':H' + h.halt_ms; if (!haltAlerted[k]) { haltAlerted[k] = 1; haltTone([880, 660, 440]); }
+    }
+    if (h.state === 'RESUMED' && h.resume_ms && (now - h.resume_ms) < HALT_FRESH_MS) {
+      var r = h.ticker + ':R' + h.resume_ms; if (!haltAlerted[r]) { haltAlerted[r] = 1; haltTone([660, 990]); }
+    }
+  });
+}
+
+function haltStatus(cls, text) {
+  var el = document.getElementById('haltFeed'); if (!el) return;
+  var sound = haltSoundArmed ? '' : ' \u00b7 <span class="warn">click anywhere to arm sound</span>';
+  el.innerHTML = 'HALT FEED \u00b7 <span class="' + cls + '">' + text + '</span>' + sound;
+}
+
+async function pollHalts() {
+  if (haltBusy) return; haltBusy = true;
+  var ctrl = new AbortController(), timer = setTimeout(function() { ctrl.abort(); }, 1500);
+  try {
+    var res = await fetch(HALT_FEED_URL, { cache: 'no-store', signal: ctrl.signal });
+    if (!res.ok) throw new Error('http ' + res.status);
+    var d = await res.json(); if (!d || d.ok !== true) throw new Error('bad body');
+    haltData = d;
+    var n = Object.keys(d.halts || {}).filter(function(k) { return d.halts[k].state === 'HALTED'; }).length;
+    var stale = getMarketSession() === 'market' && (!d.last_luld_ms || (d.server_ms - d.last_luld_ms) > HALT_STALE_MS);
+    if (!d.connected) haltStatus('bad', 'NOT CONNECTED \u2014 halt_watch is reconnecting');
+    else if (stale) haltStatus('warn', 'STALE \u2014 no LULD data for ' + Math.round((d.server_ms - (d.last_luld_ms || d.server_ms)) / 1000) + 's');
+    else haltStatus('live', 'LIVE \u00b7 NASDAQ halts now: ' + n);
+    paintHalts(); haltBeeps();
+  } catch (e) {
+    haltData = null; paintHalts();
+    haltStatus('bad', 'OFF \u2014 start halt_watch in Terminal');
+  } finally { clearTimeout(timer); haltBusy = false; }
+}
+pollHalts(); setInterval(pollHalts, 2000);
 
 // ── Market Strength banner ──────────────────────────────────────
 // Fetches Ask Edgar's weekly read once on page load, renders compact pill,
