@@ -2008,10 +2008,36 @@ function haltBeeps() {
   });
 }
 
-function haltStatus(cls, text) {
+function haltStatus(cls, text, extraHtml) {
   var el = document.getElementById('haltFeed'); if (!el) return;
   var sound = haltSoundArmed ? '' : ' \u00b7 <span class="warn">click anywhere to arm sound</span>';
-  el.innerHTML = 'HALT FEED \u00b7 <span class="' + cls + '">' + text + '</span>' + sound;
+  el.innerHTML = 'HALT FEED \u00b7 <span class="' + cls + '">' + text + '</span>' + (extraHtml || '') + sound;
+}
+
+// Names every NASDAQ ticker halted now, and resumed in the last HALT_RESUME_SHOW_MIN
+// minutes — on the strip or not. Newest first, at most HALT_NAMES_MAX of each.
+var HALT_NAMES_MAX = 8;
+function haltNamesHtml(d) {
+  var H = (d && d.halts) || {}, now = d.server_ms, halted = [], resumed = [];
+  Object.keys(H).forEach(function(k) {
+    var h = H[k]; if (!h) return;
+    if (h.state === 'HALTED') halted.push(h);
+    else if (h.state === 'RESUMED' && h.resume_ms && (now - h.resume_ms) < HALT_RESUME_SHOW_MIN * 60000) resumed.push(h);
+  });
+  if (halted.length === 0 && resumed.length === 0) return ' \u00b7 no NASDAQ halts now';
+  halted.sort(function(a, b) { return (b.halt_ms || 0) - (a.halt_ms || 0); });
+  resumed.sort(function(a, b) { return (b.resume_ms || 0) - (a.resume_ms || 0); });
+  function list(arr, field) {
+    var out = arr.slice(0, HALT_NAMES_MAX).map(function(h) {
+      var tk = String(h.ticker || '').replace(/[^A-Z0-9.]/g, '');   // safe for innerHTML
+      return tk + ' ' + haltClock(now - h[field]);
+    }).join(', ');
+    return arr.length > HALT_NAMES_MAX ? out + ' +' + (arr.length - HALT_NAMES_MAX) + ' more' : out;
+  }
+  var html = '';
+  if (halted.length) html += ' \u00b7 <span class="bad">HALTED: ' + list(halted, 'halt_ms') + '</span>';
+  if (resumed.length) html += ' \u00b7 <span class="warn">RESUMED: ' + list(resumed, 'resume_ms') + '</span>';
+  return html;
 }
 
 async function pollHalts() {
@@ -2022,11 +2048,10 @@ async function pollHalts() {
     if (!res.ok) throw new Error('http ' + res.status);
     var d = await res.json(); if (!d || d.ok !== true) throw new Error('bad body');
     haltData = d;
-    var n = Object.keys(d.halts || {}).filter(function(k) { return d.halts[k].state === 'HALTED'; }).length;
     var stale = getMarketSession() === 'market' && (!d.last_luld_ms || (d.server_ms - d.last_luld_ms) > HALT_STALE_MS);
     if (!d.connected) haltStatus('bad', 'NOT CONNECTED \u2014 halt_watch is reconnecting');
     else if (stale) haltStatus('warn', 'STALE \u2014 no LULD data for ' + Math.round((d.server_ms - (d.last_luld_ms || d.server_ms)) / 1000) + 's');
-    else haltStatus('live', 'LIVE \u00b7 NASDAQ halts now: ' + n);
+    else haltStatus('live', 'LIVE', haltNamesHtml(d));
     paintHalts(); haltBeeps();
   } catch (e) {
     haltData = null; paintHalts();
